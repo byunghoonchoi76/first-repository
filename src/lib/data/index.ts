@@ -1,0 +1,83 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { sampleRepository } from '@/lib/data/sample-repository';
+import { supabaseRepository } from '@/lib/data/supabase-repository';
+import type { ChurchRepository } from '@/lib/data/types';
+import { hasSupabaseConfig } from '@/lib/supabase';
+
+/**
+ * .env 에 Supabase 설정이 있으면 실제 DB 를, 없으면 샘플 데이터를 사용합니다.
+ * 화면 코드는 어느 쪽인지 신경 쓰지 않아도 됩니다.
+ */
+export const repository: ChurchRepository = hasSupabaseConfig
+  ? supabaseRepository
+  : sampleRepository;
+
+export const dataMode = repository.mode;
+
+export interface AsyncState<T> {
+  data: T | undefined;
+  loading: boolean;
+  error: string | undefined;
+  reload: () => void;
+  /** 서버를 다시 부르지 않고 화면의 값만 즉시 바꾸고 싶을 때 사용 (낙관적 업데이트) */
+  setData: (updater: T | ((current: T | undefined) => T | undefined)) => void;
+}
+
+/** 비동기 저장소 호출을 화면에서 편하게 쓰기 위한 훅. */
+export function useAsyncData<T>(loader: () => Promise<T>, deps: unknown[] = []): AsyncState<T> {
+  const [data, setDataState] = useState<T>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+  const [nonce, setNonce] = useState(0);
+  const mounted = useRef(true);
+
+  // 최신 loader 를 참조하되, 재실행은 deps/nonce 로만 일어나게 합니다.
+  const loaderRef = useRef(loader);
+  loaderRef.current = loader;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(undefined);
+
+    loaderRef
+      .current()
+      .then((result) => {
+        if (cancelled || !mounted.current) return;
+        setDataState(result);
+      })
+      .catch((e: unknown) => {
+        if (cancelled || !mounted.current) return;
+        setError(e instanceof Error ? e.message : '알 수 없는 오류가 발생했습니다.');
+      })
+      .finally(() => {
+        if (cancelled || !mounted.current) return;
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, nonce]);
+
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  const setData = useCallback((updater: T | ((current: T | undefined) => T | undefined)) => {
+    setDataState((current) =>
+      typeof updater === 'function' ? (updater as (c: T | undefined) => T)(current) : updater,
+    );
+  }, []);
+
+  return { data, loading, error, reload, setData };
+}
+
+export * from '@/lib/data/types';

@@ -1,0 +1,122 @@
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import { Screen } from '@/components/screen';
+import { ThemedText } from '@/components/themed-text';
+import { Button, Card, Field } from '@/components/ui';
+import { Spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
+import { dataMode } from '@/lib/data';
+import type { Role } from '@/lib/data/types';
+
+export default function SignInScreen() {
+  const router = useRouter();
+  const { signIn, signUp } = useAuth();
+  const isSupabase = dataMode === 'supabase';
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const submitLocal = async (role: Role) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await signIn({ name, role });
+      router.back();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '로그인하지 못했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitSupabase = async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      if (mode === 'signUp') {
+        await signUp({ name, email, password });
+      } else {
+        await signIn({ email, password });
+      }
+      router.back();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '로그인하지 못했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Screen>
+      {isSupabase ? (
+        <Card>
+          <ThemedText type="heading">{mode === 'signUp' ? '회원가입' : '로그인'}</ThemedText>
+          {mode === 'signUp' ? <Field label="이름" value={name} onChangeText={setName} placeholder="홍길동" /> : null}
+          <Field
+            label="이메일"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <Field label="비밀번호" value={password} onChangeText={setPassword} secureTextEntry />
+          {error ? (
+            <ThemedText type="small" themeColor="danger">
+              {error}
+            </ThemedText>
+          ) : null}
+          <Button
+            label={mode === 'signUp' ? '가입하고 시작하기' : '로그인'}
+            loading={busy}
+            onPress={() => void submitSupabase()}
+          />
+          <Button
+            label={mode === 'signUp' ? '이미 계정이 있어요' : '계정이 없으신가요? 가입하기'}
+            variant="ghost"
+            onPress={() => setMode(mode === 'signUp' ? 'signIn' : 'signUp')}
+          />
+        </Card>
+      ) : (
+        <Card>
+          <ThemedText type="heading">이름만 입력하면 시작할 수 있어요</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            샘플 모드에서는 계정 없이 체험할 수 있습니다. 관리자 화면을 보려면 &lsquo;관리자로 시작&rsquo; 을 선택하세요.
+          </ThemedText>
+          <Field label="이름" value={name} onChangeText={setName} placeholder="홍길동" />
+          {error ? (
+            <ThemedText type="small" themeColor="danger">
+              {error}
+            </ThemedText>
+          ) : null}
+          <View style={styles.buttonRow}>
+            <Button
+              label="성도로 시작"
+              style={styles.flex}
+              loading={busy}
+              onPress={() => void submitLocal('member')}
+            />
+            <Button
+              label="관리자로 시작"
+              variant="secondary"
+              style={styles.flex}
+              loading={busy}
+              onPress={() => void submitLocal('admin')}
+            />
+          </View>
+        </Card>
+      )}
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  buttonRow: { flexDirection: 'row', gap: Spacing.two },
+});
