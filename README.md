@@ -70,6 +70,23 @@ npm run build:web   # dist/ 생성
 SPA 리라이트 설정이 필요하며, 대부분의 호스팅은 기본으로 지원합니다.
 공지 페이지의 검색 노출(SEO)이 필요하면 `static` 으로 바꿔 사전 렌더링할 수 있습니다.
 
+**GitHub Pages 로 올리기** — 하위 경로(`/first-repository`)로 서비스되므로 baseUrl 을 붙여 빌드합니다.
+
+```bash
+npm run build:pages                 # dist-pages/ 생성
+cp dist-pages/index.html dist-pages/404.html   # 새로고침·딥링크용 SPA 폴백
+touch dist-pages/.nojekyll                     # _expo 폴더가 무시되지 않도록
+
+# gh-pages 브랜치에 결과물만 올립니다 (소스는 개발 브랜치에 그대로 둡니다)
+git worktree add --detach /tmp/ghpages
+cd /tmp/ghpages && git checkout gh-pages && git rm -rf . -q
+cp -a /경로/first-repository/dist-pages/. .
+git add -A && git commit -m "웹 빌드 갱신" && git push origin gh-pages
+```
+
+저장소 Settings → Pages 에서 Source 를 `gh-pages` 브랜치 `/ (root)` 로 지정하면
+`https://<계정>.github.io/first-repository/` 에서 열립니다.
+
 **앱스토어 / 플레이스토어** — [EAS Build](https://docs.expo.dev/build/introduction/) 를 사용합니다.
 
 ```bash

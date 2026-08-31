@@ -37,7 +37,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build:web": "expo export --platform web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:pages": "EXPO_BASE_URL=/first-repository expo export --platform web --output-dir dist-pages"
   },
   "private": true
 }
