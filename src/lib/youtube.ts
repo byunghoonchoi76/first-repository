@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 /**
  * 유튜브 주소를 앱 안에서 재생할 수 있는 형태로 해석합니다.
  * 일반 영상 · 쇼츠 · 라이브 · 짧은 주소(youtu.be)를 모두 지원합니다.
@@ -79,10 +81,12 @@ export async function fetchYouTubeTitle(url: string): Promise<string | null> {
   const cached = titleCache.get(ref.videoId);
   if (cached) return cached;
 
-  const endpoints = [
-    `https://www.youtube.com/oembed?url=${encodeURIComponent(ref.watchUrl)}&format=json`,
-    `https://noembed.com/embed?url=${encodeURIComponent(ref.watchUrl)}`,
-  ];
+  const oembed = `https://www.youtube.com/oembed?url=${encodeURIComponent(ref.watchUrl)}&format=json`;
+  const noembed = `https://noembed.com/embed?url=${encodeURIComponent(ref.watchUrl)}`;
+
+  // 웹 브라우저에서는 유튜브 oEmbed 가 CORS 로 막히므로 noembed 를 먼저 씁니다.
+  // 앱(iOS·안드로이드)에서는 그런 제약이 없어 유튜브를 먼저 부릅니다.
+  const endpoints = Platform.OS === 'web' ? [noembed, oembed] : [oembed, noembed];
 
   for (const endpoint of endpoints) {
     try {

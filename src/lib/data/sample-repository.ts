@@ -29,6 +29,13 @@ import type {
  */
 const STORAGE_KEY = 'church-app/sample-db';
 
+/**
+ * 샘플 데이터를 고칠 때마다 이 값을 바꿔 주세요.
+ * 기기에 저장된 값이 이 버전과 다르면 새 샘플 데이터로 다시 시작합니다.
+ * (그렇지 않으면 앱을 한 번 실행한 기기에는 예전 내용이 계속 남습니다.)
+ */
+const SAMPLE_VERSION = '2026-08-31-a';
+
 interface SampleDb {
   announcements: Announcement[];
   bulletins: Bulletin[];
@@ -55,7 +62,15 @@ function ready(): Promise<void> {
   hydration ??= (async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) db = { ...initialDb(), ...(JSON.parse(raw) as Partial<SampleDb>) };
+      if (!raw) return;
+
+      const stored = JSON.parse(raw) as Partial<SampleDb> & { version?: string };
+      if (stored.version !== SAMPLE_VERSION) {
+        // 샘플 데이터가 갱신되었으므로 기기에 남은 예전 내용을 버립니다.
+        await AsyncStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      db = { ...initialDb(), ...stored };
     } catch {
       // 저장된 값이 깨져 있으면 샘플 데이터로 시작합니다.
     }
@@ -65,7 +80,7 @@ function ready(): Promise<void> {
 
 async function persist(): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...db, version: SAMPLE_VERSION }));
   } catch {
     // 저장에 실패해도 화면 동작은 계속됩니다.
   }
