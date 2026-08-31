@@ -63,8 +63,10 @@ RLS 정책은 &lsquo;읽기는 누구나, 쓰기는 로그인 사용자, 공지�
 **웹** — 정적 파일로 내보낸 뒤 아무 정적 호스팅(Vercel, Netlify, Cloudflare Pages 등)에 올리면 됩니다.
 
 ```bash
-npm run build:web   # dist/ 생성
+npm run build:web   # dist/ 생성 (PWA 태그·404.html·.nojekyll 포함)
 ```
+
+휴대폰 브라우저에서 열고 '홈 화면에 추가' 하면 아이콘이 생기고 주소창 없이 앱처럼 실행됩니다.
 
 `app.json` 의 `web.output` 은 `single`(SPA)입니다. 모든 경로를 `index.html` 로 보내는
 SPA 리라이트 설정이 필요하며, 대부분의 호스팅은 기본으로 지원합니다.
@@ -72,10 +74,12 @@ SPA 리라이트 설정이 필요하며, 대부분의 호스팅은 기본으로 
 
 **GitHub Pages 로 올리기** — 하위 경로(`/first-repository`)로 서비스되므로 baseUrl 을 붙여 빌드합니다.
 
+`npm run build:pages` 는 빌드 후 `scripts/finish-web-build.js` 를 실행해
+PWA 태그(홈 화면 추가 시 앱처럼 실행), `404.html`(새로고침·딥링크 폴백),
+`.nojekyll` 까지 자동으로 만들어 줍니다.
+
 ```bash
 npm run build:pages                 # dist-pages/ 생성
-cp dist-pages/index.html dist-pages/404.html   # 새로고침·딥링크용 SPA 폴백
-touch dist-pages/.nojekyll                     # _expo 폴더가 무시되지 않도록
 
 # gh-pages 브랜치에 결과물만 올립니다 (소스는 개발 브랜치에 그대로 둡니다)
 git worktree add --detach /tmp/ghpages

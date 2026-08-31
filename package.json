@@ -36,9 +36,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "build:web": "expo export --platform web",
+    "build:web": "expo export --platform web && node scripts/finish-web-build.js dist",
     "typecheck": "tsc --noEmit",
-    "build:pages": "EXPO_BASE_URL=/first-repository expo export --platform web --output-dir dist-pages"
+    "build:pages": "EXPO_BASE_URL=/first-repository expo export --platform web --output-dir dist-pages && node scripts/finish-web-build.js dist-pages /first-repository"
   },
   "private": true
 }
