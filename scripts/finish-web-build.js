@@ -33,7 +33,7 @@ html = html.replace(
 
 const tags = [
   `<link rel="manifest" href="${base}/manifest.json" />`,
-  `<meta name="theme-color" content="#14496B" />`,
+  `<meta name="theme-color" content="#104C6E" />`,
   `<meta name="apple-mobile-web-app-capable" content="yes" />`,
   `<meta name="mobile-web-app-capable" content="yes" />`,
   `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />`,

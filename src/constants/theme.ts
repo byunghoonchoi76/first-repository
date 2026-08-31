@@ -10,10 +10,11 @@ import { Platform } from 'react-native';
 
 /** 교회 CI 색상. 로고와 앱 전체가 같은 색을 씁니다. */
 export const Brand = {
-  navy: '#14496B',
-  navyDark: '#0E3550',
-  teal: '#17B3C3',
-  tealLight: '#5CC6D6',
+  /** CI 원본에서 추출한 색입니다. */
+  navy: '#104C6E',
+  navyDark: '#0B3752',
+  teal: '#1DAFC2',
+  tealLight: '#63CAD8',
 } as const;
 
 export const Colors = {

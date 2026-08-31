@@ -1,16 +1,20 @@
-/**
- * 교회 공식 로고 파일 연결 지점.
- *
- * 사용법
- * 1. 로고 이미지를 `assets/images/logo.png` 로 저장합니다.
- *    (배경이 투명한 PNG 권장, 가로세로 512px 이상)
- * 2. 아래 `LogoSource` 의 주석을 바꿔 파일을 가리키게 합니다.
- *
- *      export const LogoSource: ImageSourcePropType | null = require('@/assets/images/logo.png');
- *
- * 그러면 홈 헤더 · 홈 화면 · 로그인 · 더보기의 심볼이 한 번에 실제 로고로 바뀝니다.
- * (파일을 넣기 전까지는 CI 색으로 그린 임시 심볼이 표시됩니다.)
- */
 import type { ImageSourcePropType } from 'react-native';
 
-export const LogoSource: ImageSourcePropType | null = null;
+/**
+ * 교회 공식 CI. `assets/images/목양교회 CI.png` 에서 잘라낸 이미지들입니다.
+ *
+ * - LogoMark  : 심볼만. 남색·청록이라 밝은 배경에서도 잘 보입니다.
+ * - LogoWhite : 심볼 + 흰색 교회명. 남색 카드처럼 어두운 배경에서만 씁니다.
+ *
+ * 더 큰 원본(또는 벡터) 파일을 받으면 같은 이름으로 교체하면 됩니다.
+ */
+export const LogoMark: ImageSourcePropType = require('@/assets/images/logo-mark.png');
+export const LogoWhite: ImageSourcePropType = require('@/assets/images/logo-white.png');
+
+/** 심볼 원본 비율 (가로 / 세로) */
+export const LogoMarkRatio = 36 / 42;
+/** 가로형 로고 원본 비율 */
+export const LogoWhiteRatio = 169 / 48;
+
+/** ChurchMark 가 사용하는 이미지. null 이면 CI 색으로 그린 임시 도형을 씁니다. */
+export const LogoSource: ImageSourcePropType | null = LogoMark;

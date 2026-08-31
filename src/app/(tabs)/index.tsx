@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { ChurchMark } from '@/components/church-logo';
+import { ChurchLogoWhite } from '@/components/church-logo';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
@@ -65,14 +65,10 @@ export default function HomeScreen() {
     <Screen onRefresh={reloadAll} refreshing={false}>
       {/* 인사 + 이번 주 말씀 */}
       <Card style={[styles.hero, { backgroundColor: theme.primary, borderColor: theme.primary }]}>
-        <View style={styles.heroTop}>
-          <View style={styles.heroMark}>
-            <ChurchMark size={26} />
-          </View>
-          <ThemedText type="caption" style={{ color: theme.onPrimary, opacity: 0.9 }}>
-            {profile.data?.name} · {formatFullDate(new Date().toISOString().slice(0, 10))}
-          </ThemedText>
-        </View>
+        <ChurchLogoWhite width={168} />
+        <ThemedText type="caption" style={{ color: theme.onPrimary, opacity: 0.9 }}>
+          {formatFullDate(new Date().toISOString().slice(0, 10))}
+        </ThemedText>
         <ThemedText type="subtitle" style={{ color: theme.onPrimary }}>
           {greeting()}
           {user ? `, ${user.name}님` : ''}
@@ -230,13 +226,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   stack: { gap: Spacing.two },
   hero: { gap: Spacing.two, padding: Spacing.four },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  heroMark: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.small,
-    paddingHorizontal: Spacing.one + 2,
-    paddingVertical: Spacing.one + 2,
-  },
   quickRow: { flexDirection: 'row', gap: Spacing.two },
   quickAction: { flex: 1, alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.three },
   prayerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },

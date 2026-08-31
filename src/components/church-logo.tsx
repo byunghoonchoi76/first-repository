@@ -9,7 +9,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ChurchInfo } from '@/constants/church';
-import { LogoSource } from '@/constants/logo';
+import { LogoMarkRatio, LogoSource, LogoWhite, LogoWhiteRatio } from '@/constants/logo';
 import { Brand, Spacing } from '@/constants/theme';
 
 /**
@@ -24,7 +24,8 @@ export function ChurchMark({ size = 36, style }: { size?: number; style?: StyleP
     return (
       <Image
         source={LogoSource}
-        style={[{ width: size, height: size }, style as StyleProp<ImageStyle>]}
+        // 원본 비율을 지켜 높이에 맞춥니다.
+        style={[{ width: size * LogoMarkRatio, height: size }, style as StyleProp<ImageStyle>]}
         resizeMode="contain"
         accessibilityLabel={`${ChurchInfo.name} 로고`}
       />
@@ -70,6 +71,21 @@ export function ChurchMark({ size = 36, style }: { size?: number; style?: StyleP
         }}
       />
     </View>
+  );
+}
+
+/**
+ * 어두운 배경(남색 카드 등)에 쓰는 가로형 로고.
+ * 교회명이 흰색으로 들어 있는 공식 CI 원본을 그대로 씁니다.
+ */
+export function ChurchLogoWhite({ width = 150 }: { width?: number }) {
+  return (
+    <Image
+      source={LogoWhite}
+      style={{ width, height: width / LogoWhiteRatio }}
+      resizeMode="contain"
+      accessibilityLabel={`${ChurchInfo.name} 로고`}
+    />
   );
 }
 
