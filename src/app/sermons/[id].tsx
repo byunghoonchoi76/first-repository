@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, Linking, Platform, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
+import { SermonPlayer } from '@/components/sermon-player';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, ErrorState, LoadingState } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -11,6 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData } from '@/lib/data';
 import { formatFullDate } from '@/lib/format';
+import { isYouTubeChannelUrl, parseYouTubeUrl } from '@/lib/youtube';
 
 export default function SermonDetailScreen() {
   const theme = useTheme();
@@ -37,13 +39,16 @@ export default function SermonDetailScreen() {
 
   const item = sermon.data;
 
-  const play = async () => {
+  // 유튜브 영상(쇼츠·라이브 포함)이면 화면 안에서 바로 재생합니다.
+  const video = parseYouTubeUrl(item.mediaUrl);
+  const isChannelOnly = isYouTubeChannelUrl(item.mediaUrl);
+
+  const openExternally = async (url: string) => {
     try {
-      // 유튜브 등 외부 링크는 앱 내 브라우저(웹에서는 새 탭)로 엽니다.
       if (Platform.OS === 'web') {
-        await Linking.openURL(item.mediaUrl);
+        await Linking.openURL(url);
       } else {
-        await WebBrowser.openBrowserAsync(item.mediaUrl);
+        await WebBrowser.openBrowserAsync(url);
       }
     } catch {
       Alert.alert('재생할 수 없습니다', '주소를 다시 확인해 주세요.');
@@ -68,21 +73,29 @@ export default function SermonDetailScreen() {
 
   return (
     <Screen>
-      <View style={[styles.player, { backgroundColor: theme.backgroundSelected }]}>
-        <Ionicons
-          name={item.mediaType === 'video' ? 'play-circle' : 'musical-notes'}
-          size={56}
-          color={theme.primary}
-        />
-        <ThemedText type="caption" themeColor="textSecondary">
-          {item.mediaType === 'video' ? '설교 영상' : '설교 음성'}
-        </ThemedText>
-      </View>
+      {video ? (
+        <SermonPlayer video={video} />
+      ) : (
+        <View style={[styles.player, { backgroundColor: theme.backgroundSelected }]}>
+          <Ionicons
+            name={item.mediaType === 'video' ? 'play-circle' : 'musical-notes'}
+            size={56}
+            color={theme.primary}
+          />
+          <ThemedText type="caption" themeColor="textSecondary">
+            {isChannelOnly
+              ? '이 설교의 영상 주소가 아직 등록되지 않았습니다.'
+              : item.mediaType === 'video'
+                ? '설교 영상'
+                : '설교 음성'}
+          </ThemedText>
+        </View>
+      )}
 
       <View style={styles.header}>
         <View style={styles.metaRow}>
           <Badge
-            label={item.mediaType === 'video' ? '영상' : '음성'}
+            label={video?.kind === 'shorts' ? '쇼츠' : item.mediaType === 'video' ? '영상' : '음성'}
             tone={item.mediaType === 'video' ? 'primary' : 'success'}
           />
           {item.series ? <Badge label={item.series} tone="accent" /> : null}
@@ -96,7 +109,20 @@ export default function SermonDetailScreen() {
         </ThemedText>
       </View>
 
-      <Button label={item.mediaType === 'video' ? '영상 보기' : '음성 듣기'} icon="play" onPress={play} />
+      {video ? (
+        <Button
+          label="유튜브에서 보기"
+          icon="logo-youtube"
+          variant="ghost"
+          onPress={() => void openExternally(video.watchUrl)}
+        />
+      ) : (
+        <Button
+          label={isChannelOnly ? '교회 유튜브 채널 열기' : item.mediaType === 'video' ? '영상 보기' : '음성 듣기'}
+          icon={isChannelOnly ? 'logo-youtube' : 'play'}
+          onPress={() => void openExternally(item.mediaUrl)}
+        />
+      )}
 
       {item.summary ? (
         <Card>

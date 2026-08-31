@@ -12,6 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { ChurchInfo } from '@/constants/church';
 import { repository, useAsyncData } from '@/lib/data';
+import { parseYouTubeUrl } from '@/lib/youtube';
 import { formatDate } from '@/lib/format';
 
 export default function SermonsScreen() {
@@ -31,8 +32,12 @@ export default function SermonsScreen() {
 
   const seriesOptions = useMemo(() => {
     const names = new Set<string>();
-    (sermons.data ?? []).forEach((s) => s.series && names.add(s.series));
-    return ['전체', ...Array.from(names)];
+    let hasShorts = false;
+    (sermons.data ?? []).forEach((s) => {
+      if (s.series) names.add(s.series);
+      if (parseYouTubeUrl(s.mediaUrl)?.kind === 'shorts') hasShorts = true;
+    });
+    return ['전체', ...(hasShorts ? ['쇼츠'] : []), ...Array.from(names)];
   }, [sermons.data]);
 
   if (sermons.loading && !sermons.data) {
@@ -51,7 +56,11 @@ export default function SermonsScreen() {
     );
   }
 
-  const items = (sermons.data ?? []).filter((s) => series === '전체' || s.series === series);
+  const items = (sermons.data ?? []).filter((s) => {
+    if (series === '전체') return true;
+    if (series === '쇼츠') return parseYouTubeUrl(s.mediaUrl)?.kind === 'shorts';
+    return s.series === series;
+  });
 
   return (
     <Screen onRefresh={sermons.reload}>
@@ -109,12 +118,20 @@ export default function SermonsScreen() {
         <EmptyState icon="play-circle-outline" message="등록된 설교가 없습니다." />
       ) : (
         <View style={styles.stack}>
-          {items.map((sermon) => (
+          {items.map((sermon) => {
+            const video = parseYouTubeUrl(sermon.mediaUrl);
+            return (
             <Card key={sermon.id} onPress={() => router.push(`/sermons/${sermon.id}`)}>
               <View style={styles.row}>
                 <View style={[styles.thumb, { backgroundColor: theme.backgroundSelected }]}>
                   <Ionicons
-                    name={sermon.mediaType === 'video' ? 'videocam-outline' : 'headset-outline'}
+                    name={
+                      video?.kind === 'shorts'
+                        ? 'phone-portrait-outline'
+                        : sermon.mediaType === 'video'
+                          ? 'videocam-outline'
+                          : 'headset-outline'
+                    }
                     size={22}
                     color={theme.primary}
                   />
@@ -122,7 +139,9 @@ export default function SermonsScreen() {
                 <View style={styles.flex}>
                   <View style={styles.metaRow}>
                     <Badge
-                      label={sermon.mediaType === 'video' ? '영상' : '음성'}
+                      label={
+                        video?.kind === 'shorts' ? '쇼츠' : sermon.mediaType === 'video' ? '영상' : '음성'
+                      }
                       tone={sermon.mediaType === 'video' ? 'primary' : 'success'}
                     />
                     <ThemedText type="caption" themeColor="textMuted">
@@ -138,7 +157,8 @@ export default function SermonsScreen() {
                 </View>
               </View>
             </Card>
-          ))}
+            );
+          })}
         </View>
       )}
     </Screen>

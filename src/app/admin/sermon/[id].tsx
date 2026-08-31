@@ -141,9 +141,9 @@ export default function SermonEditorScreen() {
           label="재생 주소"
           value={mediaUrl}
           onChangeText={setMediaUrl}
-          placeholder="유튜브 링크 또는 오디오 파일 주소"
+          placeholder="예) https://www.youtube.com/watch?v=..."
           autoCapitalize="none"
-          hint="유튜브 주소를 넣으면 앱에서 바로 열립니다."
+          hint="유튜브 영상·쇼츠·라이브 주소를 넣으면 앱 화면 안에서 바로 재생됩니다. 오디오 파일 주소도 됩니다."
         />
         <Field label="요약 (선택)" value={summary} onChangeText={setSummary} multiline placeholder="설교 요약" />
 
