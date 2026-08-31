@@ -64,6 +64,14 @@ npm run android    # Android 에뮬레이터
    개발 서버를 다시 시작하면 자동으로 Supabase 모드로 바뀝니다.
    더보기 → 앱 정보에서 현재 모드를 확인할 수 있습니다.
 
+   > `.env` 를 만들거나 고친 뒤 빌드할 때는 캐시를 지워야 값이 반영됩니다.
+   > `npx expo export --platform web --clear`
+
+6. **로그인 주소 설정** — Supabase 대시보드 **Authentication → URL Configuration** 에서
+   Site URL 을 앱 주소(예: `https://<계정>.github.io/first-repository/`)로 지정합니다.
+   그러지 않으면 가입 확인 메일의 링크가 엉뚱한 주소로 연결됩니다.
+   확인 메일 절차를 건너뛰려면 **Authentication → Providers → Email** 에서 Confirm email 을 끄면 됩니다.
+
 5. **관리자 지정** — 앱에서 이메일로 회원가입한 뒤, SQL Editor 에서 실행합니다.
 
    ```sql

@@ -15,6 +15,18 @@ export const repository: ChurchRepository = hasSupabaseConfig
 
 export const dataMode = repository.mode;
 
+/** 인터넷·서버 문제로 실패했을 때 사람이 읽을 수 있는 말로 바꿔 줍니다. */
+function toFriendlyMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  if (/abort|network|failed to fetch|timeout|timed out/i.test(raw)) {
+    return '서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.';
+  }
+  if (/relation .* does not exist|schema cache/i.test(raw)) {
+    return '데이터베이스 준비가 아직 끝나지 않았습니다. supabase/schema.sql 을 실행했는지 확인해 주세요.';
+  }
+  return raw || '알 수 없는 오류가 발생했습니다.';
+}
+
 export interface AsyncState<T> {
   data: T | undefined;
   loading: boolean;
@@ -56,7 +68,7 @@ export function useAsyncData<T>(loader: () => Promise<T>, deps: unknown[] = []):
       })
       .catch((e: unknown) => {
         if (cancelled || !mounted.current) return;
-        setError(e instanceof Error ? e.message : '알 수 없는 오류가 발생했습니다.');
+        setError(toFriendlyMessage(e));
       })
       .finally(() => {
         if (cancelled || !mounted.current) return;
