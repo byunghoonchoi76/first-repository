@@ -57,7 +57,9 @@ export default function SettingsScreen() {
         <Card>
           <ChurchLogo size={36} subtitle={church?.slogan} />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <ListRow icon="person-outline" title="담임목사" subtitle={church?.pastor} />
+          {church?.pastor ? (
+            <ListRow icon="person-outline" title="담임목사" subtitle={church.pastor} />
+          ) : null}
           <ListRow
             icon="location-outline"
             title="주소"
@@ -74,19 +76,39 @@ export default function SettingsScreen() {
                 : undefined
             }
           />
+          {church?.phone ? (
+            <ListRow
+              icon="call-outline"
+              title="전화"
+              subtitle={church.phone}
+              onPress={() => void Linking.openURL(`tel:${church.phone}`)}
+            />
+          ) : null}
+          {church?.email ? (
+            <ListRow
+              icon="mail-outline"
+              title="이메일"
+              subtitle={church.email}
+              onPress={() => void Linking.openURL(`mailto:${church.email}`)}
+            />
+          ) : null}
+          {church?.offeringAccount ? (
+            <ListRow icon="card-outline" title="헌금 계좌" subtitle={church.offeringAccount} />
+          ) : null}
+          {church?.youtubeUrl ? (
+            <ListRow
+              icon="logo-youtube"
+              title="유튜브 채널"
+              subtitle="예배와 설교 영상 보기"
+              onPress={() => void Linking.openURL(church.youtubeUrl)}
+            />
+          ) : null}
           <ListRow
-            icon="call-outline"
-            title="전화"
-            subtitle={church?.phone}
-            onPress={church?.phone ? () => void Linking.openURL(`tel:${church.phone}`) : undefined}
+            icon="time-outline"
+            title="예배 시간 안내"
+            subtitle="주일예배 · 새벽예배 · 교육부서"
+            onPress={() => router.push('/services')}
           />
-          <ListRow
-            icon="mail-outline"
-            title="이메일"
-            subtitle={church?.email}
-            onPress={church?.email ? () => void Linking.openURL(`mailto:${church.email}`) : undefined}
-          />
-          <ListRow icon="card-outline" title="헌금 계좌" subtitle={church?.offeringAccount} />
         </Card>
       </View>
 

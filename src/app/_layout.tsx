@@ -50,6 +50,7 @@ export default function RootLayout() {
           <StatusBar style={isDark ? 'light' : 'dark'} />
           <Stack screenOptions={{ headerBackTitle: '뒤로' }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="services" options={{ title: '예배 안내' }} />
             <Stack.Screen name="bulletin/[id]" options={{ title: '주보' }} />
             <Stack.Screen name="news/[id]" options={{ title: '공지사항' }} />
             <Stack.Screen name="sermons/[id]" options={{ title: '설교' }} />

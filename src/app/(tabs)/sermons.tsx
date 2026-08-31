@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -9,6 +10,7 @@ import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '@/com
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
+import { ChurchInfo } from '@/constants/church';
 import { repository, useAsyncData } from '@/lib/data';
 import { formatDate } from '@/lib/format';
 
@@ -77,6 +79,21 @@ export default function SermonsScreen() {
             );
           })}
         </View>
+      ) : null}
+
+      {ChurchInfo.youtubeUrl ? (
+        <Button
+          label="교회 유튜브 채널"
+          icon="logo-youtube"
+          variant="ghost"
+          onPress={() => {
+            if (Platform.OS === 'web') {
+              void Linking.openURL(ChurchInfo.youtubeUrl);
+            } else {
+              void WebBrowser.openBrowserAsync(ChurchInfo.youtubeUrl);
+            }
+          }}
+        />
       ) : null}
 
       {isAdmin ? (

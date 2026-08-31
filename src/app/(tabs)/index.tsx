@@ -136,18 +136,20 @@ export default function HomeScreen() {
 
       {/* 예배 시간 안내 */}
       <View>
-        <SectionHeader title="예배 시간 안내" />
+        <SectionHeader title="예배 시간 안내" actionLabel="전체 보기" onAction={() => router.push('/services')} />
         <Card>
-          {(profile.data?.serviceTimes ?? []).map((service, index) => (
-            <View key={service.id}>
-              {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
-              <ListRow
-                icon="time-outline"
-                title={service.name}
-                subtitle={`${service.schedule} · ${service.place}${service.note ? ` · ${service.note}` : ''}`}
-              />
-            </View>
-          ))}
+          {(profile.data?.serviceTimes ?? [])
+            .filter((service) => service.category === '예배')
+            .map((service, index) => (
+              <View key={service.id}>
+                {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
+                <ListRow
+                  icon="time-outline"
+                  title={service.name}
+                  subtitle={`${service.schedule} · ${service.place}${service.note ? ` · ${service.note}` : ''}`}
+                />
+              </View>
+            ))}
         </Card>
       </View>
 

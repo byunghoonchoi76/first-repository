@@ -132,12 +132,14 @@ export const supabaseRepository: ChurchRepository = {
       phone: row.phone ?? ChurchInfo.phone,
       email: row.email ?? ChurchInfo.email,
       offeringAccount: row.offering_account ?? ChurchInfo.offeringAccount,
+      youtubeUrl: row.youtube_url ?? ChurchInfo.youtubeUrl,
       serviceTimes: (times.data ?? []).map((t: Row) => ({
         id: t.id,
         name: t.name,
         schedule: t.schedule,
         place: t.place,
         note: t.note ?? undefined,
+        category: t.category ?? '예배',
       })),
     };
   },

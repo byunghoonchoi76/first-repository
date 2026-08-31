@@ -36,8 +36,12 @@ create table if not exists public.church_profile (
   address text not null default '',
   phone text not null default '',
   email text not null default '',
-  offering_account text not null default ''
+  offering_account text not null default '',
+  youtube_url text not null default ''
 );
+
+-- 이미 만들어 둔 테이블에도 안전하게 추가합니다.
+alter table public.church_profile add column if not exists youtube_url text not null default '';
 
 create table if not exists public.service_times (
   id uuid primary key default gen_random_uuid(),
@@ -45,8 +49,12 @@ create table if not exists public.service_times (
   schedule text not null,
   place text not null default '본당',
   note text,
+  -- '예배' 는 전체 예배, '교육부서' 는 연령별 부서 예배
+  category text not null default '예배' check (category in ('예배', '교육부서')),
   sort_order smallint not null default 0
 );
+
+alter table public.service_times add column if not exists category text not null default '예배';
 
 -- ─────────────────────────────────────────────
 -- 주보

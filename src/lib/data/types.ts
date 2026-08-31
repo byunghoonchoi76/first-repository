@@ -9,14 +9,18 @@ export interface AppUser {
   role: Role;
 }
 
+/** 예배 안내 화면에서 묶어 보여 주는 분류 */
+export type ServiceCategory = '예배' | '교육부서';
+
 export interface ServiceTime {
   id: string;
-  /** 예) 주일 1부 예배 */
+  /** 예) 주일예배 1부 */
   name: string;
-  /** 예) 주일 오전 9:00 */
+  /** 예) 주일 오전 07:30 */
   schedule: string;
   place: string;
   note?: string;
+  category: ServiceCategory;
 }
 
 export interface ChurchProfile {
@@ -27,6 +31,8 @@ export interface ChurchProfile {
   phone: string;
   email: string;
   offeringAccount: string;
+  /** 설교 영상 채널 (비어 있으면 화면에 표시하지 않습니다) */
+  youtubeUrl: string;
   serviceTimes: ServiceTime[];
 }
 

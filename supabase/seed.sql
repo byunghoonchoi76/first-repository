@@ -1,16 +1,17 @@
 -- 앱 화면을 바로 확인할 수 있는 최소 시드 데이터.
 -- schema.sql 을 먼저 실행한 뒤 SQL Editor 에서 실행하세요.
 
-insert into public.church_profile (id, name, slogan, pastor, address, phone, email, offering_account)
+insert into public.church_profile (id, name, slogan, pastor, address, phone, email, offering_account, youtube_url)
 values (
   1,
   '구리 목양교회',
   '말씀으로 목양하고 사랑으로 세우는 공동체',
-  '담임목사',
-  '경기도 구리시 인창동 (주소를 입력해 주세요)',
-  '031-123-4567',
-  'hello@mokyang.church',
-  '농협 123456-78-901234 (예금주: 구리 목양교회)'
+  '공진수 담임목사',
+  '경기도 구리시 장자호수길 67',
+  '031-551-1004',
+  'stewardk@hanmail.net',
+  '',
+  'https://www.youtube.com/@mychmedia'
 )
 on conflict (id) do update set
   name = excluded.name,
@@ -19,29 +20,40 @@ on conflict (id) do update set
   address = excluded.address,
   phone = excluded.phone,
   email = excluded.email,
-  offering_account = excluded.offering_account;
+  offering_account = excluded.offering_account,
+  youtube_url = excluded.youtube_url;
 
-insert into public.service_times (name, schedule, place, note, sort_order) values
-  ('주일 1부 예배', '주일 오전 9:00', '본당', null, 1),
-  ('주일 2부 예배', '주일 오전 11:00', '본당', '영유아부 운영', 2),
-  ('주일 오후 찬양예배', '주일 오후 2:00', '비전홀', null, 3),
-  ('수요 기도회', '수요일 오후 7:30', '본당', null, 4),
-  ('금요 철야기도', '금요일 오후 9:00', '기도실', null, 5),
-  ('새벽 기도회', '화~토 오전 5:30', '본당', null, 6);
+insert into public.service_times (name, schedule, place, note, category, sort_order) values
+  ('새벽예배', '월~금 오전 5:30', '본당(3층)', null, '예배', 1),
+  ('주일예배 1부', '주일 오전 7:30', '본당(3층)', null, '예배', 2),
+  ('주일예배 2부', '주일 오전 9:30', '본당(3층)', null, '예배', 3),
+  ('주일예배 3부', '주일 오전 11:30', '본당(3층)', null, '예배', 4),
+  ('저녁 찬양예배', '주일 오후 5:00', '본당(3층)', '첫째 주는 가정예배', '예배', 5),
+  ('목양바이블아카데미(MBA)', '수요일 오전 10:30', '본당(3층)', null, '예배', 6),
+  ('수요부흥예배', '수요일 오후 7:30', '본당(3층)', null, '예배', 7),
+  ('금요성령집회', '금요일 오후 8:00', '본당(3층)', null, '예배', 8),
+  ('영유아부 (0~4세)', '주일 오전 11:30', '자모실(4층)', null, '교육부서', 11),
+  ('유치부 (5~7세)', '1부 주일 오전 9:30 · 2부 오전 11:30', '샬롬홀(2층)', null, '교육부서', 12),
+  ('초등부 (초등 1~3학년)', '1부 주일 오전 9:30 · 2부 오전 11:30', '드림홀(지하1층)', null, '교육부서', 13),
+  ('소년부 (초등 4~6학년)', '1부 주일 오전 9:30 · 2부 오전 11:30', '비전홀(2층)', null, '교육부서', 14),
+  ('어와나 (초등 1~6학년)', '주일 오후 2:00', '비전홀(2층)', null, '교육부서', 15),
+  ('중등부', '주일 오전 11:30', '여호수아홀(지하1층)', null, '교육부서', 16),
+  ('고등부', '주일 오전 9:30', '여호수아홀(지하1층)', null, '교육부서', 17),
+  ('청년부', '주일 오후 2:00', '본당(3층)', null, '교육부서', 18);
 
 insert into public.bulletins (service_date, sermon_title, preacher, scripture, weekly_verse, order_items, notices) values
   (
     date_trunc('week', current_date)::date - 1,
     '흔들리지 않는 기초',
-    '담임목사',
+    '공진수 담임목사',
     '마태복음 7:24-27',
     '그러므로 누구든지 나의 이 말을 듣고 행하는 자는 그 집을 반석 위에 지은 지혜로운 사람 같으리니 (마 7:24)',
     '[{"title":"예배의 부름","detail":"시편 100:1-5 / 인도자"},
       {"title":"찬송","detail":"찬송가 43장"},
       {"title":"신앙고백","detail":"사도신경 / 다같이"},
       {"title":"성경봉독","detail":"마태복음 7:24-27"},
-      {"title":"말씀","detail":"«흔들리지 않는 기초» / 담임목사"},
-      {"title":"축도","detail":"담임목사"}]'::jsonb,
+      {"title":"말씀","detail":"«흔들리지 않는 기초» / 공진수 담임목사"},
+      {"title":"축도","detail":"공진수 담임목사"}]'::jsonb,
     '["다음 주일은 성찬식이 있습니다.", "새가족 환영회가 예배 후 2층 사랑방에서 있습니다."]'::jsonb
   );
 
@@ -51,8 +63,8 @@ insert into public.announcements (title, body, category, author, pinned) values
   ('주차장 보수 공사 안내', '지하주차장 공사로 2주간 지하 주차가 어렵습니다. 인근 공영주차장을 이용해 주세요.', '공지', '관리부', false);
 
 insert into public.sermons (title, preacher, scripture, preached_on, series, media_type, media_url, summary) values
-  ('흔들리지 않는 기초', '담임목사', '마태복음 7:24-27', date_trunc('week', current_date)::date - 1, '산상수훈', 'video', 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', '차이를 만드는 것은 환경이 아니라 무엇 위에 서 있느냐입니다.'),
-  ('새벽을 깨우는 기도', '담임목사', '마가복음 1:35', current_date - 11, '기도학교', 'audio', 'https://download.samplelib.com/mp3/sample-15s.mp3', '기도는 하루의 방향을 정하는 일입니다.');
+  ('흔들리지 않는 기초', '공진수 담임목사', '마태복음 7:24-27', date_trunc('week', current_date)::date - 1, '산상수훈', 'video', 'https://www.youtube.com/@mychmedia', '차이를 만드는 것은 환경이 아니라 무엇 위에 서 있느냐입니다.'),
+  ('새벽을 깨우는 기도', '공진수 담임목사', '마가복음 1:35', current_date - 11, '기도학교', 'audio', 'https://download.samplelib.com/mp3/sample-15s.mp3', '기도는 하루의 방향을 정하는 일입니다.');
 
 insert into public.prayer_requests (title, body, author, anonymous, pray_count) values
   ('어머니 수술을 앞두고 기도 부탁드립니다', '다음 주 화요일 수술이 있습니다. 회복을 위해 함께 기도해 주세요.', '박소영', false, 24),
