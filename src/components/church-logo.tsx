@@ -1,17 +1,35 @@
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Image,
+  StyleSheet,
+  View,
+  type ImageStyle,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ChurchInfo } from '@/constants/church';
+import { LogoSource } from '@/constants/logo';
 import { Brand, Spacing } from '@/constants/theme';
 
 /**
- * 교회 CI. 지금은 CI 색(남색·청록)으로 그린 임시 심볼이며,
- * 공식 로고 파일을 받으면 `assets/images/logo.png` 로 넣고 아래 Mark 를
- * <Image source={require('@/assets/images/logo.png')} style={{ width: size, height: size }} />
- * 한 줄로 바꾸면 앱 전체(홈·로그인·더보기)에 한 번에 반영됩니다.
+ * 교회 CI 심볼.
+ * `src/constants/logo.ts` 에 공식 로고 파일을 연결하면 그 이미지를 쓰고,
+ * 아직 없으면 CI 색(남색·청록)으로 그린 임시 심볼을 보여 줍니다.
  */
 export function ChurchMark({ size = 36, style }: { size?: number; style?: StyleProp<ViewStyle> }) {
   const u = size / 36;
+
+  if (LogoSource) {
+    return (
+      <Image
+        source={LogoSource}
+        style={[{ width: size, height: size }, style as StyleProp<ImageStyle>]}
+        resizeMode="contain"
+        accessibilityLabel={`${ChurchInfo.name} 로고`}
+      />
+    );
+  }
 
   return (
     <View style={[styles.mark, { width: size, height: size }, style]}>

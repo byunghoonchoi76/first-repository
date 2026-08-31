@@ -81,9 +81,11 @@ eas submit --platform ios
 
 - `src/constants/church.ts` — 교회 이름, 표어, 담임목사, 주소, 연락처, 헌금 계좌
 - `src/constants/theme.ts` — 교회 CI 색상(`Brand`)과 라이트/다크 팔레트
-- `src/components/church-logo.tsx` — 로고 심볼. 공식 CI 이미지를 받으면 `assets/images/logo.png` 로 넣고
-  `ChurchMark` 의 내용을 `<Image source={require('@/assets/images/logo.png')} … />` 한 줄로 바꾸면
-  홈 헤더·홈 화면·로그인·더보기에 한 번에 반영됩니다.
+- `src/constants/logo.ts` — **공식 로고 연결 지점**. 로고 파일을 `assets/images/logo.png` 로 넣고
+  이 파일의 `LogoSource` 를 `require('@/assets/images/logo.png')` 로 바꾸면
+  홈 헤더·홈 화면·로그인·더보기의 심볼이 한 번에 실제 로고로 바뀝니다.
+  (연결 전까지는 CI 색으로 그린 임시 심볼이 표시됩니다.)
+- `src/components/church-logo.tsx` — 로고 심볼과 로고+교회명 조합
 - `src/lib/data/sample-data.ts` — 샘플 모드에서 보이는 주보·공지·설교·기도제목·소그룹
 - `app.json` — 앱 이름, 아이콘, 스플래시 색상(CI 남색 `#14496B`)
 - `assets/images/` — 아이콘·스플래시 이미지
