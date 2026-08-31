@@ -1,0 +1,26 @@
+{
+  "name": "구리 목양교회",
+  "short_name": "목양교회",
+  "description": "구리 목양교회 성도들을 위한 주보 · 설교 · 기도 · 소그룹 앱",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14496B",
+  "theme_color": "#14496B",
+  "icons": [
+    {
+      "src": "./app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
