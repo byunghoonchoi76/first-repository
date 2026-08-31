@@ -4,10 +4,10 @@ import { StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Field, Toggle } from '@/components/ui';
+import { Button, Card, EmptyState, Field, Toggle } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { repository } from '@/lib/data';
+import { dataMode, repository } from '@/lib/data';
 
 export default function NewPrayerRequestScreen() {
   const router = useRouter();
@@ -39,6 +39,18 @@ export default function NewPrayerRequestScreen() {
       setSaving(false);
     }
   };
+
+  // Supabase 를 쓰는 경우 로그인한 성도만 기도제목을 올릴 수 있습니다.
+  if (dataMode === 'supabase' && !user) {
+    return (
+      <Screen>
+        <Card>
+          <EmptyState icon="lock-closed-outline" message="로그인하면 기도제목을 나눌 수 있습니다." />
+          <Button label="로그인하기" icon="log-in-outline" onPress={() => router.replace('/sign-in')} />
+        </Card>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>

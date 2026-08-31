@@ -20,6 +20,13 @@ import type {
  * DB 는 snake_case, 앱은 camelCase 를 쓰므로 이 파일에서 변환합니다.
  */
 
+/** 현재 로그인한 사용자의 id (비로그인이면 null) */
+async function currentUserId(): Promise<string | null> {
+  const sb = requireSupabase();
+  const { data } = await sb.auth.getUser();
+  return data.user?.id ?? null;
+}
+
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
   if (result.error) throw new Error(result.error.message);
   if (result.data === null) throw new Error('데이터를 불러오지 못했습니다.');
@@ -288,6 +295,8 @@ export const supabaseRepository: ChurchRepository = {
         body: input.body,
         author: input.anonymous ? '익명' : input.author,
         anonymous: input.anonymous,
+        // 본인이 올린 기도제목만 수정·삭제할 수 있게 작성자를 남깁니다.
+        author_id: await currentUserId(),
       })
       .select()
       .single();
@@ -341,7 +350,7 @@ export const supabaseRepository: ChurchRepository = {
     const sb = requireSupabase();
     const res = await sb
       .from('group_messages')
-      .insert({ group_id: groupId, author, body })
+      .insert({ group_id: groupId, author, body, author_id: await currentUserId() })
       .select()
       .single();
     return toMessage(unwrap(res));

@@ -37,9 +37,23 @@ npm run android    # Android 에뮬레이터
 
 ## 실제 데이터 연결하기 (Supabase)
 
-1. [supabase.com](https://supabase.com) 에서 프로젝트를 만듭니다.
-2. SQL Editor 에 `supabase/schema.sql` 전체를 붙여넣고 실행합니다. 이어서 `supabase/seed.sql` 을 실행하면 예시 데이터가 들어갑니다.
-3. `.env.example` 을 `.env` 로 복사하고 값을 채웁니다.
+샘플 모드는 각자의 기기에만 저장되어, 한 성도가 올린 기도제목이 다른 성도에게 보이지 않습니다.
+공동체가 함께 쓰려면 Supabase(무료 플랜으로 충분)를 연결합니다.
+
+1. **프로젝트 만들기** — [supabase.com](https://supabase.com) 가입 → New project.
+   Region 은 `Northeast Asia (Seoul)` 을 고르면 국내에서 가장 빠릅니다.
+   데이터베이스 비밀번호는 따로 보관해 두세요.
+
+2. **표 만들기** — 왼쪽 메뉴 **SQL Editor** → New query →
+   `supabase/schema.sql` 전체를 붙여넣고 **Run**.
+   이어서 `supabase/seed.sql` 도 같은 방법으로 실행하면 교회 정보·예배 시간·주보·설교가 들어갑니다.
+   (두 파일 모두 여러 번 실행해도 안전하도록 되어 있습니다.)
+
+3. **키 확인** — 왼쪽 메뉴 **Project Settings → API** 에서 두 값을 복사합니다.
+   - `Project URL`
+   - `anon` `public` 키 (공개용 키입니다. 실제 보호는 아래 RLS 정책이 합니다)
+
+4. **앱에 연결** — 프로젝트 폴더에서
 
    ```bash
    cp .env.example .env
@@ -47,16 +61,27 @@ npm run android    # Android 에뮬레이터
    # EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
    ```
 
-4. 개발 서버를 다시 시작하면 앱이 자동으로 Supabase 모드로 전환됩니다.
-   (더보기 → 앱 정보에서 현재 모드를 확인할 수 있습니다.)
-5. 관리자 지정: 해당 계정으로 가입한 뒤 SQL Editor 에서 실행합니다.
+   개발 서버를 다시 시작하면 자동으로 Supabase 모드로 바뀝니다.
+   더보기 → 앱 정보에서 현재 모드를 확인할 수 있습니다.
+
+5. **관리자 지정** — 앱에서 이메일로 회원가입한 뒤, SQL Editor 에서 실행합니다.
 
    ```sql
    update public.profiles set role = 'admin'
-   where id = (select id from auth.users where email = 'admin@example.com');
+   where id = (select id from auth.users where email = '관리자이메일@example.com');
    ```
 
-RLS 정책은 &lsquo;읽기는 누구나, 쓰기는 로그인 사용자, 공지·설교 관리는 관리자&rsquo; 로 설정되어 있습니다.
+### 권한 정리 (schema.sql 의 RLS 정책)
+
+| 대상 | 읽기 | 쓰기 |
+| --- | --- | --- |
+| 교회 정보 · 예배 시간 · 주보 · 공지 · 설교 · 소그룹 | 누구나 | 관리자만 |
+| 기도제목 | 누구나 | 로그인한 성도(수정·삭제는 본인 또는 관리자) |
+| 소그룹 대화 | 로그인한 성도 | 로그인한 성도(삭제는 본인 또는 관리자) |
+| 프로필 | 본인·관리자 | 본인 |
+
+anon 키는 앱에 그대로 들어가는 공개 키이므로, 실제 보호는 위 정책이 담당합니다.
+정책을 고치면 즉시 모든 사용자에게 적용됩니다.
 
 ## 배포
 

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
@@ -13,11 +13,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { ErrorState, LoadingState } from '@/components/ui';
+import { Button, Card, EmptyState, ErrorState, LoadingState } from '@/components/ui';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, type GroupMessage, type SmallGroup } from '@/lib/data';
+import { dataMode, repository, type GroupMessage, type SmallGroup } from '@/lib/data';
 import { formatTime } from '@/lib/format';
 
 const POLL_INTERVAL_MS = 5000;
@@ -25,9 +25,11 @@ const POLL_INTERVAL_MS = 5000;
 export default function GroupRoomScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const groupId = String(id);
   const { user } = useAuth();
+  const needsSignIn = dataMode === 'supabase' && !user;
 
   const [group, setGroup] = useState<SmallGroup | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
@@ -57,11 +59,15 @@ export default function GroupRoomScreen() {
   );
 
   useEffect(() => {
+    if (needsSignIn) {
+      setLoading(false);
+      return;
+    }
     void load(true);
     // 새 메시지를 주기적으로 확인합니다.
     const timer = setInterval(() => void load(), POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [load]);
+  }, [load, needsSignIn]);
 
   const send = async () => {
     const body = draft.trim();
@@ -75,6 +81,18 @@ export default function GroupRoomScreen() {
       setError(e instanceof Error ? e.message : '메시지를 보내지 못했습니다.');
     }
   };
+
+  // Supabase 를 쓰는 경우 소그룹 대화는 로그인한 성도만 볼 수 있습니다.
+  if (needsSignIn) {
+    return (
+      <View style={[styles.fill, styles.gate, { backgroundColor: theme.background }]}>
+        <Card>
+          <EmptyState icon="lock-closed-outline" message="소그룹 대화는 로그인 후 이용할 수 있습니다." />
+          <Button label="로그인하기" icon="log-in-outline" onPress={() => router.push('/sign-in')} />
+        </Card>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
@@ -184,6 +202,7 @@ export default function GroupRoomScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  gate: { justifyContent: 'center', padding: Spacing.three },
   roomHeader: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderBottomWidth: StyleSheet.hairlineWidth },
   listContent: {
     padding: Spacing.three,
