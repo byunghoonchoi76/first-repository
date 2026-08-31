@@ -213,9 +213,20 @@ export const sampleSermons: Sermon[] = [
     date: '2026-08-30',
     series: '주일예배',
     mediaType: 'video',
-    mediaUrl: ChurchInfo.youtubeUrl,
+    mediaUrl: 'https://www.youtube.com/watch?v=kvwuN6-2PAk',
     summary:
       '성령이 임하실 때 우리가 예수님 안에, 예수님이 우리 안에 거하십니다. 예수님을 사랑하는 증거는 그 말씀과 계명을 지키는 것이며, 말씀을 가까이 곁에 두는 것입니다.',
+  },
+  {
+    // 쇼츠 영상입니다. 실제 제목으로 바꾸려면 관리자 → 설교에서 수정하세요.
+    id: 'sermon-shorts-1',
+    title: '설교 한 장면',
+    preacher: '공진수 목사',
+    scripture: '',
+    date: '2026-08-30',
+    mediaType: 'video',
+    mediaUrl: 'https://www.youtube.com/shorts/AC6BLtHogV0',
+    summary: '',
   },
   {
     id: 'sermon-2026-08-30-fourth',

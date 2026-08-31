@@ -65,8 +65,8 @@ insert into public.announcements (title, body, category, author, pinned) values
   ('주차장 보수 공사 안내', '지하주차장 공사로 2주간 지하 주차가 어렵습니다. 인근 공영주차장을 이용해 주세요.', '공지', '관리부', false);
 
 insert into public.sermons (title, preacher, scripture, preached_on, series, media_type, media_url, summary) values
-  ('흔들리지 않는 기초', '공진수 담임목사', '마태복음 7:24-27', date_trunc('week', current_date)::date - 1, '산상수훈', 'video', 'https://www.youtube.com/@mychmedia', '차이를 만드는 것은 환경이 아니라 무엇 위에 서 있느냐입니다.'),
-  ('새벽을 깨우는 기도', '공진수 담임목사', '마가복음 1:35', current_date - 11, '기도학교', 'audio', 'https://download.samplelib.com/mp3/sample-15s.mp3', '기도는 하루의 방향을 정하는 일입니다.');
+  ('예수님을 사랑한다는 증거', '공진수 목사', '요한복음 14:20-21', date_trunc('week', current_date)::date - 1, '주일예배', 'video', 'https://www.youtube.com/watch?v=kvwuN6-2PAk', '성령이 임하실 때 우리가 예수님 안에, 예수님이 우리 안에 거하십니다. 예수님을 사랑하는 증거는 그 말씀과 계명을 지키는 것입니다.'),
+  ('사랑하는 아들을 보내셨다', '김호진 목사', '누가복음 20:9-18', current_date - 4, '수요부흥예배', 'video', 'https://www.youtube.com/@mychmedia', '');
 
 insert into public.prayer_requests (title, body, author, anonymous, pray_count) values
   ('어머니 수술을 앞두고 기도 부탁드립니다', '다음 주 화요일 수술이 있습니다. 회복을 위해 함께 기도해 주세요.', '박소영', false, 24),

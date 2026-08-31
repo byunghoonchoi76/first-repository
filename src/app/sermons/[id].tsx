@@ -104,9 +104,11 @@ export default function SermonDetailScreen() {
         <ThemedText type="small" themeColor="textSecondary">
           {formatFullDate(item.date)} · {item.preacher}
         </ThemedText>
-        <ThemedText type="smallBold" themeColor="primary">
-          {item.scripture}
-        </ThemedText>
+        {item.scripture ? (
+          <ThemedText type="smallBold" themeColor="primary">
+            {item.scripture}
+          </ThemedText>
+        ) : null}
       </View>
 
       {video ? (

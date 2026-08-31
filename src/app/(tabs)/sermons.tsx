@@ -152,7 +152,7 @@ export default function SermonsScreen() {
                     {sermon.title}
                   </ThemedText>
                   <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-                    {sermon.scripture} · {sermon.preacher}
+                    {[sermon.scripture, sermon.preacher].filter(Boolean).join(' · ')}
                   </ThemedText>
                 </View>
               </View>
