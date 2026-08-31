@@ -78,21 +78,30 @@ export function ChurchLogo({
   size = 32,
   color,
   subtitle,
+  verse,
 }: {
   size?: number;
   color?: string;
+  /** 교회 표어 */
   subtitle?: string;
+  /** 표어의 성구 출처 */
+  verse?: string;
 }) {
   return (
     <View style={styles.logoRow}>
       <ChurchMark size={size} />
-      <View>
+      <View style={styles.flex}>
         <ThemedText type="heading" style={color ? { color } : undefined}>
           {ChurchInfo.name}
         </ThemedText>
         {subtitle ? (
-          <ThemedText type="caption" style={color ? { color, opacity: 0.85 } : undefined} themeColor="textSecondary">
+          <ThemedText type="small" style={color ? { color, opacity: 0.9 } : undefined} themeColor="primary">
             {subtitle}
+          </ThemedText>
+        ) : null}
+        {verse ? (
+          <ThemedText type="caption" style={color ? { color, opacity: 0.7 } : undefined} themeColor="textMuted">
+            {verse}
           </ThemedText>
         ) : null}
       </View>
@@ -103,5 +112,6 @@ export function ChurchLogo({
 const styles = StyleSheet.create({
   mark: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 1 },
   spire: { alignItems: 'center' },
+  flex: { flex: 1 },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
 });

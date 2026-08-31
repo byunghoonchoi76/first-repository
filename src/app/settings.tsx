@@ -55,7 +55,7 @@ export default function SettingsScreen() {
       <View>
         <SectionHeader title="교회 정보" />
         <Card>
-          <ChurchLogo size={36} subtitle={church?.slogan} />
+          <ChurchLogo size={36} subtitle={church?.slogan} verse={church?.sloganVerse} />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           {church?.pastor ? (
             <ListRow icon="person-outline" title="담임목사" subtitle={church.pastor} />

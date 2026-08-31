@@ -32,6 +32,7 @@ create table if not exists public.church_profile (
   id smallint primary key default 1 check (id = 1),
   name text not null,
   slogan text not null default '',
+  slogan_verse text not null default '',
   pastor text not null default '',
   address text not null default '',
   phone text not null default '',
@@ -42,6 +43,7 @@ create table if not exists public.church_profile (
 
 -- 이미 만들어 둔 테이블에도 안전하게 추가합니다.
 alter table public.church_profile add column if not exists youtube_url text not null default '';
+alter table public.church_profile add column if not exists slogan_verse text not null default '';
 
 create table if not exists public.service_times (
   id uuid primary key default gen_random_uuid(),

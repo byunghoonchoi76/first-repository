@@ -127,6 +127,7 @@ export const supabaseRepository: ChurchRepository = {
     return {
       name: row.name ?? ChurchInfo.name,
       slogan: row.slogan ?? ChurchInfo.slogan,
+      sloganVerse: row.slogan_verse ?? ChurchInfo.sloganVerse,
       pastor: row.pastor ?? ChurchInfo.pastor,
       address: row.address ?? ChurchInfo.address,
       phone: row.phone ?? ChurchInfo.phone,

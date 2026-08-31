@@ -1,21 +1,23 @@
 -- 앱 화면을 바로 확인할 수 있는 최소 시드 데이터.
 -- schema.sql 을 먼저 실행한 뒤 SQL Editor 에서 실행하세요.
 
-insert into public.church_profile (id, name, slogan, pastor, address, phone, email, offering_account, youtube_url)
+insert into public.church_profile (id, name, slogan, slogan_verse, pastor, address, phone, email, offering_account, youtube_url)
 values (
   1,
   '구리 목양교회',
-  '말씀으로 목양하고 사랑으로 세우는 공동체',
+  '두려워하지 말라, 강하고 담대하라',
+  '신 31:6, 수 1:9',
   '공진수 담임목사',
   '경기도 구리시 장자호수길 67',
   '031-551-1004',
   'stewardk@hanmail.net',
-  '',
+  '농협 382-01-017978',
   'https://www.youtube.com/@mychmedia'
 )
 on conflict (id) do update set
   name = excluded.name,
   slogan = excluded.slogan,
+  slogan_verse = excluded.slogan_verse,
   pastor = excluded.pastor,
   address = excluded.address,
   phone = excluded.phone,

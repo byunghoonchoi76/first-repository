@@ -25,7 +25,10 @@ export interface ServiceTime {
 
 export interface ChurchProfile {
   name: string;
+  /** 교회 표어 */
   slogan: string;
+  /** 표어의 성구 출처 (예: 신 31:6, 수 1:9) */
+  sloganVerse: string;
   pastor: string;
   address: string;
   phone: string;
