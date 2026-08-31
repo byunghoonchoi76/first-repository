@@ -73,8 +73,12 @@ create table if not exists public.bulletins (
   order_items jsonb not null default '[]'::jsonb,
   -- ["광고1", "광고2"]
   notices jsonb not null default '[]'::jsonb,
+  -- 주보 원본 이미지 주소들 (["앞면.jpg", "뒷면.jpg"]). PDF 주소도 넣을 수 있습니다.
+  image_urls jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.bulletins add column if not exists image_urls jsonb not null default '[]'::jsonb;
 
 create index if not exists bulletins_service_date_idx on public.bulletins (service_date desc);
 

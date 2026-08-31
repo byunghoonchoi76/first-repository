@@ -35,6 +35,7 @@ export default function BulletinEditorScreen() {
   const [preacher, setPreacher] = useState('');
   const [scripture, setScripture] = useState('');
   const [weeklyVerse, setWeeklyVerse] = useState('');
+  const [imageUrls, setImageUrls] = useState<string[]>(['']);
   const [order, setOrder] = useState<BulletinOrderItem[]>(DEFAULT_ORDER);
   const [notices, setNotices] = useState<string[]>(['']);
   const [loading, setLoading] = useState(!isNew);
@@ -54,6 +55,7 @@ export default function BulletinEditorScreen() {
         setPreacher(found.preacher);
         setScripture(found.scripture);
         setWeeklyVerse(found.weeklyVerse);
+        setImageUrls(found.imageUrls.length > 0 ? found.imageUrls : ['']);
         setOrder(found.order.length > 0 ? found.order : DEFAULT_ORDER);
         setNotices(found.notices.length > 0 ? found.notices : ['']);
       })
@@ -87,6 +89,7 @@ export default function BulletinEditorScreen() {
         preacher: preacher.trim(),
         scripture: scripture.trim(),
         weeklyVerse: weeklyVerse.trim(),
+        imageUrls: imageUrls.map((url) => url.trim()).filter(Boolean),
         // 비어 있는 줄은 저장하지 않습니다.
         order: order.filter((line) => line.title.trim() || line.detail.trim()),
         notices: notices.map((n) => n.trim()).filter(Boolean),
@@ -135,6 +138,45 @@ export default function BulletinEditorScreen() {
           placeholder="주보 상단에 실을 말씀을 적어 주세요."
           multiline
         />
+
+      </View>
+
+      <View>
+        <ThemedText type="heading" style={styles.sectionTitle}>
+          주보 원본 (선택)
+        </ThemedText>
+        <Card>
+          {imageUrls.map((url, index) => (
+            <View key={index} style={styles.orderRow}>
+              <View style={styles.orderFields}>
+                <Field
+                  label={`이미지 ${index + 1}`}
+                  value={url}
+                  onChangeText={(text) =>
+                    setImageUrls((current) => current.map((u, i) => (i === index ? text : u)))
+                  }
+                  placeholder="https://www.mych.or.kr/... .jpg"
+                  autoCapitalize="none"
+                />
+              </View>
+              <Pressable
+                onPress={() => setImageUrls((current) => current.filter((_, i) => i !== index))}
+                hitSlop={8}
+                style={styles.removeButton}>
+                <Ionicons name="close-circle-outline" size={20} color={theme.danger} />
+              </Pressable>
+            </View>
+          ))}
+          <Button
+            label="이미지 추가"
+            icon="add"
+            variant="ghost"
+            onPress={() => setImageUrls((current) => [...current, ''])}
+          />
+          <ThemedText type="caption" themeColor="textMuted">
+            홈페이지에 올린 주보 이미지(JPG/PNG) 주소를 앞면·뒷면 순서대로 넣어 주세요. PDF 주소도 됩니다.
+          </ThemedText>
+        </Card>
       </View>
 
       <View>

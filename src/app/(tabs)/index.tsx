@@ -101,7 +101,10 @@ export default function HomeScreen() {
             onAction={() => router.push(`/bulletin/${bulletin.data!.id}`)}
           />
           <Card onPress={() => router.push(`/bulletin/${bulletin.data!.id}`)}>
-            <Badge label={formatDate(bulletin.data.serviceDate)} tone="accent" />
+            <View style={styles.rowBetween}>
+              <Badge label={formatDate(bulletin.data.serviceDate)} tone="accent" />
+              {bulletin.data.imageUrls.length > 0 ? <Badge label="주보 원본" tone="success" /> : null}
+            </View>
             <ThemedText type="heading">{bulletin.data.sermonTitle}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {bulletin.data.scripture} · {bulletin.data.preacher}

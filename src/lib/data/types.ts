@@ -56,6 +56,12 @@ export interface Bulletin {
   order: BulletinOrderItem[];
   notices: string[];
   weeklyVerse: string;
+  /**
+   * 주보 원본 이미지 주소 (앞면·뒷면 등 여러 장).
+   * 홈페이지에 올린 JPG/PNG 주소를 넣으면 앱에서 그대로 볼 수 있고,
+   * PDF 주소를 넣으면 파일을 여는 버튼으로 표시됩니다.
+   */
+  imageUrls: string[];
 }
 
 export type BulletinInput = Omit<Bulletin, 'id'>;

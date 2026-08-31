@@ -38,6 +38,7 @@ const toBulletin = (row: Row): Bulletin => ({
   order: row.order_items ?? [],
   notices: row.notices ?? [],
   weeklyVerse: row.weekly_verse ?? '',
+  imageUrls: row.image_urls ?? [],
 });
 
 const fromBulletin = (input: BulletinInput) => ({
@@ -49,6 +50,7 @@ const fromBulletin = (input: BulletinInput) => ({
   weekly_verse: input.weeklyVerse,
   order_items: input.order,
   notices: input.notices,
+  image_urls: input.imageUrls,
 });
 
 const toAnnouncement = (row: Row): Announcement => ({
