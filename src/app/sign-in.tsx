@@ -22,6 +22,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
 
   const submitLocal = async (role: Role) => {
@@ -42,7 +43,14 @@ export default function SignInScreen() {
     setError(undefined);
     try {
       if (mode === 'signUp') {
-        await signUp({ name, email, password });
+        const result = await signUp({ name, email, password });
+        if (result.needsEmailConfirmation) {
+          // 확인 메일을 켜 둔 경우: 화면을 닫지 않고 안내를 남깁니다.
+          setNotice(`${email} 로 확인 메일을 보냈습니다. 메일의 링크를 누른 뒤 로그인해 주세요.`);
+          setMode('signIn');
+          setPassword('');
+          return;
+        }
       } else {
         await signIn({ email, password });
       }
@@ -72,6 +80,11 @@ export default function SignInScreen() {
             keyboardType="email-address"
           />
           <Field label="비밀번호" value={password} onChangeText={setPassword} secureTextEntry />
+          {notice ? (
+            <ThemedText type="small" themeColor="success">
+              {notice}
+            </ThemedText>
+          ) : null}
           {error ? (
             <ThemedText type="small" themeColor="danger">
               {error}

@@ -6,13 +6,29 @@ import { hasSupabaseConfig, supabase } from '@/lib/supabase';
 
 const STORAGE_KEY = 'church-app/local-user';
 
+/** Supabase 가 돌려주는 영어 오류를 알아보기 쉬운 말로 바꿔 줍니다. */
+function translateAuthError(message: string): string {
+  if (/invalid login credentials/i.test(message)) return '이메일 또는 비밀번호가 맞지 않습니다.';
+  if (/email not confirmed/i.test(message)) return '가입 확인 메일의 링크를 먼저 눌러 주세요.';
+  if (/user already registered/i.test(message)) return '이미 가입된 이메일입니다. 로그인해 주세요.';
+  if (/password should be at least/i.test(message)) return '비밀번호는 6자 이상이어야 합니다.';
+  if (/unable to validate email/i.test(message)) return '이메일 주소를 다시 확인해 주세요.';
+  if (/rate limit|too many/i.test(message)) return '요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.';
+  return message;
+}
+
 interface AuthContextValue {
   user: AppUser | null;
   loading: boolean;
   isAdmin: boolean;
   /** 샘플 모드: 이름과 역할만으로 로그인. Supabase 모드: 이메일/비밀번호 로그인. */
   signIn: (params: { name?: string; role?: Role; email?: string; password?: string }) => Promise<void>;
-  signUp: (params: { name: string; email: string; password: string }) => Promise<void>;
+  /** 가입 결과. 확인 메일을 눌러야 하는 경우 needsEmailConfirmation 이 true 입니다. */
+  signUp: (params: {
+    name: string;
+    email: string;
+    password: string;
+  }) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -78,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasSupabaseConfig && supabase) {
       if (!email || !password) throw new Error('이메일과 비밀번호를 입력해 주세요.');
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(translateAuthError(error.message));
       setUser(await loadSupabaseUser());
       return;
     }
@@ -101,11 +117,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: { data: { name } },
     });
-    if (error) throw new Error(error.message);
-    if (data.user) {
-      await supabase.from('profiles').upsert({ id: data.user.id, name, role: 'member' });
+    if (error) throw new Error(translateAuthError(error.message));
+
+    // 확인 메일을 켜 둔 경우에는 아직 로그인 상태가 아닙니다.
+    if (!data.session) {
+      return { needsEmailConfirmation: true };
     }
+
+    await supabase.from('profiles').upsert({ id: data.user!.id, name, role: 'member' });
     setUser(await loadSupabaseUser());
+    return { needsEmailConfirmation: false };
   }, []);
 
   const signOut = useCallback(async () => {
