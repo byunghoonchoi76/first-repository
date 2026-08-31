@@ -92,17 +92,32 @@ git add -A && git commit -m "웹 빌드 갱신" && git push origin gh-pages
 `https://<계정>.github.io/first-repository/` 에서 열립니다.
 
 **앱스토어 / 플레이스토어** — [EAS Build](https://docs.expo.dev/build/introduction/) 를 사용합니다.
+빌드 설정(`eas.json`)은 저장소에 들어 있고, 프로필은 세 가지입니다.
+
+| 프로필 | 결과물 | 쓰임 |
+| --- | --- | --- |
+| `preview` | Android APK / iOS 내부 배포 | 링크로 받아 바로 설치해 보는 시험판 |
+| `production` | Android AAB / iOS IPA | 스토어 제출용 |
+| `development` | 개발 클라이언트 | 네이티브 모듈까지 붙여 개발할 때 |
 
 ```bash
 npm install -g eas-cli
-eas login
-eas build:configure
-eas build --platform ios       # 앱스토어용
-eas build --platform android   # 플레이스토어용
+eas login                       # 무료 Expo 계정 필요
+eas init                        # 최초 1회, app.json 에 프로젝트 ID 가 기록됩니다
+
+eas build --platform android --profile preview      # 설치용 APK (등록비 불필요)
+eas build --platform android --profile production   # 플레이스토어 제출용
+eas build --platform ios --profile production       # 앱스토어 제출용 (Apple 개발자 계정 필요)
+
+eas submit --platform android   # 스토어 업로드
 eas submit --platform ios
 ```
 
-`app.json` 의 `ios.bundleIdentifier` / `android.package` 값을 실제 교회 도메인 기준으로 바꾼 뒤 빌드하세요.
+빌드는 Expo 서버에서 돌기 때문에 macOS 없이 iOS 빌드도 가능합니다.
+앱 식별자는 `app.json` 의 `ios.bundleIdentifier` / `android.package`(`church.mokyang.guri`) 를 씁니다.
+
+스토어에 올리기 전 준비물: 1024×1024 앱 아이콘, 개인정보처리방침 주소,
+스크린샷, 앱 설명. Google Play 개발자 등록 $25(1회), Apple Developer Program $99/년입니다.
 
 ## 교회에 맞게 바꾸기
 
