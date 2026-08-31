@@ -58,3 +58,45 @@ export function isYouTubeChannelUrl(url: string | undefined | null): boolean {
   if (!url) return false;
   return /youtube\.com\/(@|c\/|channel\/|user\/)/.test(url) && !parseYouTubeUrl(url);
 }
+
+/** 유튜브가 공개로 제공하는 썸네일 주소 (별도 설정 없이 바로 쓸 수 있습니다) */
+export function youtubeThumbnail(videoId: string): string {
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+}
+
+// 같은 영상을 여러 화면에서 열어도 한 번만 불러오도록 기억해 둡니다.
+const titleCache = new Map<string, string>();
+
+/**
+ * 유튜브 영상 제목을 가져옵니다. API 키가 필요 없는 oEmbed 를 먼저 쓰고,
+ * 브라우저에서 막히는 경우를 대비해 noembed 로 한 번 더 시도합니다.
+ * 실패하면 null 을 돌려주고, 화면은 저장된 제목을 그대로 씁니다.
+ */
+export async function fetchYouTubeTitle(url: string): Promise<string | null> {
+  const ref = parseYouTubeUrl(url);
+  if (!ref) return null;
+
+  const cached = titleCache.get(ref.videoId);
+  if (cached) return cached;
+
+  const endpoints = [
+    `https://www.youtube.com/oembed?url=${encodeURIComponent(ref.watchUrl)}&format=json`,
+    `https://noembed.com/embed?url=${encodeURIComponent(ref.watchUrl)}`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint);
+      if (!response.ok) continue;
+      const json = (await response.json()) as { title?: string };
+      const title = json.title?.trim();
+      if (title) {
+        titleCache.set(ref.videoId, title);
+        return title;
+      }
+    } catch {
+      // 다음 방법으로 넘어갑니다.
+    }
+  }
+  return null;
+}

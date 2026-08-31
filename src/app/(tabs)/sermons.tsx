@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -11,8 +11,9 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { ChurchInfo } from '@/constants/church';
-import { repository, useAsyncData } from '@/lib/data';
-import { parseYouTubeUrl } from '@/lib/youtube';
+import { repository, useAsyncData, type Sermon } from '@/lib/data';
+import { useYouTubeTitle } from '@/lib/use-youtube-title';
+import { parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 import { formatDate } from '@/lib/format';
 
 export default function SermonsScreen() {
@@ -118,50 +119,68 @@ export default function SermonsScreen() {
         <EmptyState icon="play-circle-outline" message="등록된 설교가 없습니다." />
       ) : (
         <View style={styles.stack}>
-          {items.map((sermon) => {
-            const video = parseYouTubeUrl(sermon.mediaUrl);
-            return (
-            <Card key={sermon.id} onPress={() => router.push(`/sermons/${sermon.id}`)}>
-              <View style={styles.row}>
-                <View style={[styles.thumb, { backgroundColor: theme.backgroundSelected }]}>
-                  <Ionicons
-                    name={
-                      video?.kind === 'shorts'
-                        ? 'phone-portrait-outline'
-                        : sermon.mediaType === 'video'
-                          ? 'videocam-outline'
-                          : 'headset-outline'
-                    }
-                    size={22}
-                    color={theme.primary}
-                  />
-                </View>
-                <View style={styles.flex}>
-                  <View style={styles.metaRow}>
-                    <Badge
-                      label={
-                        video?.kind === 'shorts' ? '쇼츠' : sermon.mediaType === 'video' ? '영상' : '음성'
-                      }
-                      tone={sermon.mediaType === 'video' ? 'primary' : 'success'}
-                    />
-                    <ThemedText type="caption" themeColor="textMuted">
-                      {formatDate(sermon.date)}
-                    </ThemedText>
-                  </View>
-                  <ThemedText type="smallBold" numberOfLines={1}>
-                    {sermon.title}
-                  </ThemedText>
-                  <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-                    {[sermon.scripture, sermon.preacher].filter(Boolean).join(' · ')}
-                  </ThemedText>
-                </View>
-              </View>
-            </Card>
-            );
-          })}
+          {items.map((sermon) => (
+            <SermonRow key={sermon.id} sermon={sermon} onPress={() => router.push(`/sermons/${sermon.id}`)} />
+          ))}
         </View>
       )}
     </Screen>
+  );
+}
+
+/** 설교 목록 한 줄. 제목이 비어 있으면 유튜브에서 실제 제목을 가져옵니다. */
+function SermonRow({ sermon, onPress }: { sermon: Sermon; onPress: () => void }) {
+  const theme = useTheme();
+  const video = parseYouTubeUrl(sermon.mediaUrl);
+  const title = useYouTubeTitle(sermon.mediaUrl, sermon.title, video?.kind === 'shorts' ? '쇼츠 영상' : '설교 영상');
+  const thumbnail = sermon.thumbnailUrl ?? (video ? youtubeThumbnail(video.videoId) : undefined);
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const showThumb = Boolean(thumbnail) && !thumbFailed;
+
+  return (
+    <Card onPress={onPress}>
+      <View style={styles.row}>
+        <View style={[styles.thumb, { backgroundColor: theme.backgroundSelected }]}>
+          {showThumb ? (
+            <Image
+              source={{ uri: thumbnail! }}
+              style={styles.thumbImage}
+              resizeMode="cover"
+              onError={() => setThumbFailed(true)}
+            />
+          ) : (
+            <Ionicons
+              name={
+                video?.kind === 'shorts'
+                  ? 'phone-portrait-outline'
+                  : sermon.mediaType === 'video'
+                    ? 'videocam-outline'
+                    : 'headset-outline'
+              }
+              size={22}
+              color={theme.primary}
+            />
+          )}
+        </View>
+        <View style={styles.flex}>
+          <View style={styles.metaRow}>
+            <Badge
+              label={video?.kind === 'shorts' ? '쇼츠' : sermon.mediaType === 'video' ? '영상' : '음성'}
+              tone={sermon.mediaType === 'video' ? 'primary' : 'success'}
+            />
+            <ThemedText type="caption" themeColor="textMuted">
+              {formatDate(sermon.date)}
+            </ThemedText>
+          </View>
+          <ThemedText type="smallBold" numberOfLines={2}>
+            {title}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+            {[sermon.scripture, sermon.preacher].filter(Boolean).join(' · ')}
+          </ThemedText>
+        </View>
+      </View>
+    </Card>
   );
 }
 
@@ -176,6 +195,14 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'center' },
-  thumb: { width: 52, height: 52, borderRadius: Radius.small, alignItems: 'center', justifyContent: 'center' },
+  thumb: {
+    width: 68,
+    height: 52,
+    borderRadius: Radius.small,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  thumbImage: { width: '100%', height: '100%' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: 2 },
 });

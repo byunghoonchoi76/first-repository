@@ -9,7 +9,8 @@ import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, Sec
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, useAsyncData } from '@/lib/data';
+import { repository, useAsyncData, type Sermon } from '@/lib/data';
+import { useYouTubeTitle } from '@/lib/use-youtube-title';
 import { formatDate, formatFullDate, minutesLabel } from '@/lib/format';
 import { usePrayerLog } from '@/lib/prayer-log';
 
@@ -191,7 +192,7 @@ export default function HomeScreen() {
                 {formatDate(latestSermon.date)}
               </ThemedText>
             </View>
-            <ThemedText type="heading">{latestSermon.title}</ThemedText>
+            <LatestSermonTitle sermon={latestSermon} />
             <ThemedText type="small" themeColor="textSecondary">
               {latestSermon.scripture} · {latestSermon.preacher}
             </ThemedText>
@@ -200,6 +201,11 @@ export default function HomeScreen() {
       ) : null}
     </Screen>
   );
+}
+
+function LatestSermonTitle({ sermon }: { sermon: Sermon }) {
+  const title = useYouTubeTitle(sermon.mediaUrl, sermon.title);
+  return <ThemedText type="heading">{title}</ThemedText>;
 }
 
 function QuickAction({

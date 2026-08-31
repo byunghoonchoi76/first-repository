@@ -10,8 +10,9 @@ import { Badge, Button, Card, ErrorState, LoadingState } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, useAsyncData } from '@/lib/data';
+import { repository, useAsyncData, type Sermon } from '@/lib/data';
 import { formatFullDate } from '@/lib/format';
+import { useYouTubeTitle } from '@/lib/use-youtube-title';
 import { isYouTubeChannelUrl, parseYouTubeUrl } from '@/lib/youtube';
 
 export default function SermonDetailScreen() {
@@ -100,7 +101,7 @@ export default function SermonDetailScreen() {
           />
           {item.series ? <Badge label={item.series} tone="accent" /> : null}
         </View>
-        <ThemedText type="title">{item.title}</ThemedText>
+        <SermonTitle sermon={item} />
         <ThemedText type="small" themeColor="textSecondary">
           {formatFullDate(item.date)} · {item.preacher}
         </ThemedText>
@@ -149,6 +150,17 @@ export default function SermonDetailScreen() {
       ) : null}
     </Screen>
   );
+}
+
+/** 제목이 비어 있으면 유튜브에서 실제 제목을 가져와 보여 줍니다. */
+function SermonTitle({ sermon }: { sermon: Sermon }) {
+  const video = parseYouTubeUrl(sermon.mediaUrl);
+  const title = useYouTubeTitle(
+    sermon.mediaUrl,
+    sermon.title,
+    video?.kind === 'shorts' ? '쇼츠 영상' : '설교 영상',
+  );
+  return <ThemedText type="title">{title}</ThemedText>;
 }
 
 const styles = StyleSheet.create({
