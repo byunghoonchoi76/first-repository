@@ -58,6 +58,8 @@ export interface Bulletin {
   weeklyVerse: string;
 }
 
+export type BulletinInput = Omit<Bulletin, 'id'>;
+
 export type AnnouncementCategory = '공지' | '행사' | '소식';
 
 export interface Announcement {
@@ -143,6 +145,9 @@ export interface ChurchRepository {
   listBulletins(): Promise<Bulletin[]>;
   getBulletin(id: string): Promise<Bulletin | null>;
   getLatestBulletin(): Promise<Bulletin | null>;
+  createBulletin(input: BulletinInput): Promise<Bulletin>;
+  updateBulletin(id: string, input: BulletinInput): Promise<Bulletin>;
+  deleteBulletin(id: string): Promise<void>;
 
   listAnnouncements(): Promise<Announcement[]>;
   getAnnouncement(id: string): Promise<Announcement | null>;

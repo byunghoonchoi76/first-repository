@@ -13,13 +13,15 @@ import { formatDate, formatRelative } from '@/lib/format';
 export default function AdminHomeScreen() {
   const router = useRouter();
   const { isAdmin } = useAuth();
+  const bulletins = useAsyncData(() => repository.listBulletins());
   const announcements = useAsyncData(() => repository.listAnnouncements());
   const sermons = useAsyncData(() => repository.listSermons());
 
   const reloadAll = useCallback(() => {
+    bulletins.reload();
     announcements.reload();
     sermons.reload();
-  }, [announcements, sermons]);
+  }, [bulletins, announcements, sermons]);
 
   useFocusEffect(
     useCallback(() => {
@@ -47,6 +49,24 @@ export default function AdminHomeScreen() {
           </ThemedText>
         </Card>
       ) : null}
+
+      <View>
+        <SectionHeader title="주보" actionLabel="새로 등록" onAction={() => router.push('/admin/bulletin/new')} />
+        <Card>
+          {(bulletins.data ?? []).slice(0, 6).map((item) => (
+            <ListRow
+              key={item.id}
+              icon="book-outline"
+              title={`${formatDate(item.serviceDate)} · ${item.sermonTitle}`}
+              subtitle={`${item.scripture} · ${item.preacher}`}
+              onPress={() => router.push(`/admin/bulletin/${item.id}`)}
+            />
+          ))}
+          {(bulletins.data ?? []).length === 0 ? (
+            <EmptyState icon="book-outline" message="등록된 주보가 없습니다." />
+          ) : null}
+        </Card>
+      </View>
 
       <View>
         <SectionHeader

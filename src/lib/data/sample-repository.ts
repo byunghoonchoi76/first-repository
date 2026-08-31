@@ -13,6 +13,7 @@ import type {
   Announcement,
   AnnouncementInput,
   Bulletin,
+  BulletinInput,
   ChurchRepository,
   GroupMessage,
   PrayerRequest,
@@ -101,6 +102,33 @@ export const sampleRepository: ChurchRepository = {
     await ready();
     const list = await this.listBulletins();
     return list[0] ?? null;
+  },
+
+  async createBulletin(input: BulletinInput) {
+    await ready();
+    await delay();
+    const created: Bulletin = { ...input, id: newId('bulletin') };
+    db.bulletins = [created, ...db.bulletins];
+    await persist();
+    return clone(created);
+  },
+
+  async updateBulletin(id, input) {
+    await ready();
+    await delay();
+    const index = db.bulletins.findIndex((b) => b.id === id);
+    if (index < 0) throw new Error('주보를 찾을 수 없습니다.');
+    const updated: Bulletin = { ...input, id };
+    db.bulletins[index] = updated;
+    await persist();
+    return clone(updated);
+  },
+
+  async deleteBulletin(id) {
+    await ready();
+    await delay();
+    db.bulletins = db.bulletins.filter((b) => b.id !== id);
+    await persist();
   },
 
   async listAnnouncements() {

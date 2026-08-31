@@ -4,6 +4,7 @@ import type {
   Announcement,
   AnnouncementInput,
   Bulletin,
+  BulletinInput,
   ChurchProfile,
   ChurchRepository,
   GroupMessage,
@@ -37,6 +38,17 @@ const toBulletin = (row: Row): Bulletin => ({
   order: row.order_items ?? [],
   notices: row.notices ?? [],
   weeklyVerse: row.weekly_verse ?? '',
+});
+
+const fromBulletin = (input: BulletinInput) => ({
+  service_date: input.serviceDate,
+  title: input.title,
+  sermon_title: input.sermonTitle,
+  preacher: input.preacher,
+  scripture: input.scripture,
+  weekly_verse: input.weeklyVerse,
+  order_items: input.order,
+  notices: input.notices,
 });
 
 const toAnnouncement = (row: Row): Announcement => ({
@@ -168,6 +180,24 @@ export const supabaseRepository: ChurchRepository = {
       .maybeSingle();
     if (res.error) throw new Error(res.error.message);
     return res.data ? toBulletin(res.data) : null;
+  },
+
+  async createBulletin(input) {
+    const sb = requireSupabase();
+    const res = await sb.from('bulletins').insert(fromBulletin(input)).select().single();
+    return toBulletin(unwrap(res));
+  },
+
+  async updateBulletin(id, input) {
+    const sb = requireSupabase();
+    const res = await sb.from('bulletins').update(fromBulletin(input)).eq('id', id).select().single();
+    return toBulletin(unwrap(res));
+  },
+
+  async deleteBulletin(id) {
+    const sb = requireSupabase();
+    const { error } = await sb.from('bulletins').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 
   async listAnnouncements() {
