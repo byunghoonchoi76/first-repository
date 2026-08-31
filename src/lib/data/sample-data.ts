@@ -1,3 +1,7 @@
+/**
+ * 화면 확인용 예시 데이터입니다. 실제 주보·공지·설교 내용으로 교체해 주세요.
+ * (Supabase 를 연결하면 이 파일 대신 DB 의 내용이 표시됩니다.)
+ */
 import { ChurchInfo } from '@/constants/church';
 import type {
   Announcement,
@@ -52,7 +56,7 @@ export const sampleBulletins: Bulletin[] = [
     serviceDate: dateOnly(lastSunday),
     title: '주일 예배 주보',
     sermonTitle: '흔들리지 않는 기초',
-    preacher: '김은혜 담임목사',
+    preacher: '담임목사',
     scripture: '마태복음 7:24-27',
     weeklyVerse:
       '그러므로 누구든지 나의 이 말을 듣고 행하는 자는 그 집을 반석 위에 지은 지혜로운 사람 같으리니 (마 7:24)',
@@ -60,16 +64,16 @@ export const sampleBulletins: Bulletin[] = [
       { title: '예배의 부름', detail: '시편 100:1-5 / 인도자' },
       { title: '찬송', detail: '찬송가 43장 «즐겁게 안식할 날»' },
       { title: '신앙고백', detail: '사도신경 / 다같이' },
-      { title: '기도', detail: '박성실 장로' },
+      { title: '기도', detail: '시무장로' },
       { title: '성경봉독', detail: '마태복음 7:24-27' },
-      { title: '찬양', detail: '시온찬양대 «주는 나의 반석»' },
-      { title: '말씀', detail: '«흔들리지 않는 기초» / 김은혜 담임목사' },
+      { title: '찬양', detail: '목양찬양대 «주는 나의 반석»' },
+      { title: '말씀', detail: '«흔들리지 않는 기초» / 담임목사' },
       { title: '봉헌 · 광고', detail: '봉헌송 / 다같이' },
-      { title: '축도', detail: '김은혜 담임목사' },
+      { title: '축도', detail: '담임목사' },
     ],
     notices: [
       '다음 주일은 성찬식이 있습니다. 마음을 준비해 주세요.',
-      '새가족 환영회가 예배 후 2층 카페에서 있습니다.',
+      '새가족 환영회가 예배 후 2층 사랑방에서 있습니다.',
       '여름 성경학교 교사 지원을 받습니다. 교육부로 문의해 주세요.',
     ],
   },
@@ -78,18 +82,18 @@ export const sampleBulletins: Bulletin[] = [
     serviceDate: dateOnly(lastSunday + 7),
     title: '주일 예배 주보',
     sermonTitle: '함께 걷는 길',
-    preacher: '이소망 부목사',
+    preacher: '부목사',
     scripture: '전도서 4:9-12',
     weeklyVerse: '두 사람이 한 사람보다 나음은 그들이 수고함으로 좋은 상을 얻을 것임이라 (전 4:9)',
     order: [
       { title: '예배의 부름', detail: '시편 133:1-3 / 인도자' },
       { title: '찬송', detail: '찬송가 221장 «주 믿는 형제들»' },
       { title: '신앙고백', detail: '사도신경 / 다같이' },
-      { title: '기도', detail: '최믿음 권사' },
+      { title: '기도', detail: '시무권사' },
       { title: '성경봉독', detail: '전도서 4:9-12' },
-      { title: '말씀', detail: '«함께 걷는 길» / 이소망 부목사' },
+      { title: '말씀', detail: '«함께 걷는 길» / 부목사' },
       { title: '봉헌 · 광고', detail: '봉헌송 / 다같이' },
-      { title: '축도', detail: '이소망 부목사' },
+      { title: '축도', detail: '부목사' },
     ],
     notices: ['소그룹 개편 신청을 받고 있습니다.', '주차장 공사로 이번 주 지하주차장 이용이 어렵습니다.'],
   },
@@ -102,7 +106,7 @@ export const sampleAnnouncements: Announcement[] = [
     body: `올해 여름 수련회를 강원도 평창 수양관에서 진행합니다.
 
 · 일정: 7월 18일(금) ~ 20일(주일) 2박 3일
-· 장소: 평창 새생명수양관
+· 장소: 강원도 평창 수양관
 · 회비: 성인 9만원 / 청소년 6만원 / 초등 이하 4만원
 · 신청: 교회 사무실 또는 각 소그룹 리더에게
 
@@ -115,7 +119,7 @@ export const sampleAnnouncements: Announcement[] = [
   {
     id: 'ann-2',
     title: '새가족 환영회 안내',
-    body: '이번 주일 2부 예배 후 2층 카페에서 새가족 환영회가 있습니다. 등록하신 지 3개월 이내의 새가족은 모두 참석해 주시기 바랍니다. 간단한 다과가 준비되어 있습니다.',
+    body: '이번 주일 2부 예배 후 2층 사랑방에서 새가족 환영회가 있습니다. 등록하신 지 3개월 이내의 새가족은 모두 참석해 주시기 바랍니다. 간단한 다과가 준비되어 있습니다.',
     category: '공지',
     author: '새가족부',
     pinned: true,
@@ -132,8 +136,8 @@ export const sampleAnnouncements: Announcement[] = [
   },
   {
     id: 'ann-4',
-    title: '한 달 동안 이웃과 나눈 사랑의 김치 300박스',
-    body: '지난 한 달 동안 성도님들과 함께 담근 김치 300박스를 지역 독거 어르신 가정에 전달했습니다. 수고해 주신 봉사자 여러분께 감사드립니다. 다음 나눔은 가을에 진행될 예정입니다.',
+    title: '이웃과 함께 나눈 사랑의 김치 300박스',
+    body: '지난 한 달 동안 성도님들과 함께 담근 김치 300박스를 구리 지역 독거 어르신 가정에 전달했습니다. 수고해 주신 봉사자 여러분께 감사드립니다. 다음 나눔은 가을에 진행될 예정입니다.',
     category: '소식',
     author: '선교부',
     pinned: false,
@@ -142,7 +146,7 @@ export const sampleAnnouncements: Announcement[] = [
   {
     id: 'ann-5',
     title: '성가대원 모집',
-    body: '시온찬양대에서 함께 찬양할 새 대원을 모집합니다. 매주 주일 오전 8시 연습, 2부 예배 찬양으로 섬깁니다. 관심 있는 분은 지휘자 정찬양 집사에게 문의해 주세요.',
+    body: '목양찬양대에서 함께 찬양할 새 대원을 모집합니다. 매주 주일 오전 8시 연습, 2부 예배 찬양으로 섬깁니다. 관심 있는 분은 찬양대 지휘자에게 문의해 주세요.',
     category: '공지',
     author: '찬양부',
     pinned: false,
@@ -154,7 +158,7 @@ export const sampleSermons: Sermon[] = [
   {
     id: 'sermon-1',
     title: '흔들리지 않는 기초',
-    preacher: '김은혜 담임목사',
+    preacher: '담임목사',
     scripture: '마태복음 7:24-27',
     date: dateOnly(lastSunday),
     series: '산상수훈',
@@ -166,7 +170,7 @@ export const sampleSermons: Sermon[] = [
   {
     id: 'sermon-2',
     title: '함께 걷는 길',
-    preacher: '이소망 부목사',
+    preacher: '부목사',
     scripture: '전도서 4:9-12',
     date: dateOnly(lastSunday + 7),
     series: '공동체',
@@ -177,7 +181,7 @@ export const sampleSermons: Sermon[] = [
   {
     id: 'sermon-3',
     title: '새벽을 깨우는 기도',
-    preacher: '김은혜 담임목사',
+    preacher: '담임목사',
     scripture: '마가복음 1:35',
     date: dateOnly(lastSunday + 11),
     series: '기도학교',
@@ -188,7 +192,7 @@ export const sampleSermons: Sermon[] = [
   {
     id: 'sermon-4',
     title: '광야에서 부르시는 하나님',
-    preacher: '이소망 부목사',
+    preacher: '부목사',
     scripture: '호세아 2:14-15',
     date: dateOnly(lastSunday + 14),
     series: '기도학교',
@@ -244,7 +248,7 @@ export const samplePrayerRequests: PrayerRequest[] = [
 export const sampleGroups: SmallGroup[] = [
   {
     id: 'group-1',
-    name: '청년 1부 · 반석',
+    name: '청년부 · 반석',
     leader: '한지훈 리더',
     meetingInfo: '매주 금요일 오후 8시 · 교육관 2층',
     description: '20~30대 청년들이 말씀을 나누고 삶을 나누는 모임입니다.',
@@ -254,7 +258,7 @@ export const sampleGroups: SmallGroup[] = [
     id: 'group-2',
     name: '주부 목장 · 뜰안',
     leader: '오정민 권사',
-    meetingInfo: '매주 화요일 오전 10시 · 카페 뜰안',
+    meetingInfo: '매주 화요일 오전 10시 · 2층 사랑방',
     description: '자녀 양육과 일상의 고민을 말씀 안에서 함께 나눕니다.',
     memberCount: 9,
   },
@@ -294,7 +298,7 @@ export const sampleGroupMessages: GroupMessage[] = [
     id: 'msg-4',
     groupId: 'group-2',
     author: '오정민 권사',
-    body: '화요일 모임 장소가 카페 뜰안으로 변경되었습니다. 참고해 주세요.',
+    body: '화요일 모임 장소가 2층 사랑방으로 변경되었습니다. 참고해 주세요.',
     createdAt: dateTime(3),
   },
   {

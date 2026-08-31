@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "은혜로교회",
-    "slug": "church-app",
+    "name": "구리 목양교회",
+    "slug": "guri-mokyang-church",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,12 +11,12 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "supportsTablet": true,
-      "bundleIdentifier": "church.graceway.app"
+      "bundleIdentifier": "church.mokyang.guri"
     },
     "android": {
-      "package": "church.graceway.app",
+      "package": "church.mokyang.guri",
       "adaptiveIcon": {
-        "backgroundColor": "#3B5BA5",
+        "backgroundColor": "#14496B",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -34,7 +34,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#3B5BA5",
+          "backgroundColor": "#14496B",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }

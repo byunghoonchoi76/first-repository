@@ -133,7 +133,7 @@ export default function SermonEditorScreen() {
         </View>
 
         <Field label="설교 제목" value={title} onChangeText={setTitle} placeholder="예) 흔들리지 않는 기초" />
-        <Field label="설교자" value={preacher} onChangeText={setPreacher} placeholder="예) 김은혜 담임목사" />
+        <Field label="설교자" value={preacher} onChangeText={setPreacher} placeholder="예) 담임목사" />
         <Field label="본문" value={scripture} onChangeText={setScripture} placeholder="예) 마태복음 7:24-27" />
         <Field label="설교 날짜" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" hint="예) 2026-08-30" />
         <Field label="시리즈 (선택)" value={series} onChangeText={setSeries} placeholder="예) 산상수훈" />

@@ -2,9 +2,11 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { ChurchLogo } from '@/components/church-logo';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Field } from '@/components/ui';
+import { ChurchInfo } from '@/constants/church';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode } from '@/lib/data';
@@ -54,6 +56,9 @@ export default function SignInScreen() {
 
   return (
     <Screen>
+      <View style={styles.logoRow}>
+        <ChurchLogo size={40} subtitle={ChurchInfo.slogan} />
+      </View>
       {isSupabase ? (
         <Card>
           <ThemedText type="heading">{mode === 'signUp' ? '회원가입' : '로그인'}</ThemedText>
@@ -118,5 +123,6 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  logoRow: { alignItems: 'center', paddingVertical: Spacing.three },
   buttonRow: { flexDirection: 'row', gap: Spacing.two },
 });

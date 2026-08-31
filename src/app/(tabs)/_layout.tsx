@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Link, Tabs } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, type ColorValue } from 'react-native';
 
+import { ChurchLogo } from '@/components/church-logo';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -43,6 +44,7 @@ export default function TabsLayout() {
         options={{
           title: '홈',
           tabBarLabel: tabLabel('홈'),
+          headerTitle: () => <ChurchLogo size={24} />,
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />

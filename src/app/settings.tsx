@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Linking, Platform, StyleSheet, View } from 'react-native';
 
+import { ChurchLogo } from '@/components/church-logo';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, ListRow, SectionHeader } from '@/components/ui';
@@ -54,10 +55,7 @@ export default function SettingsScreen() {
       <View>
         <SectionHeader title="교회 정보" />
         <Card>
-          <ThemedText type="heading">{church?.name ?? ''}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {church?.slogan ?? ''}
-          </ThemedText>
+          <ChurchLogo size={36} subtitle={church?.slogan} />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <ListRow icon="person-outline" title="담임목사" subtitle={church?.pastor} />
           <ListRow
