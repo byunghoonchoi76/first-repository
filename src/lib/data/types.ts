@@ -107,13 +107,17 @@ export interface PrayerRequest {
   body: string;
   /** 익명이면 '익명' 으로 저장됩니다. */
   author: string;
+  /** 올린 사람의 계정 id. 본인만 '응답됨' 으로 바꿀 수 있게 하는 데 씁니다. */
+  authorId?: string;
   anonymous: boolean;
   answered: boolean;
   prayCount: number;
   createdAt: string;
 }
 
-export type PrayerRequestInput = Pick<PrayerRequest, 'title' | 'body' | 'author' | 'anonymous'>;
+export type PrayerRequestInput = Pick<PrayerRequest, 'title' | 'body' | 'author' | 'anonymous'> & {
+  authorId?: string;
+};
 
 export interface SmallGroup {
   id: string;

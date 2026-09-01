@@ -30,6 +30,7 @@ export default function NewPrayerRequestScreen() {
         title: title.trim(),
         body: body.trim(),
         author: user?.name ?? '성도',
+        authorId: user?.id,
         anonymous,
       });
       router.back();

@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, SectionHeader } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData } from '@/lib/data';
 import { formatRelative, minutesLabel } from '@/lib/format';
 import { usePrayerLog } from '@/lib/prayer-log';
@@ -19,6 +20,7 @@ export default function PrayerScreen() {
   const theme = useTheme();
   const router = useRouter();
   const prayerLog = usePrayerLog();
+  const { user, isAdmin } = useAuth();
   const requests = useAsyncData(() => repository.listPrayerRequests());
   const { reload, setData } = requests;
 
@@ -27,6 +29,17 @@ export default function PrayerScreen() {
       reload();
     }, [reload]),
   );
+
+  /** 본인이 올린 기도제목(또는 관리자)만 '응답됨' 으로 바꿀 수 있습니다. */
+  const toggleAnswered = async (id: string, answered: boolean) => {
+    setData((current) => current?.map((item) => (item.id === id ? { ...item, answered } : item)));
+    try {
+      const updated = await repository.markPrayerAnswered(id, answered);
+      setData((current) => current?.map((item) => (item.id === id ? updated : item)));
+    } catch {
+      reload();
+    }
+  };
 
   const pray = async (id: string) => {
     // 먼저 화면을 올려두고, 저장 결과로 값을 맞춥니다.
@@ -105,6 +118,18 @@ export default function PrayerScreen() {
       {/* 기도제목 나눔 */}
       <View>
         <SectionHeader title="기도제목 나눔" />
+        {requests.data && requests.data.length > 0 ? (
+          <Card style={styles.statsCard}>
+            <View style={styles.statRow}>
+              <Stat label="나눈 기도제목" value={`${requests.data.length}개`} />
+              <Stat label="응답됨" value={`${requests.data.filter((item) => item.answered).length}개`} />
+              <Stat
+                label="함께 기도"
+                value={`${requests.data.reduce((sum, item) => sum + item.prayCount, 0)}번`}
+              />
+            </View>
+          </Card>
+        ) : null}
         <Button
           label="기도제목 나누기"
           icon="add"
@@ -149,6 +174,15 @@ export default function PrayerScreen() {
                   </ThemedText>
                 </Pressable>
               </View>
+
+              {isAdmin || (user && item.authorId && item.authorId === user.id) ? (
+                <Button
+                  label={item.answered ? '다시 기도 중으로' : '기도 응답되었어요'}
+                  icon={item.answered ? 'refresh-outline' : 'checkmark-circle-outline'}
+                  variant="ghost"
+                  onPress={() => void toggleAnswered(item.id, !item.answered)}
+                />
+              ) : null}
             </Card>
           ))}
         </View>
@@ -210,6 +244,7 @@ const styles = StyleSheet.create({
   stack: { gap: Spacing.two },
   center: { textAlign: 'center' },
   statRow: { flexDirection: 'row', gap: Spacing.two },
+  statsCard: { marginBottom: Spacing.two },
   stat: { flex: 1, gap: 2 },
   chart: {
     flexDirection: 'row',

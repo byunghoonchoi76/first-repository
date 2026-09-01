@@ -110,6 +110,7 @@ const toPrayer = (row: Row): PrayerRequest => ({
   title: row.title,
   body: row.body,
   author: row.author,
+  authorId: row.author_id ?? undefined,
   anonymous: row.anonymous,
   answered: row.answered,
   prayCount: row.pray_count ?? 0,

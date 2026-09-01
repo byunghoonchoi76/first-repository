@@ -252,6 +252,7 @@ export const sampleRepository: ChurchRepository = {
       title: input.title,
       body: input.body,
       author: input.anonymous ? '익명' : input.author,
+      authorId: input.authorId,
       anonymous: input.anonymous,
       answered: false,
       prayCount: 0,
