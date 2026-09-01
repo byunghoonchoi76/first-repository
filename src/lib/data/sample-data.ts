@@ -261,6 +261,18 @@ export const sampleSermons: Sermon[] = [
     mediaUrl: ChurchInfo.youtubeUrl,
     summary: '',
   },
+  {
+    // 제목은 비워 두면 앱이 유튜브에서 실제 제목을 가져옵니다.
+    id: 'sermon-2026-08-28-fri',
+    title: '',
+    preacher: '공진수 목사',
+    scripture: '',
+    date: '2026-08-28',
+    series: '금요성령집회',
+    mediaType: 'video',
+    mediaUrl: 'https://www.youtube.com/watch?v=-cNkZs0UXK8',
+    summary: '',
+  },
 ];
 
 export const samplePrayerRequests: PrayerRequest[] = [

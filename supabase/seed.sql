@@ -129,7 +129,10 @@ begin
       ('어린아이들이 내게 오는 것을 용납하고 금하지 말라', '노준성 목사', '마가복음 10:13-16', date '2026-08-30', '주일 찬양예배', 'video',
        'https://www.youtube.com/@mychmedia', ''),
       ('사랑하는 아들을 보내셨다', '김호진 목사', '누가복음 20:9-18', date '2026-08-26', '수요부흥예배', 'video',
-       'https://www.youtube.com/@mychmedia', '');
+       'https://www.youtube.com/@mychmedia', ''),
+      -- 제목을 비워 두면 앱이 유튜브에서 실제 제목을 가져옵니다.
+      ('', '공진수 목사', '', date '2026-08-28', '금요성령집회', 'video',
+       'https://www.youtube.com/watch?v=-cNkZs0UXK8', '');
   end if;
 end;
 $$;
