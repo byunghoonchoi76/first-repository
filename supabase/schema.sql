@@ -212,8 +212,10 @@ end;
 $$;
 
 -- 기도제목: 누구나 읽기, 로그인 사용자가 작성, 본인/관리자가 수정
+-- 기도제목은 민감할 수 있어 로그인한 성도만 읽을 수 있습니다.
 drop policy if exists "기도제목 조회" on public.prayer_requests;
-create policy "기도제목 조회" on public.prayer_requests for select using (true);
+create policy "기도제목 조회" on public.prayer_requests
+  for select using (auth.uid() is not null);
 
 drop policy if exists "기도제목 작성" on public.prayer_requests;
 create policy "기도제목 작성" on public.prayer_requests

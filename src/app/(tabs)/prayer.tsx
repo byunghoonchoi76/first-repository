@@ -9,7 +9,7 @@ import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, SectionHeade
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, useAsyncData } from '@/lib/data';
+import { dataMode, repository, useAsyncData } from '@/lib/data';
 import { formatRelative, minutesLabel } from '@/lib/format';
 import { usePrayerLog } from '@/lib/prayer-log';
 
@@ -21,7 +21,12 @@ export default function PrayerScreen() {
   const router = useRouter();
   const prayerLog = usePrayerLog();
   const { user, isAdmin } = useAuth();
-  const requests = useAsyncData(() => repository.listPrayerRequests());
+  // Supabase 모드에서는 로그인한 성도만 기도제목을 볼 수 있습니다.
+  const needsSignIn = dataMode === 'supabase' && !user;
+  const requests = useAsyncData(
+    () => (needsSignIn ? Promise.resolve([]) : repository.listPrayerRequests()),
+    [needsSignIn],
+  );
   const { reload, setData } = requests;
 
   useFocusEffect(
@@ -130,15 +135,22 @@ export default function PrayerScreen() {
             </View>
           </Card>
         ) : null}
-        <Button
-          label="기도제목 나누기"
-          icon="add"
-          variant="secondary"
-          onPress={() => router.push('/prayer/new')}
-        />
+        {!needsSignIn ? (
+          <Button
+            label="기도제목 나누기"
+            icon="add"
+            variant="secondary"
+            onPress={() => router.push('/prayer/new')}
+          />
+        ) : null}
       </View>
 
-      {requests.loading && !requests.data ? (
+      {needsSignIn ? (
+        <Card>
+          <EmptyState icon="lock-closed-outline" message="기도제목은 로그인한 성도만 볼 수 있습니다." />
+          <Button label="로그인하기" icon="log-in-outline" onPress={() => router.push('/sign-in')} />
+        </Card>
+      ) : requests.loading && !requests.data ? (
         <LoadingState />
       ) : requests.error ? (
         <ErrorState message={requests.error} onRetry={reload} />
