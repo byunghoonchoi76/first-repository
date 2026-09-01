@@ -28,7 +28,7 @@ export default function GroupRoomScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const groupId = String(id);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const needsSignIn = dataMode === 'supabase' && !user;
 
   const [group, setGroup] = useState<SmallGroup | null>(null);
@@ -117,7 +117,21 @@ export default function GroupRoomScreen() {
       style={[styles.fill, { backgroundColor: theme.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}>
-      <Stack.Screen options={{ title: group?.name ?? '소그룹' }} />
+      <Stack.Screen
+        options={{
+          title: group?.name ?? '소그룹',
+          headerRight: isAdmin
+            ? () => (
+                <Pressable
+                  onPress={() => router.push(`/admin/group/${groupId}`)}
+                  hitSlop={8}
+                  style={styles.headerButton}>
+                  <Ionicons name="create-outline" size={20} color={theme.text} />
+                </Pressable>
+              )
+            : undefined,
+        }}
+      />
 
       {group ? (
         <View style={[styles.roomHeader, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -241,4 +255,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   sendButton: { width: 42, height: 42, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
+  headerButton: { marginRight: Spacing.three },
 });

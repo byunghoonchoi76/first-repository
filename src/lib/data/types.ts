@@ -124,6 +124,8 @@ export interface SmallGroup {
   memberCount: number;
 }
 
+export type SmallGroupInput = Omit<SmallGroup, 'id'>;
+
 export interface GroupMessage {
   id: string;
   groupId: string;
@@ -174,6 +176,9 @@ export interface ChurchRepository {
 
   listGroups(): Promise<SmallGroup[]>;
   getGroup(id: string): Promise<SmallGroup | null>;
+  createGroup(input: SmallGroupInput): Promise<SmallGroup>;
+  updateGroup(id: string, input: SmallGroupInput): Promise<SmallGroup>;
+  deleteGroup(id: string): Promise<void>;
   listGroupMessages(groupId: string): Promise<GroupMessage[]>;
   sendGroupMessage(groupId: string, author: string, body: string): Promise<GroupMessage>;
 }

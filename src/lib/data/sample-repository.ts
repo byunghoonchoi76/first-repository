@@ -20,6 +20,8 @@ import type {
   PrayerRequestInput,
   Sermon,
   SermonInput,
+  SmallGroup,
+  SmallGroupInput,
 } from '@/lib/data/types';
 
 /**
@@ -41,7 +43,7 @@ interface SampleDb {
   bulletins: Bulletin[];
   sermons: Sermon[];
   prayers: PrayerRequest[];
-  groups: typeof sampleGroups;
+  groups: SmallGroup[];
   messages: GroupMessage[];
 }
 
@@ -290,6 +292,35 @@ export const sampleRepository: ChurchRepository = {
     await ready();
     await delay(80);
     return clone(db.groups.find((g) => g.id === id) ?? null);
+  },
+
+  async createGroup(input: SmallGroupInput) {
+    await ready();
+    await delay();
+    const created: SmallGroup = { ...input, id: newId('group') };
+    db.groups = [...db.groups, created];
+    await persist();
+    return clone(created);
+  },
+
+  async updateGroup(id, input) {
+    await ready();
+    await delay();
+    const index = db.groups.findIndex((g) => g.id === id);
+    if (index < 0) throw new Error('소그룹을 찾을 수 없습니다.');
+    const updated: SmallGroup = { ...input, id };
+    db.groups[index] = updated;
+    await persist();
+    return clone(updated);
+  },
+
+  async deleteGroup(id) {
+    await ready();
+    await delay();
+    db.groups = db.groups.filter((g) => g.id !== id);
+    // 소그룹을 지우면 그 방의 대화도 함께 지웁니다.
+    db.messages = db.messages.filter((m) => m.groupId !== id);
+    await persist();
   },
 
   async listGroupMessages(groupId) {

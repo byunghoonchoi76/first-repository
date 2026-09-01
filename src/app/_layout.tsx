@@ -60,6 +60,7 @@ export default function RootLayout() {
             <Stack.Screen name="sign-in" options={{ title: '로그인', presentation: 'modal' }} />
             <Stack.Screen name="admin/index" options={{ title: '관리자' }} />
             <Stack.Screen name="admin/bulletin/[id]" options={{ title: '주보 등록' }} />
+            <Stack.Screen name="admin/group/[id]" options={{ title: '소그룹 등록' }} />
             <Stack.Screen name="admin/announcement/[id]" options={{ title: '공지 작성' }} />
             <Stack.Screen name="admin/sermon/[id]" options={{ title: '설교 등록' }} />
           </Stack>

@@ -14,14 +14,16 @@ export default function AdminHomeScreen() {
   const router = useRouter();
   const { isAdmin } = useAuth();
   const bulletins = useAsyncData(() => repository.listBulletins());
+  const groups = useAsyncData(() => repository.listGroups());
   const announcements = useAsyncData(() => repository.listAnnouncements());
   const sermons = useAsyncData(() => repository.listSermons());
 
   const reloadAll = useCallback(() => {
     bulletins.reload();
+    groups.reload();
     announcements.reload();
     sermons.reload();
-  }, [bulletins, announcements, sermons]);
+  }, [bulletins, groups, announcements, sermons]);
 
   useFocusEffect(
     useCallback(() => {
@@ -86,6 +88,24 @@ export default function AdminHomeScreen() {
           ))}
           {(announcements.data ?? []).length === 0 ? (
             <EmptyState icon="document-text-outline" message="등록된 공지가 없습니다." />
+          ) : null}
+        </Card>
+      </View>
+
+      <View>
+        <SectionHeader title="소그룹" actionLabel="새로 등록" onAction={() => router.push('/admin/group/new')} />
+        <Card>
+          {(groups.data ?? []).map((item) => (
+            <ListRow
+              key={item.id}
+              icon="people-outline"
+              title={item.name}
+              subtitle={`${item.leader} · ${item.meetingInfo}`}
+              onPress={() => router.push(`/admin/group/${item.id}`)}
+            />
+          ))}
+          {(groups.data ?? []).length === 0 ? (
+            <EmptyState icon="people-outline" message="등록된 소그룹이 없습니다." />
           ) : null}
         </Card>
       </View>

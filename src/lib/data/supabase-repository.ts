@@ -13,6 +13,7 @@ import type {
   Sermon,
   SermonInput,
   SmallGroup,
+  SmallGroupInput,
 } from '@/lib/data/types';
 
 /**
@@ -122,6 +123,14 @@ const toGroup = (row: Row): SmallGroup => ({
   meetingInfo: row.meeting_info,
   description: row.description ?? '',
   memberCount: row.member_count ?? 0,
+});
+
+const fromGroup = (input: SmallGroupInput) => ({
+  name: input.name,
+  leader: input.leader,
+  meeting_info: input.meetingInfo,
+  description: input.description,
+  member_count: input.memberCount,
 });
 
 const toMessage = (row: Row): GroupMessage => ({
@@ -333,6 +342,25 @@ export const supabaseRepository: ChurchRepository = {
     const res = await sb.from('small_groups').select('*').eq('id', id).maybeSingle();
     if (res.error) throw new Error(res.error.message);
     return res.data ? toGroup(res.data) : null;
+  },
+
+  async createGroup(input) {
+    const sb = requireSupabase();
+    const res = await sb.from('small_groups').insert(fromGroup(input)).select().single();
+    return toGroup(unwrap(res));
+  },
+
+  async updateGroup(id, input) {
+    const sb = requireSupabase();
+    const res = await sb.from('small_groups').update(fromGroup(input)).eq('id', id).select().single();
+    return toGroup(unwrap(res));
+  },
+
+  async deleteGroup(id) {
+    const sb = requireSupabase();
+    // group_messages 는 on delete cascade 로 함께 지워집니다.
+    const { error } = await sb.from('small_groups').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 
   async listGroupMessages(groupId) {
