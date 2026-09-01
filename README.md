@@ -72,7 +72,9 @@ npm run android    # Android 에뮬레이터
    그러지 않으면 가입 확인 메일의 링크가 엉뚱한 주소로 연결됩니다.
    확인 메일 절차를 건너뛰려면 **Authentication → Providers → Email** 에서 Confirm email 을 끄면 됩니다.
 
-5. **관리자 지정** — 앱에서 이메일로 회원가입한 뒤, SQL Editor 에서 실행합니다.
+5. **관리자 지정** — `supabase/create-admin.sql` 을 참고하세요.
+   가장 간단한 방법은 대시보드 **Authentication → Users → Add user** 로 계정을 만들고
+   ("Auto Confirm User" 를 켜면 확인 메일이 필요 없습니다), SQL Editor 에서 아래를 실행하는 것입니다.
 
    ```sql
    update public.profiles set role = 'admin'
@@ -189,7 +191,8 @@ src/
    └─ data/                 도메인 타입 + 샘플/Supabase 저장소
 supabase/
 ├─ schema.sql               테이블 · RLS 정책 · 트리거
-└─ seed.sql                 예시 데이터
+├─ seed.sql                 예시 데이터
+└─ create-admin.sql         관리자 계정 만들기 · 지정 · 삭제
 ```
 
 화면 코드는 `ChurchRepository` 인터페이스만 사용합니다. 샘플 저장소와 Supabase 저장소가
