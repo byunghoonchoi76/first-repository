@@ -63,12 +63,26 @@ $$;
 -- ─────────────────────────────────────────────
 -- [2단계] 이미 가입한 계정을 관리자로 지정
 -- 이메일만 바꿔서 실행하세요. (방법 1·2 모두 이 단계로 마무리합니다)
+--
+-- 프로필이 아직 없으면 만들고, 있으면 관리자로 바꿉니다.
+-- 마지막 returning 덕분에 결과 행이 보이므로 성공 여부를 눈으로 확인할 수 있습니다.
+--   → 행이 1건 나오면 성공
+--   → 'No rows' 면 그 이메일의 계정이 없는 것입니다 (오타이거나 아직 가입 전)
 -- ─────────────────────────────────────────────
-update public.profiles
-set role = 'admin'
-where id = (select id from auth.users where email = 'admin@example.com');
+insert into public.profiles (id, name, role)
+select id, coalesce(raw_user_meta_data ->> 'name', split_part(email, '@', 1)), 'admin'
+from auth.users
+where email = 'admin@example.com'
+on conflict (id) do update set role = 'admin'
+returning id, name, role;
 
--- 확인용: admin 으로 지정된 계정 목록
+-- 확인용 1: 가입된 계정과 권한을 모두 봅니다
+select u.email, p.name, p.role, u.email_confirmed_at is not null as 메일확인됨
+from auth.users u
+left join public.profiles p on p.id = u.id
+order by u.created_at desc;
+
+-- 확인용 2: 관리자만 보기
 select u.email, p.name, p.role
 from public.profiles p
 join auth.users u on u.id = p.id
