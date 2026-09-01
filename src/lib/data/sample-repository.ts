@@ -151,10 +151,8 @@ export const sampleRepository: ChurchRepository = {
   async listAnnouncements() {
     await ready();
     await delay();
-    return clone(db.announcements).sort((a, b) => {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      return byDateDesc(a.publishedAt, b.publishedAt);
-    });
+    // 최신 소식이 항상 맨 위에 오도록 발행일 기준 내림차순으로만 정렬합니다.
+    return clone(db.announcements).sort((a, b) => byDateDesc(a.publishedAt, b.publishedAt));
   },
 
   async getAnnouncement(id) {

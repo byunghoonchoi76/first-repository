@@ -11,6 +11,16 @@ import { repository, type SermonMedia } from '@/lib/data';
 import { toDateKey } from '@/lib/format';
 import { fetchYouTubeTitle, parseYouTubeUrl } from '@/lib/youtube';
 
+/** 자주 쓰는 설교 시리즈. 탭 한 번으로 채워지고, 직접 입력도 됩니다. */
+const SERIES_PRESETS = [
+  '주일예배',
+  '주일 4부예배',
+  '주일 찬양예배',
+  '수요부흥예배',
+  '금요성령집회',
+  '새벽예배',
+];
+
 const MEDIA_OPTIONS: { value: SermonMedia; label: string }[] = [
   { value: 'video', label: '영상' },
   { value: 'audio', label: '음성' },
@@ -165,7 +175,35 @@ export default function SermonEditorScreen() {
         <Field label="설교자" value={preacher} onChangeText={setPreacher} placeholder="예) 담임목사" />
         <Field label="본문" value={scripture} onChangeText={setScripture} placeholder="예) 마태복음 7:24-27" />
         <Field label="설교 날짜" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" hint="예) 2026-08-30" />
-        <Field label="시리즈 (선택)" value={series} onChangeText={setSeries} placeholder="예) 산상수훈" />
+        <View style={styles.field}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            시리즈 (선택)
+          </ThemedText>
+          <View style={styles.chipWrap}>
+            {SERIES_PRESETS.map((preset) => {
+              const active = preset === series.trim();
+              return (
+                <Pressable
+                  key={preset}
+                  onPress={() => setSeries(active ? '' : preset)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: active ? theme.primary : theme.backgroundElement,
+                      borderColor: active ? theme.primary : theme.border,
+                    },
+                  ]}>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: active ? theme.onPrimary : theme.textSecondary, fontWeight: '700' }}>
+                    {preset}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Field label="" value={series} onChangeText={setSeries} placeholder="직접 입력도 됩니다 (예) 산상수훈" />
+        </View>
         <Field
           label="재생 주소"
           value={mediaUrl}
@@ -209,6 +247,7 @@ const styles = StyleSheet.create({
   form: { gap: Spacing.three },
   field: { gap: Spacing.one },
   chipRow: { flexDirection: 'row', gap: Spacing.two },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one + 2,

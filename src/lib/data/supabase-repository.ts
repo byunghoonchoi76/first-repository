@@ -221,10 +221,10 @@ export const supabaseRepository: ChurchRepository = {
 
   async listAnnouncements() {
     const sb = requireSupabase();
+    // 최신 소식이 항상 맨 위에 오도록 발행일 기준 내림차순으로 정렬합니다.
     const res = await sb
       .from('announcements')
       .select('*')
-      .order('pinned', { ascending: false })
       .order('published_at', { ascending: false });
     return unwrap(res).map(toAnnouncement);
   },
