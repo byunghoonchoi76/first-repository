@@ -1,8 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
+import { ServiceTimesCompact } from '@/components/service-times';
 import { ThemedText } from '@/components/themed-text';
-import { Card, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
+import { Card, ErrorState, LoadingState, SectionHeader } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { repository, useAsyncData, type ServiceCategory } from '@/lib/data';
@@ -46,18 +47,7 @@ export default function ServicesScreen() {
             <ThemedText type="caption" themeColor="textSecondary" style={styles.caption}>
               {group.caption}
             </ThemedText>
-            <Card>
-              {items.map((service, index) => (
-                <View key={service.id}>
-                  {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
-                  <ListRow
-                    icon="time-outline"
-                    title={service.name}
-                    subtitle={`${service.schedule} · ${service.place}${service.note ? ` · ${service.note}` : ''}`}
-                  />
-                </View>
-              ))}
-            </Card>
+            <ServiceTimesCompact services={items} showPlace />
           </View>
         );
       })}

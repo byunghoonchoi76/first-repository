@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ChurchLogoWhite } from '@/components/church-logo';
 import { Screen } from '@/components/screen';
+import { ServiceTimesCompact } from '@/components/service-times';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
@@ -137,20 +138,9 @@ export default function HomeScreen() {
       {/* 예배 시간 안내 */}
       <View>
         <SectionHeader title="예배 시간 안내" actionLabel="전체 보기" onAction={() => router.push('/services')} />
-        <Card>
-          {(profile.data?.serviceTimes ?? [])
-            .filter((service) => service.category === '예배')
-            .map((service, index) => (
-              <View key={service.id}>
-                {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
-                <ListRow
-                  icon="time-outline"
-                  title={service.name}
-                  subtitle={`${service.schedule} · ${service.place}${service.note ? ` · ${service.note}` : ''}`}
-                />
-              </View>
-            ))}
-        </Card>
+        <ServiceTimesCompact
+          services={(profile.data?.serviceTimes ?? []).filter((service) => service.category === '예배')}
+        />
       </View>
 
       {/* 최근 소식 */}
