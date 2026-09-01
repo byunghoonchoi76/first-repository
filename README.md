@@ -8,7 +8,7 @@
 | 화면 | 내용 |
 | --- | --- |
 | 홈 | 이번 주 말씀, 빠른 메뉴, 이번 주 예배, 나의 기도 요약, 예배 시간 안내, 최근 소식·설교 |
-| 주보 | 예배 순서·광고와 함께, 홈페이지에 올린 주보 원본 이미지(JPG/PNG·PDF)를 그대로 보기 |
+| 주보 | 예배 순서·광고와 함께 주보 원본 이미지 보기. 관리자는 휴대폰에서 사진을 바로 올릴 수 있습니다 |
 | 소식 | 공지 / 행사 / 소식 분류, 상단 고정, 상세 보기 |
 | 설교 | 시리즈·쇼츠별 목록(유튜브 썸네일·제목 자동), 상세에서 앱 안 바로 재생 (쇼츠는 세로 화면) |
 | 기도 | 기도 타이머와 빠른 기록, 연속 일수·최근 7일 그래프, 기도제목 나눔(익명 가능)과 &lsquo;함께 기도&rsquo; |
@@ -67,7 +67,11 @@ npm run android    # Android 에뮬레이터
    > `.env` 를 만들거나 고친 뒤 빌드할 때는 캐시를 지워야 값이 반영됩니다.
    > `npx expo export --platform web --clear`
 
-6. **로그인 주소 설정** — Supabase 대시보드 **Authentication → URL Configuration** 에서
+6. **주보 사진 저장소** — 관리자가 앱에서 주보 사진을 바로 올리려면
+   `supabase/storage.sql` 을 SQL Editor 에서 실행합니다.
+   `bulletins` 버킷(공개 읽기)을 만들고, 올리고 지우는 것은 관리자만 가능하도록 정책을 겁니다.
+
+7. **로그인 주소 설정** — Supabase 대시보드 **Authentication → URL Configuration** 에서
    Site URL 을 앱 주소(예: `https://<계정>.github.io/first-repository/`)로 지정합니다.
    그러지 않으면 가입 확인 메일의 링크가 엉뚱한 주소로 연결됩니다.
    확인 메일 절차를 건너뛰려면 **Authentication → Providers → Email** 에서 Confirm email 을 끄면 됩니다.
@@ -192,6 +196,7 @@ src/
 supabase/
 ├─ schema.sql               테이블 · RLS 정책 · 트리거
 ├─ seed.sql                 예시 데이터
+├─ storage.sql              주보 사진 저장소(버킷 · 권한)
 └─ create-admin.sql         관리자 계정 만들기 · 지정 · 삭제
 ```
 

@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Field, LoadingState } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { repository, type BulletinOrderItem } from '@/lib/data';
+import { dataMode, repository, type BulletinOrderItem } from '@/lib/data';
 import { toDateKey } from '@/lib/format';
+import { deleteBulletinImage, uploadBulletinImage } from '@/lib/storage';
 
 /** 새 주보를 만들 때 기본으로 깔아 두는 예배 순서 */
 const DEFAULT_ORDER: BulletinOrderItem[] = [
@@ -35,7 +37,9 @@ export default function BulletinEditorScreen() {
   const [preacher, setPreacher] = useState('');
   const [scripture, setScripture] = useState('');
   const [weeklyVerse, setWeeklyVerse] = useState('');
-  const [imageUrls, setImageUrls] = useState<string[]>(['']);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [urlInput, setUrlInput] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [order, setOrder] = useState<BulletinOrderItem[]>(DEFAULT_ORDER);
   const [notices, setNotices] = useState<string[]>(['']);
   const [loading, setLoading] = useState(!isNew);
@@ -55,7 +59,7 @@ export default function BulletinEditorScreen() {
         setPreacher(found.preacher);
         setScripture(found.scripture);
         setWeeklyVerse(found.weeklyVerse);
-        setImageUrls(found.imageUrls.length > 0 ? found.imageUrls : ['']);
+        setImageUrls(found.imageUrls);
         setOrder(found.order.length > 0 ? found.order : DEFAULT_ORDER);
         setNotices(found.notices.length > 0 ? found.notices : ['']);
       })
@@ -68,6 +72,59 @@ export default function BulletinEditorScreen() {
 
   const updateOrder = (index: number, patch: Partial<BulletinOrderItem>) =>
     setOrder((current) => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+
+  /** 갤러리에서 주보 사진을 골라 저장소에 올립니다. 여러 장을 한 번에 고를 수 있습니다. */
+  const pickAndUpload = async () => {
+    setError(undefined);
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setError('사진 접근을 허용해 주셔야 주보를 올릴 수 있습니다.');
+      return;
+    }
+
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 0.85,
+      // 앱에서는 base64 로 읽어 저장소에 올립니다.
+      base64: Platform.OS !== 'web',
+    });
+    if (picked.canceled) return;
+
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const asset of picked.assets) {
+        uploaded.push(
+          await uploadBulletinImage({
+            uri: asset.uri,
+            base64: asset.base64,
+            mimeType: asset.mimeType,
+            fileName: asset.fileName ?? undefined,
+          }),
+        );
+      }
+      setImageUrls((current) => [...current, ...uploaded]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '사진을 올리지 못했습니다.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (url: string) => {
+    setImageUrls((current) => current.filter((item) => item !== url));
+    // 저장소에 올려 둔 파일이면 함께 정리합니다.
+    void deleteBulletinImage(url);
+  };
+
+  const addUrl = () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) return;
+    setImageUrls((current) => [...current, trimmed]);
+    setUrlInput('');
+  };
 
   const save = async () => {
     if (!sermonTitle.trim()) {
@@ -89,7 +146,7 @@ export default function BulletinEditorScreen() {
         preacher: preacher.trim(),
         scripture: scripture.trim(),
         weeklyVerse: weeklyVerse.trim(),
-        imageUrls: imageUrls.map((url) => url.trim()).filter(Boolean),
+        imageUrls,
         // 비어 있는 줄은 저장하지 않습니다.
         order: order.filter((line) => line.title.trim() || line.detail.trim()),
         notices: notices.map((n) => n.trim()).filter(Boolean),
@@ -146,36 +203,56 @@ export default function BulletinEditorScreen() {
           주보 원본 (선택)
         </ThemedText>
         <Card>
-          {imageUrls.map((url, index) => (
-            <View key={index} style={styles.orderRow}>
-              <View style={styles.orderFields}>
-                <Field
-                  label={`이미지 ${index + 1}`}
-                  value={url}
-                  onChangeText={(text) =>
-                    setImageUrls((current) => current.map((u, i) => (i === index ? text : u)))
-                  }
-                  placeholder="https://www.mych.or.kr/... .jpg"
-                  autoCapitalize="none"
-                />
-              </View>
-              <Pressable
-                onPress={() => setImageUrls((current) => current.filter((_, i) => i !== index))}
-                hitSlop={8}
-                style={styles.removeButton}>
-                <Ionicons name="close-circle-outline" size={20} color={theme.danger} />
-              </Pressable>
+          {imageUrls.length > 0 ? (
+            <View style={styles.thumbRow}>
+              {imageUrls.map((url, index) => (
+                <View key={url} style={styles.thumbBox}>
+                  <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
+                  <Pressable onPress={() => removeImage(url)} hitSlop={8} style={styles.thumbRemove}>
+                    <Ionicons name="close-circle" size={22} color={theme.danger} />
+                  </Pressable>
+                  <ThemedText type="caption" themeColor="textMuted" style={styles.thumbLabel}>
+                    {index + 1}번째
+                  </ThemedText>
+                </View>
+              ))}
             </View>
-          ))}
+          ) : (
+            <ThemedText type="small" themeColor="textMuted">
+              아직 올린 주보 사진이 없습니다.
+            </ThemedText>
+          )}
+
           <Button
-            label="이미지 추가"
-            icon="add"
-            variant="ghost"
-            onPress={() => setImageUrls((current) => [...current, ''])}
+            label={uploading ? '올리는 중…' : '사진 올리기'}
+            icon="image-outline"
+            loading={uploading}
+            onPress={() => void pickAndUpload()}
           />
+
           <ThemedText type="caption" themeColor="textMuted">
-            홈페이지에 올린 주보 이미지(JPG/PNG) 주소를 앞면·뒷면 순서대로 넣어 주세요. PDF 주소도 됩니다.
+            {dataMode === 'supabase'
+              ? '앞면·뒷면 순서대로 고르시면 됩니다. 여러 장을 한 번에 고를 수 있습니다.'
+              : '샘플 모드에서는 사진이 이 기기에만 남습니다. Supabase 를 연결하면 모든 성도에게 보입니다.'}
           </ThemedText>
+
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+          <ThemedText type="caption" themeColor="textSecondary">
+            홈페이지에 이미 올린 주보라면 주소를 붙여넣어도 됩니다.
+          </ThemedText>
+          <View style={styles.urlRow}>
+            <View style={styles.flex}>
+              <Field
+                label=""
+                value={urlInput}
+                onChangeText={setUrlInput}
+                placeholder="https://www.mych.or.kr/... .jpg"
+                autoCapitalize="none"
+              />
+            </View>
+            <Button label="추가" variant="ghost" onPress={addUrl} style={styles.addUrlButton} />
+          </View>
         </Card>
       </View>
 
@@ -269,7 +346,16 @@ export default function BulletinEditorScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   form: { gap: Spacing.three },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
+  thumbRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  thumbBox: { width: 96 },
+  thumb: { width: 96, height: 72, borderRadius: Radius.small },
+  thumbRemove: { position: 'absolute', top: -6, right: -6 },
+  thumbLabel: { textAlign: 'center', marginTop: 2 },
+  urlRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
+  addUrlButton: { marginBottom: 0 },
   sectionTitle: { marginBottom: Spacing.two },
   orderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
   orderFields: { flex: 1, gap: Spacing.two, paddingBottom: Spacing.two },
