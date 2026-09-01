@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -40,6 +40,8 @@ export default function BulletinEditorScreen() {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const [uploading, setUploading] = useState(false);
+  // 같은 날짜의 주보가 이미 있을 때, 한 번 더 누르면 그대로 등록되도록 하는 표시
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
   const [order, setOrder] = useState<BulletinOrderItem[]>(DEFAULT_ORDER);
   const [notices, setNotices] = useState<string[]>(['']);
   const [loading, setLoading] = useState(!isNew);
@@ -113,6 +115,30 @@ export default function BulletinEditorScreen() {
     }
   };
 
+  const confirmDelete = () => {
+    const remove = async () => {
+      try {
+        // 주보에 딸린 사진도 저장소에서 함께 정리합니다.
+        await Promise.all(imageUrls.map((url) => deleteBulletinImage(url)));
+        await repository.deleteBulletin(String(id));
+        router.back();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '삭제하지 못했습니다.');
+      }
+    };
+
+    const message = '이 주보와 올린 사진이 모두 사라집니다. 삭제할까요?';
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line no-alert
+      if (window.confirm(message)) void remove();
+      return;
+    }
+    Alert.alert('주보 삭제', message, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => void remove() },
+    ]);
+  };
+
   const removeImage = (url: string) => {
     setImageUrls((current) => current.filter((item) => item !== url));
     // 저장소에 올려 둔 파일이면 함께 정리합니다.
@@ -134,6 +160,18 @@ export default function BulletinEditorScreen() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) {
       setError('예배 날짜는 YYYY-MM-DD 형식으로 입력해 주세요.');
       return;
+    }
+
+    // 실수로 같은 날짜의 주보를 두 번 등록하는 일을 막아 줍니다.
+    if (isNew && !duplicateConfirmed) {
+      const existing = await repository.listBulletins();
+      if (existing.some((b) => b.serviceDate === serviceDate)) {
+        setDuplicateConfirmed(true);
+        setError(
+          `${serviceDate} 주보가 이미 있습니다. 기존 주보를 수정하시는 편이 좋습니다. 그래도 새로 만들려면 한 번 더 눌러 주세요.`,
+        );
+        return;
+      }
     }
 
     setSaving(true);
@@ -336,11 +374,15 @@ export default function BulletinEditorScreen() {
       ) : null}
 
       <Button
-        label={isNew ? '주보 등록하기' : '수정 완료'}
+        label={isNew ? (duplicateConfirmed ? '그대로 등록하기' : '주보 등록하기') : '수정 완료'}
         icon="save-outline"
         loading={saving}
         onPress={() => void save()}
       />
+
+      {!isNew ? (
+        <Button label="주보 삭제" icon="trash-outline" variant="danger" onPress={confirmDelete} />
+      ) : null}
     </Screen>
   );
 }

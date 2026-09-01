@@ -84,7 +84,7 @@ export default function HomeScreen() {
 
       {/* 빠른 메뉴 */}
       <View style={styles.quickRow}>
-        <QuickAction icon="book-outline" label="주보" onPress={() => bulletin.data && router.push(`/bulletin/${bulletin.data.id}`)} />
+        <QuickAction icon="book-outline" label="주보" onPress={() => router.push('/bulletins')} />
         <QuickAction icon="play-circle-outline" label="설교" onPress={() => router.push('/sermons')} />
         <QuickAction icon="flower-outline" label="기도" onPress={() => router.push('/prayer')} />
         <QuickAction icon="people-outline" label="소그룹" onPress={() => router.push('/groups')} />
@@ -95,7 +95,7 @@ export default function HomeScreen() {
         <View>
           <SectionHeader
             title="이번 주 예배"
-            actionLabel="주보 전체보기"
+            actionLabel="주보 보기"
             onAction={() => router.push(`/bulletin/${bulletin.data!.id}`)}
           />
           <Card onPress={() => router.push(`/bulletin/${bulletin.data!.id}`)}>

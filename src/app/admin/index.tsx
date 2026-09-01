@@ -54,6 +54,9 @@ export default function AdminHomeScreen() {
 
       <View>
         <SectionHeader title="주보" actionLabel="새로 등록" onAction={() => router.push('/admin/bulletin/new')} />
+        <ThemedText type="caption" themeColor="textMuted" style={{ marginBottom: 8 }}>
+          지난 주보를 모두 보려면 홈 화면의 주보 메뉴를 눌러 주세요.
+        </ThemedText>
         <Card>
           {(bulletins.data ?? []).slice(0, 6).map((item) => (
             <ListRow
