@@ -36,6 +36,19 @@ function splitSchedule(schedule: string): { day: string; time: string } {
   return { day: '그 외', time: trimmed };
 }
 
+/** '오전 9:30' · '오후 2:00' 을 자정부터의 분으로 바꿉니다. 형식이 다르면 null. */
+function parseTimeToMinutes(time: string): number | null {
+  const match = time.match(/(오전|오후)?\s*(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+
+  const [, meridiem, rawHour, rawMinute] = match;
+  let hour = Number(rawHour);
+  if (meridiem === '오후' && hour < 12) hour += 12;
+  if (meridiem === '오전' && hour === 12) hour = 0;
+
+  return hour * 60 + Number(rawMinute);
+}
+
 interface DayGroup {
   day: string;
   items: { id: string; time: string; name: string; place: string; note?: string }[];
@@ -57,6 +70,20 @@ function groupByDay(services: ServiceTime[]): DayGroup[] {
     if (found) found.items.push(item);
     else groups.push({ day, items: [item] });
   }
+
+  // 같은 요일 안에서는 이른 시간부터 보여 줍니다.
+  // 시간을 읽지 못한 항목은 원래 순서를 지키며 뒤로 보냅니다.
+  for (const group of groups) {
+    group.items.sort((a, b) => {
+      const left = parseTimeToMinutes(a.time);
+      const right = parseTimeToMinutes(b.time);
+      if (left === null && right === null) return 0;
+      if (left === null) return 1;
+      if (right === null) return -1;
+      return left - right;
+    });
+  }
+
   return groups;
 }
 
