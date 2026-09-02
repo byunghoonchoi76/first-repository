@@ -51,6 +51,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerBackTitle: '뒤로' }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="services" options={{ title: '예배 안내' }} />
+            <Stack.Screen name="giving" options={{ title: '헌금 안내' }} />
             <Stack.Screen name="bulletins" options={{ title: '주보' }} />
             <Stack.Screen name="bulletin/[id]" options={{ title: '주보' }} />
             <Stack.Screen name="news/[id]" options={{ title: '공지사항' }} />

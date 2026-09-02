@@ -36,6 +36,8 @@ export interface ChurchProfile {
   offeringAccount: string;
   /** 설교 영상 채널 (비어 있으면 화면에 표시하지 않습니다) */
   youtubeUrl: string;
+  /** 온라인 헌금 주소 (체리 페이지·카카오페이 송금 링크 등). 있으면 헌금 화면에 버튼이 생깁니다. */
+  givingUrl: string;
   serviceTimes: ServiceTime[];
 }
 

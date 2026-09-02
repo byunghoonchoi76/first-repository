@@ -88,6 +88,7 @@ export default function HomeScreen() {
         <QuickAction icon="play-circle-outline" label="설교" onPress={() => router.push('/sermons')} />
         <QuickAction icon="flower-outline" label="기도" onPress={() => router.push('/prayer')} />
         <QuickAction icon="people-outline" label="소그룹" onPress={() => router.push('/groups')} />
+        <QuickAction icon="card-outline" label="헌금" onPress={() => router.push('/giving')} />
       </View>
 
       {/* 이번 주 예배 */}

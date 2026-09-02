@@ -93,7 +93,12 @@ export default function SettingsScreen() {
             />
           ) : null}
           {church?.offeringAccount ? (
-            <ListRow icon="card-outline" title="헌금 계좌" subtitle={church.offeringAccount} />
+            <ListRow
+              icon="card-outline"
+              title="헌금 안내"
+              subtitle={church.offeringAccount}
+              onPress={() => router.push('/giving')}
+            />
           ) : null}
           {church?.youtubeUrl ? (
             <ListRow

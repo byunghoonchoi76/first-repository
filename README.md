@@ -178,6 +178,7 @@ src/
 │  ├─ (tabs)/               홈 · 소식 · 설교 · 기도 · 소그룹 탭
 │  ├─ services.tsx          예배 안내 (예배 · 교육부서)
 │  ├─ bulletins.tsx         주보 목록 (지난 주보 포함)
+│  ├─ giving.tsx            헌금 안내 (계좌 복사 · 온라인 헌금 링크)
 │  ├─ admin/                관리자 화면 (주보·공지·설교·소그룹 편집)
 │  ├─ bulletin/[id].tsx     주보 상세
 │  ├─ news/[id].tsx         공지 상세

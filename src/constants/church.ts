@@ -14,4 +14,6 @@ export const ChurchInfo = {
   email: 'stewardk@hanmail.net',
   offeringAccount: '농협 382-01-017978',
   youtubeUrl: 'https://www.youtube.com/@mychmedia',
+  // 온라인 헌금 주소(체리·카카오페이 송금 링크 등)를 넣으면 헌금 화면에 버튼이 생깁니다.
+  givingUrl: '',
 } as const;
