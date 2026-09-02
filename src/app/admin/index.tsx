@@ -15,15 +15,17 @@ export default function AdminHomeScreen() {
   const { isAdmin } = useAuth();
   const bulletins = useAsyncData(() => repository.listBulletins());
   const groups = useAsyncData(() => repository.listGroups());
+  const staff = useAsyncData(() => repository.listStaff());
   const announcements = useAsyncData(() => repository.listAnnouncements());
   const sermons = useAsyncData(() => repository.listSermons());
 
   const reloadAll = useCallback(() => {
     bulletins.reload();
     groups.reload();
+    staff.reload();
     announcements.reload();
     sermons.reload();
-  }, [bulletins, groups, announcements, sermons]);
+  }, [bulletins, groups, staff, announcements, sermons]);
 
   useFocusEffect(
     useCallback(() => {
@@ -91,6 +93,24 @@ export default function AdminHomeScreen() {
           ))}
           {(announcements.data ?? []).length === 0 ? (
             <EmptyState icon="document-text-outline" message="등록된 공지가 없습니다." />
+          ) : null}
+        </Card>
+      </View>
+
+      <View>
+        <SectionHeader title="섬기는 사람들" actionLabel="새로 등록" onAction={() => router.push('/admin/staff/new')} />
+        <Card>
+          {(staff.data ?? []).map((item) => (
+            <ListRow
+              key={item.id}
+              icon="person-outline"
+              title={`${item.name} · ${item.role}`}
+              subtitle={item.detail || undefined}
+              onPress={() => router.push(`/admin/staff/${item.id}`)}
+            />
+          ))}
+          {(staff.data ?? []).length === 0 ? (
+            <EmptyState icon="people-outline" message="등록된 정보가 없습니다." />
           ) : null}
         </Card>
       </View>

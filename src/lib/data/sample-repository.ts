@@ -8,6 +8,7 @@ import {
   sampleGroups,
   samplePrayerRequests,
   sampleSermons,
+  sampleStaff,
 } from '@/lib/data/sample-data';
 import type {
   Announcement,
@@ -22,6 +23,8 @@ import type {
   SermonInput,
   SmallGroup,
   SmallGroupInput,
+  StaffMember,
+  StaffInput,
 } from '@/lib/data/types';
 
 /**
@@ -36,13 +39,14 @@ const STORAGE_KEY = 'church-app/sample-db';
  * 기기에 저장된 값이 이 버전과 다르면 새 샘플 데이터로 다시 시작합니다.
  * (그렇지 않으면 앱을 한 번 실행한 기기에는 예전 내용이 계속 남습니다.)
  */
-const SAMPLE_VERSION = '2026-09-01-b';
+const SAMPLE_VERSION = '2026-09-02-a';
 
 interface SampleDb {
   announcements: Announcement[];
   bulletins: Bulletin[];
   sermons: Sermon[];
   prayers: PrayerRequest[];
+  staff: StaffMember[];
   groups: SmallGroup[];
   messages: GroupMessage[];
 }
@@ -52,6 +56,7 @@ const initialDb = (): SampleDb => ({
   bulletins: [...sampleBulletins],
   sermons: [...sampleSermons],
   prayers: [...samplePrayerRequests],
+  staff: [...sampleStaff],
   groups: [...sampleGroups],
   messages: [...sampleGroupMessages],
 });
@@ -279,6 +284,45 @@ export const sampleRepository: ChurchRepository = {
     target.answered = answered;
     await persist();
     return clone(target);
+  },
+
+  async listStaff() {
+    await ready();
+    await delay(120);
+    return clone(db.staff).sort((a, b) => a.sortOrder - b.sortOrder);
+  },
+
+  async getStaff(id) {
+    await ready();
+    await delay(80);
+    return clone(db.staff.find((m) => m.id === id) ?? null);
+  },
+
+  async createStaff(input: StaffInput) {
+    await ready();
+    await delay();
+    const created: StaffMember = { ...input, id: newId('staff') };
+    db.staff = [...db.staff, created];
+    await persist();
+    return clone(created);
+  },
+
+  async updateStaff(id, input) {
+    await ready();
+    await delay();
+    const index = db.staff.findIndex((m) => m.id === id);
+    if (index < 0) throw new Error('섬기는 분을 찾을 수 없습니다.');
+    const updated: StaffMember = { ...input, id };
+    db.staff[index] = updated;
+    await persist();
+    return clone(updated);
+  },
+
+  async deleteStaff(id) {
+    await ready();
+    await delay();
+    db.staff = db.staff.filter((m) => m.id !== id);
+    await persist();
   },
 
   async listGroups() {

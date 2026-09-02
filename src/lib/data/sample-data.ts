@@ -11,6 +11,7 @@ import type {
   PrayerRequest,
   Sermon,
   SmallGroup,
+  StaffMember,
 } from '@/lib/data/types';
 
 /** 오늘 기준 상대 날짜를 만들어 샘플 데이터가 항상 '최근' 으로 보이게 합니다. */
@@ -316,6 +317,11 @@ export const samplePrayerRequests: PrayerRequest[] = [
     prayCount: 18,
     createdAt: dateTime(8),
   },
+];
+
+export const sampleStaff: StaffMember[] = [
+  { id: 'staff-1', name: '공진수', role: '담임목사', detail: '', sortOrder: 1 },
+  // 실제 교역자·직분자는 관리자 화면에서 추가·수정할 수 있습니다.
 ];
 
 export const sampleGroups: SmallGroup[] = [

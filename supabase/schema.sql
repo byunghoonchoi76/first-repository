@@ -151,6 +151,14 @@ $$;
 -- ─────────────────────────────────────────────
 -- 소그룹 · 소통방
 -- ─────────────────────────────────────────────
+create table if not exists public.church_staff (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  role text not null default '',
+  detail text not null default '',
+  sort_order smallint not null default 0
+);
+
 create table if not exists public.small_groups (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -181,6 +189,7 @@ alter table public.bulletins enable row level security;
 alter table public.announcements enable row level security;
 alter table public.sermons enable row level security;
 alter table public.prayer_requests enable row level security;
+alter table public.church_staff enable row level security;
 alter table public.small_groups enable row level security;
 alter table public.group_messages enable row level security;
 
@@ -202,7 +211,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['church_profile', 'service_times', 'bulletins', 'announcements', 'sermons', 'small_groups']
+  foreach t in array array['church_profile', 'service_times', 'bulletins', 'announcements', 'sermons', 'small_groups', 'church_staff']
   loop
     execute format('drop policy if exists "%s 공개 조회" on public.%I', t, t);
     execute format('create policy "%s 공개 조회" on public.%I for select using (true)', t, t);

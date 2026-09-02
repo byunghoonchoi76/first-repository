@@ -12,6 +12,20 @@ export interface AppUser {
 /** 예배 안내 화면에서 묶어 보여 주는 분류 */
 export type ServiceCategory = '예배' | '교육부서';
 
+/** 섬기는 사람들 (교역자·직분자) */
+export interface StaffMember {
+  id: string;
+  /** 이름 */
+  name: string;
+  /** 직분·직책 (예: 담임목사, 부목사, 전도사, 장로) */
+  role: string;
+  /** 담당·부서 등 부가 설명 (선택) */
+  detail: string;
+  sortOrder: number;
+}
+
+export type StaffInput = Omit<StaffMember, 'id'>;
+
 export interface ServiceTime {
   id: string;
   /** 예) 주일예배 1부 */
@@ -179,6 +193,12 @@ export interface ChurchRepository {
   createPrayerRequest(input: PrayerRequestInput): Promise<PrayerRequest>;
   prayForRequest(id: string): Promise<PrayerRequest>;
   markPrayerAnswered(id: string, answered: boolean): Promise<PrayerRequest>;
+
+  listStaff(): Promise<StaffMember[]>;
+  getStaff(id: string): Promise<StaffMember | null>;
+  createStaff(input: StaffInput): Promise<StaffMember>;
+  updateStaff(id: string, input: StaffInput): Promise<StaffMember>;
+  deleteStaff(id: string): Promise<void>;
 
   listGroups(): Promise<SmallGroup[]>;
   getGroup(id: string): Promise<SmallGroup | null>;

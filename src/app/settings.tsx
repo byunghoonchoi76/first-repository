@@ -110,9 +110,21 @@ export default function SettingsScreen() {
           ) : null}
           <ListRow
             icon="time-outline"
-            title="예배 시간 안내"
+            title="예배 안내"
             subtitle="주일예배 · 새벽예배 · 교육부서"
             onPress={() => router.push('/services')}
+          />
+          <ListRow
+            icon="people-outline"
+            title="섬기는 사람들"
+            subtitle="교역자와 직분자 소개"
+            onPress={() => router.push('/staff')}
+          />
+          <ListRow
+            icon="location-outline"
+            title="교회 장소"
+            subtitle="찾아오시는 길"
+            onPress={() => router.push('/location')}
           />
         </Card>
       </View>

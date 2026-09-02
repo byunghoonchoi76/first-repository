@@ -14,6 +14,8 @@ import type {
   SermonInput,
   SmallGroup,
   SmallGroupInput,
+  StaffMember,
+  StaffInput,
 } from '@/lib/data/types';
 
 /**
@@ -124,6 +126,21 @@ const toGroup = (row: Row): SmallGroup => ({
   meetingInfo: row.meeting_info,
   description: row.description ?? '',
   memberCount: row.member_count ?? 0,
+});
+
+const toStaff = (row: Row): StaffMember => ({
+  id: row.id,
+  name: row.name,
+  role: row.role,
+  detail: row.detail ?? '',
+  sortOrder: row.sort_order ?? 0,
+});
+
+const fromStaff = (input: StaffInput) => ({
+  name: input.name,
+  role: input.role,
+  detail: input.detail,
+  sort_order: input.sortOrder,
 });
 
 const fromGroup = (input: SmallGroupInput) => ({
@@ -331,6 +348,37 @@ export const supabaseRepository: ChurchRepository = {
       .select()
       .single();
     return toPrayer(unwrap(res));
+  },
+
+  async listStaff() {
+    const sb = requireSupabase();
+    const res = await sb.from('church_staff').select('*').order('sort_order', { ascending: true });
+    return unwrap(res).map(toStaff);
+  },
+
+  async getStaff(id) {
+    const sb = requireSupabase();
+    const res = await sb.from('church_staff').select('*').eq('id', id).maybeSingle();
+    if (res.error) throw new Error(res.error.message);
+    return res.data ? toStaff(res.data) : null;
+  },
+
+  async createStaff(input) {
+    const sb = requireSupabase();
+    const res = await sb.from('church_staff').insert(fromStaff(input)).select().single();
+    return toStaff(unwrap(res));
+  },
+
+  async updateStaff(id, input) {
+    const sb = requireSupabase();
+    const res = await sb.from('church_staff').update(fromStaff(input)).eq('id', id).select().single();
+    return toStaff(unwrap(res));
+  },
+
+  async deleteStaff(id) {
+    const sb = requireSupabase();
+    const { error } = await sb.from('church_staff').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 
   async listGroups() {
