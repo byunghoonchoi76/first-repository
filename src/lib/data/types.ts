@@ -26,6 +26,22 @@ export interface StaffMember {
 
 export type StaffInput = Omit<StaffMember, 'id'>;
 
+/** 새가족 등록 신청 (방문하신 분이 직접 남기는 정보) */
+export interface NewFamily {
+  id: string;
+  name: string;
+  phone: string;
+  /** 선택 항목들 */
+  gender: string;
+  address: string;
+  /** 소개자·방문 경로 */
+  referrer: string;
+  note: string;
+  createdAt: string;
+}
+
+export type NewFamilyInput = Omit<NewFamily, 'id' | 'createdAt'>;
+
 export interface ServiceTime {
   id: string;
   /** 예) 주일예배 1부 */
@@ -193,6 +209,10 @@ export interface ChurchRepository {
   createPrayerRequest(input: PrayerRequestInput): Promise<PrayerRequest>;
   prayForRequest(id: string): Promise<PrayerRequest>;
   markPrayerAnswered(id: string, answered: boolean): Promise<PrayerRequest>;
+
+  createNewFamily(input: NewFamilyInput): Promise<NewFamily>;
+  listNewFamilies(): Promise<NewFamily[]>;
+  deleteNewFamily(id: string): Promise<void>;
 
   listStaff(): Promise<StaffMember[]>;
   getStaff(id: string): Promise<StaffMember | null>;

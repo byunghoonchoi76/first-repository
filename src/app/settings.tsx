@@ -126,6 +126,12 @@ export default function SettingsScreen() {
             subtitle="찾아오시는 길"
             onPress={() => router.push('/location')}
           />
+          <ListRow
+            icon="person-add-outline"
+            title="새가족 등록"
+            subtitle="처음 오신 분을 환영합니다"
+            onPress={() => router.push('/new-family')}
+          />
         </Card>
       </View>
 

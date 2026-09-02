@@ -98,6 +98,18 @@ export default function AdminHomeScreen() {
       </View>
 
       <View>
+        <SectionHeader title="새가족 등록 명단" actionLabel="전체 보기" onAction={() => router.push('/admin/new-families')} />
+        <Card>
+          <ListRow
+            icon="person-add-outline"
+            title="새가족 등록 신청 보기"
+            subtitle="방문하신 분들이 남긴 등록 신청을 확인합니다"
+            onPress={() => router.push('/admin/new-families')}
+          />
+        </Card>
+      </View>
+
+      <View>
         <SectionHeader title="섬기는 사람들" actionLabel="새로 등록" onAction={() => router.push('/admin/staff/new')} />
         <Card>
           {(staff.data ?? []).map((item) => (

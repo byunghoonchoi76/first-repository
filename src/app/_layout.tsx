@@ -54,6 +54,8 @@ export default function RootLayout() {
             <Stack.Screen name="staff" options={{ title: '섬기는 사람들' }} />
             <Stack.Screen name="location" options={{ title: '교회 장소' }} />
             <Stack.Screen name="giving" options={{ title: '헌금 안내' }} />
+            <Stack.Screen name="new-family" options={{ title: '새가족 등록' }} />
+            <Stack.Screen name="admin/new-families" options={{ title: '새가족 명단' }} />
             <Stack.Screen name="bulletins" options={{ title: '주보' }} />
             <Stack.Screen name="bulletin/[id]" options={{ title: '주보' }} />
             <Stack.Screen name="news/[id]" options={{ title: '공지사항' }} />

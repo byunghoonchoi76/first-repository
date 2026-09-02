@@ -16,6 +16,8 @@ import type {
   SmallGroupInput,
   StaffMember,
   StaffInput,
+  NewFamily,
+  NewFamilyInput,
 } from '@/lib/data/types';
 
 /**
@@ -126,6 +128,17 @@ const toGroup = (row: Row): SmallGroup => ({
   meetingInfo: row.meeting_info,
   description: row.description ?? '',
   memberCount: row.member_count ?? 0,
+});
+
+const toNewFamily = (row: Row): NewFamily => ({
+  id: row.id,
+  name: row.name,
+  phone: row.phone,
+  gender: row.gender ?? '',
+  address: row.address ?? '',
+  referrer: row.referrer ?? '',
+  note: row.note ?? '',
+  createdAt: row.created_at,
 });
 
 const toStaff = (row: Row): StaffMember => ({
@@ -348,6 +361,35 @@ export const supabaseRepository: ChurchRepository = {
       .select()
       .single();
     return toPrayer(unwrap(res));
+  },
+
+  async createNewFamily(input) {
+    const sb = requireSupabase();
+    const res = await sb
+      .from('new_families')
+      .insert({
+        name: input.name,
+        phone: input.phone,
+        gender: input.gender,
+        address: input.address,
+        referrer: input.referrer,
+        note: input.note,
+      })
+      .select()
+      .single();
+    return toNewFamily(unwrap(res));
+  },
+
+  async listNewFamilies() {
+    const sb = requireSupabase();
+    const res = await sb.from('new_families').select('*').order('created_at', { ascending: false });
+    return unwrap(res).map(toNewFamily);
+  },
+
+  async deleteNewFamily(id) {
+    const sb = requireSupabase();
+    const { error } = await sb.from('new_families').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 
   async listStaff() {

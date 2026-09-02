@@ -151,6 +151,17 @@ $$;
 -- ─────────────────────────────────────────────
 -- 소그룹 · 소통방
 -- ─────────────────────────────────────────────
+create table if not exists public.new_families (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  phone text not null default '',
+  gender text not null default '',
+  address text not null default '',
+  referrer text not null default '',
+  note text not null default '',
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.church_staff (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -189,6 +200,7 @@ alter table public.bulletins enable row level security;
 alter table public.announcements enable row level security;
 alter table public.sermons enable row level security;
 alter table public.prayer_requests enable row level security;
+alter table public.new_families enable row level security;
 alter table public.church_staff enable row level security;
 alter table public.small_groups enable row level security;
 alter table public.group_messages enable row level security;
@@ -252,6 +264,16 @@ create policy "소그룹 대화 작성" on public.group_messages
 drop policy if exists "소그룹 대화 삭제" on public.group_messages;
 create policy "소그룹 대화 삭제" on public.group_messages
   for delete using (auth.uid() = author_id or public.is_admin());
+
+-- 새가족 등록: 누구나 신청(insert)할 수 있고, 조회·삭제는 관리자만
+drop policy if exists "새가족 신청" on public.new_families;
+create policy "새가족 신청" on public.new_families for insert with check (true);
+
+drop policy if exists "새가족 관리자 조회" on public.new_families;
+create policy "새가족 관리자 조회" on public.new_families for select using (public.is_admin());
+
+drop policy if exists "새가족 관리자 삭제" on public.new_families;
+create policy "새가족 관리자 삭제" on public.new_families for delete using (public.is_admin());
 
 -- 새로 가입하면 profiles 행을 자동으로 만들어 줍니다.
 create or replace function public.handle_new_user()

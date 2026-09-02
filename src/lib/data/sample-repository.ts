@@ -25,6 +25,8 @@ import type {
   SmallGroupInput,
   StaffMember,
   StaffInput,
+  NewFamily,
+  NewFamilyInput,
 } from '@/lib/data/types';
 
 /**
@@ -47,6 +49,7 @@ interface SampleDb {
   sermons: Sermon[];
   prayers: PrayerRequest[];
   staff: StaffMember[];
+  newFamilies: NewFamily[];
   groups: SmallGroup[];
   messages: GroupMessage[];
 }
@@ -57,6 +60,7 @@ const initialDb = (): SampleDb => ({
   sermons: [...sampleSermons],
   prayers: [...samplePrayerRequests],
   staff: [...sampleStaff],
+  newFamilies: [],
   groups: [...sampleGroups],
   messages: [...sampleGroupMessages],
 });
@@ -284,6 +288,28 @@ export const sampleRepository: ChurchRepository = {
     target.answered = answered;
     await persist();
     return clone(target);
+  },
+
+  async createNewFamily(input: NewFamilyInput) {
+    await ready();
+    await delay();
+    const created: NewFamily = { ...input, id: newId('nf'), createdAt: new Date().toISOString() };
+    db.newFamilies = [created, ...db.newFamilies];
+    await persist();
+    return clone(created);
+  },
+
+  async listNewFamilies() {
+    await ready();
+    await delay();
+    return clone(db.newFamilies).sort((a, b) => byDateDesc(a.createdAt, b.createdAt));
+  },
+
+  async deleteNewFamily(id) {
+    await ready();
+    await delay();
+    db.newFamilies = db.newFamilies.filter((f) => f.id !== id);
+    await persist();
   },
 
   async listStaff() {

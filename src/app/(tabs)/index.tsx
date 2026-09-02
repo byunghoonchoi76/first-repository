@@ -156,6 +156,13 @@ export default function HomeScreen() {
           />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow
+            icon="person-add-outline"
+            title="새가족 등록"
+            subtitle="처음 오셨나요? 등록해 주세요"
+            onPress={() => router.push('/new-family')}
+          />
+          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+          <ListRow
             icon="card-outline"
             title="헌금 안내"
             subtitle="헌금 계좌 안내"
