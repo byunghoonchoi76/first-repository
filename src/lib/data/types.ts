@@ -68,6 +68,8 @@ export interface ChurchProfile {
   youtubeUrl: string;
   /** 온라인 헌금 주소 (체리 페이지·카카오페이 송금 링크 등). 있으면 헌금 화면에 버튼이 생깁니다. */
   givingUrl: string;
+  /** 지도 정확 위치 링크 (네이버 플레이스 등). 있으면 교회 주소 화면에서 바로 연결합니다. */
+  mapUrl: string;
   serviceTimes: ServiceTime[];
 }
 

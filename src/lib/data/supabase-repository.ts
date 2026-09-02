@@ -196,6 +196,7 @@ export const supabaseRepository: ChurchRepository = {
       offeringAccount: row.offering_account ?? ChurchInfo.offeringAccount,
       youtubeUrl: row.youtube_url ?? ChurchInfo.youtubeUrl,
       givingUrl: row.giving_url ?? ChurchInfo.givingUrl,
+      mapUrl: row.map_url ?? ChurchInfo.mapUrl,
       serviceTimes: (times.data ?? []).map((t: Row) => ({
         id: t.id,
         name: t.name,

@@ -31,6 +31,8 @@ export default function LocationScreen() {
   // 지도 검색이 정확하도록 교회 이름을 주소와 함께 보냅니다.
   const query = [church?.name, address].filter(Boolean).join(' ');
   const links = mapLinks(query);
+  // 네이버 플레이스 링크가 있으면 정확한 위치로 바로 연결합니다.
+  const placeUrl = church?.mapUrl?.trim();
 
   const copyAddress = async () => {
     await Clipboard.setStringAsync(address);
@@ -64,6 +66,14 @@ export default function LocationScreen() {
 
       {address ? <MapEmbed query={query} height={220} /> : null}
 
+      {placeUrl ? (
+        <Button
+          label="네이버 지도에서 정확한 위치 보기"
+          icon="navigate-outline"
+          onPress={() => void Linking.openURL(placeUrl)}
+        />
+      ) : null}
+
       {address ? (
         <View>
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.navTitle}>
@@ -71,7 +81,12 @@ export default function LocationScreen() {
           </ThemedText>
           <View style={styles.navRow}>
             <MapButton label="카카오맵" color="#FEE500" textColor="#3A1D1D" onPress={() => void Linking.openURL(links.kakao)} />
-            <MapButton label="네이버지도" color="#03C75A" textColor="#FFFFFF" onPress={() => void Linking.openURL(links.naver)} />
+            <MapButton
+              label="네이버지도"
+              color="#03C75A"
+              textColor="#FFFFFF"
+              onPress={() => void Linking.openURL(placeUrl || links.naver)}
+            />
             <MapButton label="구글지도" color="#FFFFFF" textColor="#1A73E8" bordered onPress={() => void Linking.openURL(links.google)} />
           </View>
           <ThemedText type="caption" themeColor="textMuted" style={styles.hint}>

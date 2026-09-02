@@ -39,13 +39,15 @@ create table if not exists public.church_profile (
   email text not null default '',
   offering_account text not null default '',
   youtube_url text not null default '',
-  giving_url text not null default ''
+  giving_url text not null default '',
+  map_url text not null default ''
 );
 
 -- 이미 만들어 둔 테이블에도 안전하게 추가합니다.
 alter table public.church_profile add column if not exists youtube_url text not null default '';
 alter table public.church_profile add column if not exists slogan_verse text not null default '';
 alter table public.church_profile add column if not exists giving_url text not null default '';
+alter table public.church_profile add column if not exists map_url text not null default '';
 
 create table if not exists public.service_times (
   id uuid primary key default gen_random_uuid(),

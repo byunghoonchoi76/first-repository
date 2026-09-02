@@ -16,4 +16,6 @@ export const ChurchInfo = {
   youtubeUrl: 'https://www.youtube.com/@mychmedia',
   // 온라인 헌금 주소(체리·카카오페이 송금 링크 등)를 넣으면 헌금 화면에 버튼이 생깁니다.
   givingUrl: '',
+  // 네이버 플레이스(정확한 위치) 링크
+  mapUrl: 'https://naver.me/5CCocDC6',
 } as const;
