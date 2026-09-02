@@ -52,7 +52,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="services" options={{ title: '예배 안내' }} />
             <Stack.Screen name="staff" options={{ title: '섬기는 사람들' }} />
-            <Stack.Screen name="location" options={{ title: '교회 장소' }} />
+            <Stack.Screen name="location" options={{ title: '교회 주소' }} />
             <Stack.Screen name="giving" options={{ title: '헌금 안내' }} />
             <Stack.Screen name="new-family" options={{ title: '새가족 등록' }} />
             <Stack.Screen name="admin/new-families" options={{ title: '새가족 명단' }} />

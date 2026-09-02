@@ -125,9 +125,9 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      {/* 성도 소식 — 가로 카드 */}
+      {/* 교회 소식 — 가로 카드 */}
       <View>
-        <SectionHeader title="성도 소식" actionLabel="교회 뉴스" onAction={() => router.push('/news')} />
+        <SectionHeader title="교회 소식" actionLabel="더보기" onAction={() => router.push('/news')} />
         {topAnnouncements.length === 0 ? (
           <EmptyState message="아직 등록된 소식이 없습니다." />
         ) : (
@@ -189,7 +189,7 @@ export default function HomeScreen() {
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow icon="people-outline" title="섬기는 사람들" subtitle="교역자와 직분자를 소개합니다" onPress={() => router.push('/staff')} />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow icon="location-outline" title="교회 장소" subtitle={profile.data?.address} onPress={() => router.push('/location')} />
+          <ListRow icon="location-outline" title="교회 주소" subtitle={profile.data?.address} onPress={() => router.push('/location')} />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow icon="card-outline" title="헌금 안내" subtitle="헌금 계좌 안내" onPress={() => router.push('/giving')} />
         </Card>

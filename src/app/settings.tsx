@@ -122,8 +122,8 @@ export default function SettingsScreen() {
           />
           <ListRow
             icon="location-outline"
-            title="교회 장소"
-            subtitle="찾아오시는 길"
+            title="교회 주소"
+            subtitle="지도 · 내비게이션"
             onPress={() => router.push('/location')}
           />
           <ListRow

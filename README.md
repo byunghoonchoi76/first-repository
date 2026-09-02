@@ -179,7 +179,7 @@ src/
 │  ├─ (tabs)/               홈 · 소식 · 설교 · 기도 · 소그룹 탭
 │  ├─ services.tsx          예배 안내 (예배 · 교육부서)
 │  ├─ staff.tsx             섬기는 사람들 (교역자 · 직분자)
-│  ├─ location.tsx          교회 장소 (주소 · 지도)
+│  ├─ location.tsx          교회 주소 (지도 · 카카오맵/네이버지도/구글지도 길찾기)
 │  ├─ new-family.tsx        새가족 등록 (방문자 신청, 관리자만 조회)
 │  ├─ bulletins.tsx         주보 목록 (지난 주보 포함)
 │  ├─ giving.tsx            헌금 안내 (계좌 복사 · 온라인 헌금 링크)
