@@ -1,17 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ChurchLogoWhite } from '@/components/church-logo';
+import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
+import { ChurchInfo } from '@/constants/church';
+import { Photos } from '@/constants/photos';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, useAsyncData } from '@/lib/data';
+import { repository, useAsyncData, type Sermon } from '@/lib/data';
 import { formatDate, formatFullDate, minutesLabel } from '@/lib/format';
 import { usePrayerLog } from '@/lib/prayer-log';
+import { useYouTubeTitle } from '@/lib/use-youtube-title';
+import { parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -29,6 +35,7 @@ export default function HomeScreen() {
 
   const profile = useAsyncData(() => repository.getChurchProfile());
   const bulletin = useAsyncData(() => repository.getLatestBulletin());
+  const sermons = useAsyncData(() => repository.listSermons());
   const announcements = useAsyncData(() => repository.listAnnouncements());
 
   const loading = profile.loading || bulletin.loading || announcements.loading;
@@ -37,6 +44,7 @@ export default function HomeScreen() {
   const reloadAll = () => {
     profile.reload();
     bulletin.reload();
+    sermons.reload();
     announcements.reload();
   };
 
@@ -56,33 +64,44 @@ export default function HomeScreen() {
     );
   }
 
-  const topAnnouncements = (announcements.data ?? []).slice(0, 3);
+  const topAnnouncements = (announcements.data ?? []).slice(0, 5);
+  const latestSermon = sermons.data?.[0];
+
+  const openLive = () => {
+    if (!ChurchInfo.youtubeUrl) return;
+    const live = `${ChurchInfo.youtubeUrl}/streams`;
+    if (Platform.OS === 'web') void Linking.openURL(live);
+    else void WebBrowser.openBrowserAsync(live);
+  };
 
   return (
     <Screen onRefresh={reloadAll} refreshing={false}>
-      {/* 인사 + 이번 주 말씀 */}
-      <Card style={[styles.hero, { backgroundColor: theme.primary, borderColor: theme.primary }]}>
-        <ChurchLogoWhite width={168} />
-        <ThemedText type="caption" style={{ color: theme.onPrimary, opacity: 0.9 }}>
-          {formatFullDate(new Date().toISOString().slice(0, 10))}
-        </ThemedText>
-        <ThemedText type="subtitle" style={{ color: theme.onPrimary }}>
+      {/* 히어로 — 이 주의 말씀/표어 */}
+      <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={196}>
+        <ThemedText type="caption" style={styles.heroLabel}>
           {greeting()}
-          {user ? `, ${user.name}님` : ''}
+          {user ? `, ${user.name}님` : ''} · {formatFullDate(new Date().toISOString().slice(0, 10))}
         </ThemedText>
-        {bulletin.data ? (
-          <ThemedText type="small" style={{ color: theme.onPrimary, opacity: 0.9 }}>
-            {bulletin.data.weeklyVerse}
+        <ThemedText type="title" style={styles.heroTitle}>
+          {profile.data?.slogan ?? ChurchInfo.slogan}
+        </ThemedText>
+        {profile.data?.sloganVerse ? (
+          <ThemedText type="small" style={styles.heroVerse}>
+            {profile.data.sloganVerse}
           </ThemedText>
         ) : null}
-      </Card>
+      </HeroBanner>
+
+      {/* 이번 주 말씀 (최신 설교) */}
+      {latestSermon ? <WeeklyMessage sermon={latestSermon} onPress={() => router.push(`/sermons/${latestSermon.id}`)} /> : null}
 
       {/* 빠른 메뉴 */}
       <View style={styles.quickRow}>
-        <QuickAction icon="book-outline" label="주보" onPress={() => router.push('/bulletins')} />
-        <QuickAction icon="play-circle-outline" label="설교" onPress={() => router.push('/sermons')} />
-        <QuickAction icon="flower-outline" label="기도" onPress={() => router.push('/prayer')} />
-        <QuickAction icon="people-outline" label="소그룹" onPress={() => router.push('/groups')} />
+        <QuickAction icon="radio-outline" label="실시간 예배" badge="LIVE" onPress={openLive} />
+        <QuickAction icon="book-outline" label="이번 주 주보" onPress={() => router.push('/bulletins')} />
+        <QuickAction icon="card-outline" label="온라인 헌금" onPress={() => router.push('/giving')} />
+        <QuickAction icon="hand-right-outline" label="기도 요청" onPress={() => router.push('/prayer')} />
+        <QuickAction icon="person-add-outline" label="새가족 등록" onPress={() => router.push('/new-family')} />
       </View>
 
       {/* 이번 주 예배 */}
@@ -105,6 +124,38 @@ export default function HomeScreen() {
           </Card>
         </View>
       ) : null}
+
+      {/* 성도 소식 — 가로 카드 */}
+      <View>
+        <SectionHeader title="성도 소식" actionLabel="교회 뉴스" onAction={() => router.push('/news')} />
+        {topAnnouncements.length === 0 ? (
+          <EmptyState message="아직 등록된 소식이 없습니다." />
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.newsRow}>
+            {topAnnouncements.map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => router.push(`/news/${item.id}`)}
+                style={({ pressed }) => [styles.newsCard, pressed && styles.pressed]}>
+                <HeroBanner imageUrl={Photos.community} height={100} base="navy" style={styles.newsImage}>
+                  <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
+                </HeroBanner>
+                <View style={[styles.newsBody, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <ThemedText type="smallBold" numberOfLines={1}>
+                    {item.title}
+                  </ThemedText>
+                  <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
+                    {item.body}
+                  </ThemedText>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+      </View>
 
       {/* 나의 기도 */}
       <View>
@@ -134,99 +185,146 @@ export default function HomeScreen() {
       <View>
         <SectionHeader title="교회 안내" />
         <Card>
-          <ListRow
-            icon="time-outline"
-            title="예배 안내"
-            subtitle="주일예배 · 새벽예배 · 교육부서 시간표"
-            onPress={() => router.push('/services')}
-          />
+          <ListRow icon="time-outline" title="예배 안내" subtitle="주일예배 · 새벽예배 · 교육부서 시간표" onPress={() => router.push('/services')} />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow
-            icon="people-outline"
-            title="섬기는 사람들"
-            subtitle="교역자와 직분자를 소개합니다"
-            onPress={() => router.push('/staff')}
-          />
+          <ListRow icon="people-outline" title="섬기는 사람들" subtitle="교역자와 직분자를 소개합니다" onPress={() => router.push('/staff')} />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow
-            icon="location-outline"
-            title="교회 장소"
-            subtitle={profile.data?.address}
-            onPress={() => router.push('/location')}
-          />
+          <ListRow icon="location-outline" title="교회 장소" subtitle={profile.data?.address} onPress={() => router.push('/location')} />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow
-            icon="person-add-outline"
-            title="새가족 등록"
-            subtitle="처음 오셨나요? 등록해 주세요"
-            onPress={() => router.push('/new-family')}
-          />
-          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow
-            icon="card-outline"
-            title="헌금 안내"
-            subtitle="헌금 계좌 안내"
-            onPress={() => router.push('/giving')}
-          />
+          <ListRow icon="card-outline" title="헌금 안내" subtitle="헌금 계좌 안내" onPress={() => router.push('/giving')} />
         </Card>
       </View>
-
-      {/* 최근 소식 */}
-      <View>
-        <SectionHeader title="교회 소식" actionLabel="더보기" onAction={() => router.push('/news')} />
-        {topAnnouncements.length === 0 ? (
-          <EmptyState message="아직 등록된 소식이 없습니다." />
-        ) : (
-          <View style={styles.stack}>
-            {topAnnouncements.map((item) => (
-              <Card key={item.id} onPress={() => router.push(`/news/${item.id}`)}>
-                <View style={styles.rowBetween}>
-                  <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
-                  {item.pinned ? <Ionicons name="pin" size={14} color={theme.accent} /> : null}
-                </View>
-                <ThemedText type="smallBold" numberOfLines={1}>
-                  {item.title}
-                </ThemedText>
-                <ThemedText type="caption" themeColor="textSecondary" numberOfLines={2}>
-                  {item.body}
-                </ThemedText>
-              </Card>
-            ))}
-          </View>
-        )}
-      </View>
-
     </Screen>
+  );
+}
+
+/** 이번 주 말씀 — 설교 썸네일 + 재생 */
+function WeeklyMessage({ sermon, onPress }: { sermon: Sermon; onPress: () => void }) {
+  const theme = useTheme();
+  const video = parseYouTubeUrl(sermon.mediaUrl);
+  const title = useYouTubeTitle(sermon.mediaUrl, sermon.title, '이번 주 말씀');
+  const thumb = sermon.thumbnailUrl ?? (video ? youtubeThumbnail(video.videoId) : undefined);
+
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
+      <Card style={styles.weekly}>
+        <View style={[styles.weeklyThumb, { backgroundColor: theme.backgroundSelected }]}>
+          {thumb ? <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+          <View style={styles.playDot}>
+            <Ionicons name="play" size={16} color="#fff" />
+          </View>
+        </View>
+        <View style={styles.flex}>
+          <View style={styles.weeklyTag}>
+            <Ionicons name="volume-medium-outline" size={13} color={theme.accent} />
+            <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '700' }}>
+              이번 주 말씀
+            </ThemedText>
+          </View>
+          <ThemedText type="smallBold" numberOfLines={2}>
+            {title}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+            {[sermon.scripture, sermon.preacher].filter(Boolean).join(' · ')}
+          </ThemedText>
+        </View>
+      </Card>
+    </Pressable>
   );
 }
 
 function QuickAction({
   icon,
   label,
+  badge,
   onPress,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
+  badge?: string;
   onPress: () => void;
 }) {
   const theme = useTheme();
   return (
-    <Card style={styles.quickAction} onPress={onPress}>
-      <Ionicons name={icon} size={22} color={theme.primary} />
-      <ThemedText type="caption" themeColor="textSecondary">
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}>
+      <View style={[styles.quickIcon, { backgroundColor: theme.backgroundSelected }]}>
+        <Ionicons name={icon} size={22} color={theme.primary} />
+        {badge ? (
+          <View style={[styles.liveBadge, { backgroundColor: theme.danger }]}>
+            <ThemedText type="caption" style={styles.liveText}>
+              {badge}
+            </ThemedText>
+          </View>
+        ) : null}
+      </View>
+      <ThemedText type="caption" themeColor="textSecondary" style={styles.quickLabel} numberOfLines={2}>
         {label}
       </ThemedText>
-    </Card>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  stack: { gap: Spacing.two },
-  hero: { gap: Spacing.two, padding: Spacing.four },
-  quickRow: { flexDirection: 'row', gap: Spacing.two },
+  pressed: { opacity: 0.8 },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
-  quickAction: { flex: 1, alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.three },
+
+  heroLabel: { color: 'rgba(255,255,255,0.9)' },
+  heroTitle: { color: '#fff', marginTop: Spacing.one },
+  heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one },
+
+  weekly: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  weeklyThumb: {
+    width: 92,
+    height: 62,
+    borderRadius: Radius.small,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weeklyTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
+
+  quickRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.one },
+  quickAction: { flex: 1, alignItems: 'center', gap: Spacing.one },
+  quickIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: Radius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickLabel: { textAlign: 'center', lineHeight: 15 },
+  liveBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  liveText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+
+  newsRow: { gap: Spacing.two, paddingRight: Spacing.three },
+  newsCard: { width: 208 },
+  newsImage: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  newsBody: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: Radius.large,
+    borderBottomRightRadius: Radius.large,
+    padding: Spacing.three,
+    gap: 2,
+  },
+
   prayerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   streakBox: {
     flexDirection: 'row',
@@ -236,6 +334,4 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderRadius: Radius.pill,
   },
-  divider: { height: StyleSheet.hairlineWidth },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

@@ -161,7 +161,8 @@ eas submit --platform ios
 ## 교회에 맞게 바꾸기
 
 - `src/constants/church.ts` — 교회 이름, 표어, 담임목사, 주소, 연락처, 헌금 계좌
-- `src/constants/theme.ts` — 교회 CI 색상(`Brand`)과 라이트/다크 팔레트
+- `src/constants/theme.ts` — 따뜻한 베이지 팔레트 + 교회 CI 포인트색(`Brand`)과 히어로 그라데이션(`Gradients`)
+- `src/constants/photos.ts` — 홈 배경 스톡 사진 주소(교회 사진으로 교체 가능)
 - `src/constants/logo.ts` — 공식 CI 연결 지점. `assets/images/목양교회 CI.png` 에서 잘라낸
   `logo-mark.png`(심볼)와 `logo-white.png`(심볼+흰색 교회명)를 씁니다.
   더 큰 원본을 받으면 같은 이름으로 교체하면 앱 전체에 반영됩니다.

@@ -19,32 +19,32 @@ export const Brand = {
 
 export const Colors = {
   light: {
-    text: '#15181D',
-    textSecondary: '#5C636E',
-    textMuted: '#8A919C',
-    background: '#F7F8FB',
+    text: '#2A2620',
+    textSecondary: '#6C6355',
+    textMuted: '#9C9384',
+    background: '#F7F1E7',
     backgroundElement: '#FFFFFF',
-    backgroundSelected: '#E7F4F7',
+    backgroundSelected: '#F0E7D6',
     card: '#FFFFFF',
-    border: '#E3E7EE',
+    border: '#E9E0CF',
     primary: Brand.navy,
     onPrimary: '#FFFFFF',
-    accent: '#0E8FA0',
+    accent: '#C0894A',
     danger: '#C4453B',
-    success: '#2E7D5B',
+    success: '#4F8A6B',
   },
   dark: {
-    text: '#F2F4F8',
-    textSecondary: '#A9B0BC',
-    textMuted: '#7C8494',
-    background: '#0E1116',
-    backgroundElement: '#171B22',
-    backgroundSelected: '#17303C',
-    card: '#171B22',
-    border: '#2A303B',
+    text: '#F3ECDF',
+    textSecondary: '#B4AB99',
+    textMuted: '#847B6B',
+    background: '#17140F',
+    backgroundElement: '#221E17',
+    backgroundSelected: '#2E281E',
+    card: '#221E17',
+    border: '#332C22',
     primary: Brand.tealLight,
-    onPrimary: '#0E1116',
-    accent: Brand.teal,
+    onPrimary: '#17140F',
+    accent: '#D8AE72',
     danger: '#E4776C',
     success: '#5CB98F',
   },
@@ -81,6 +81,16 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+/** 히어로/배너에 쓰는 따뜻한 그라데이션과 사진 위 스크림 */
+export const Gradients = {
+  // 따뜻한 베이지→세이지 (사진이 없을 때 히어로 배경)
+  warm: ['#8FA68E', '#6E8A79'] as const,
+  // 사진 위에 얹어 글씨가 잘 보이게 하는 어두운 스크림
+  scrim: ['transparent', 'rgba(20,16,10,0.72)'] as const,
+  // CI 남색 카드용
+  navy: ['#1B5A80', '#0E3F5C'] as const,
 } as const;
 
 export const Radius = {
