@@ -7,7 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 /** 웹: 구글 지도 임베드(iframe). API 키가 필요 없습니다. */
 export function MapEmbed({ query, height = 200 }: { query: string; height?: number }) {
   const theme = useTheme();
-  const src = `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=16&hl=ko&output=embed`;
+  const src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=16&ie=UTF8&iwloc=&hl=ko&output=embed`;
 
   return (
     <View style={[styles.frame, { height, backgroundColor: theme.backgroundSelected }]}>
