@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
-import { MapEmbed } from '@/components/map-embed';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, LoadingState } from '@/components/ui';
-import { Radius, Spacing } from '@/constants/theme';
+import { Gradients, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { repository, useAsyncData } from '@/lib/data';
 import { mapLinks } from '@/lib/maps';
@@ -64,13 +64,12 @@ export default function LocationScreen() {
         ) : null}
       </Card>
 
-      {address ? <MapEmbed query={query} height={220} /> : null}
-
-      {placeUrl ? (
-        <Button
-          label="네이버 지도에서 정확한 위치 보기"
-          icon="navigate-outline"
-          onPress={() => void Linking.openURL(placeUrl)}
+      {/* 인앱 브라우저(카카오톡 등)에서는 지도 임베드가 차단되므로, 탭하면 지도 앱/사이트가 열리는 카드로 안내합니다. */}
+      {address ? (
+        <MapPreviewCard
+          name={church?.name}
+          address={address}
+          onPress={() => void Linking.openURL(placeUrl || links.naver)}
         />
       ) : null}
 
@@ -115,6 +114,33 @@ export default function LocationScreen() {
   );
 }
 
+/** 지도 미리보기 카드 — 탭하면 지도 앱/사이트가 열립니다. 인앱 브라우저에서도 안정적으로 동작합니다. */
+function MapPreviewCard({ name, address, onPress }: { name?: string; address: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.mapCard, { opacity: pressed ? 0.9 : 1 }]}>
+      <LinearGradient colors={Gradients.navy} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.mapCardBg}>
+        <View style={styles.mapPin}>
+          <Ionicons name="location" size={30} color="#FFFFFF" />
+        </View>
+        <View style={styles.mapCardText}>
+          <ThemedText type="smallBold" style={styles.mapCardName}>
+            {name ?? '교회 위치'}
+          </ThemedText>
+          <ThemedText type="caption" style={styles.mapCardAddr} numberOfLines={2}>
+            {address}
+          </ThemedText>
+        </View>
+        <View style={styles.mapCardCta}>
+          <Ionicons name="map" size={16} color="#FFFFFF" />
+          <ThemedText type="caption" style={styles.mapCardName}>
+            지도 열기
+          </ThemedText>
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
 function MapButton({
   label,
   color,
@@ -147,6 +173,20 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   card: { gap: Spacing.three },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  mapCard: { borderRadius: Radius.medium, overflow: 'hidden' },
+  mapCardBg: { minHeight: 132, padding: Spacing.four, flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  mapPin: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapCardText: { flex: 1, gap: 2 },
+  mapCardName: { color: '#FFFFFF' },
+  mapCardAddr: { color: 'rgba(255,255,255,0.85)', lineHeight: 18 },
+  mapCardCta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   navTitle: { marginBottom: Spacing.two },
   navRow: { flexDirection: 'row', gap: Spacing.two },
   mapButton: {
