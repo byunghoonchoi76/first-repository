@@ -43,13 +43,14 @@ export default function StaffScreen() {
   }
 
   const items = staff.data ?? [];
-  // 큰 분류(목사 · 장로 · 관리)별로 묶고, 각 분류 안에서는 표시 순서대로 정렬합니다.
+  // 큰 분류(목사 · 전도사 · 장로 · 관리)별로 묶고, 각 분류 안에서는 표시 순서대로 정렬합니다.
+  // 관리자는 빈 분류도 볼 수 있어 어디에 등록할지 알 수 있습니다. 성도에게는 사람이 있는 분류만 보입니다.
   const sections = STAFF_CATEGORIES.map((category) => ({
     category,
     members: items
       .filter((m) => m.category === category)
       .sort((a, b) => a.sortOrder - b.sortOrder),
-  })).filter((section) => section.members.length > 0);
+  })).filter((section) => isAdmin || section.members.length > 0);
 
   const openEditor = (id: string) => router.push(`/admin/staff/${id}`);
 
@@ -79,6 +80,13 @@ export default function StaffScreen() {
               </ThemedText>
             </View>
             <Card style={styles.card}>
+              {section.members.length === 0 ? (
+                <View style={styles.emptyRow}>
+                  <ThemedText type="caption" themeColor="textMuted">
+                    아직 등록된 분이 없습니다. &lsquo;새로 등록&rsquo;에서 추가하세요.
+                  </ThemedText>
+                </View>
+              ) : null}
               {section.members.map((member, index) => (
                 <View key={member.id}>
                   {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
@@ -121,6 +129,7 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.one },
   sectionBar: { width: 3, height: 14, borderRadius: 2 },
   card: { paddingVertical: Spacing.two },
+  emptyRow: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.one },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.two },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   avatar: {

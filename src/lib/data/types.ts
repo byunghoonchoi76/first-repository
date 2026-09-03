@@ -13,10 +13,10 @@ export interface AppUser {
 export type ServiceCategory = '예배' | '교육부서';
 
 /** 섬기는 사람들을 묶어 보여 주는 큰 분류 */
-export type StaffCategory = '목사' | '장로' | '관리';
+export type StaffCategory = '목사' | '전도사' | '장로' | '관리';
 
 /** 화면에 표시하는 순서 */
-export const STAFF_CATEGORIES: StaffCategory[] = ['목사', '장로', '관리'];
+export const STAFF_CATEGORIES: StaffCategory[] = ['목사', '전도사', '장로', '관리'];
 
 /** 섬기는 사람들 (교역자·직분자) */
 export interface StaffMember {

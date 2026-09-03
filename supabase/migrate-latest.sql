@@ -23,10 +23,17 @@ create table if not exists public.church_staff (
 alter table public.church_staff add column if not exists category text not null default '관리';
 
 -- 기존에 등록된 사람들의 분류를 직분(role)으로 자동 지정합니다.
+-- (목사 · 전도사 · 장로 · 관리 4개 분류)
+update public.church_staff set category = '전도사'
+  where category = '관리' and (role like '%전도사%' or role like '%강도사%');
 update public.church_staff set category = '장로'
   where category = '관리' and role like '%장로%';
 update public.church_staff set category = '목사'
-  where category = '관리' and (role like '%목사%' or role like '%전도사%' or role like '%강도사%');
+  where category = '관리' and role like '%목사%';
+
+-- 이전 마이그레이션에서 '목사'로 통합됐던 전도사를 다시 분리합니다.
+update public.church_staff set category = '전도사'
+  where category = '목사' and (role like '%전도사%' or role like '%강도사%');
 
 alter table public.church_staff enable row level security;
 

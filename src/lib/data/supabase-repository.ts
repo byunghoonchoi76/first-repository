@@ -144,8 +144,9 @@ const toNewFamily = (row: Row): NewFamily => ({
 
 // category 컬럼이 아직 없거나 비어 있으면 직분(role)으로 큰 분류를 유추합니다.
 const inferCategory = (role: string): StaffCategory => {
+  if (role.includes('전도사') || role.includes('강도사')) return '전도사';
   if (role.includes('장로')) return '장로';
-  if (role.includes('목사') || role.includes('전도사') || role.includes('강도사')) return '목사';
+  if (role.includes('목사')) return '목사';
   return '관리';
 };
 
