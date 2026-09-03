@@ -156,8 +156,8 @@ $$;
 do $$
 begin
   if not exists (select 1 from public.church_staff) then
-    insert into public.church_staff (name, role, detail, sort_order) values
-      ('공진수', '담임목사', '', 1);
+    insert into public.church_staff (name, category, role, detail, sort_order) values
+      ('공진수', '목사', '담임목사', '', 1);
   end if;
 end;
 $$;

@@ -1,19 +1,23 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Field, LoadingState } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { repository } from '@/lib/data';
+import { STAFF_CATEGORIES, type StaffCategory } from '@/lib/data/types';
 
 export default function StaffEditorScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = String(id) === 'new';
 
   const [name, setName] = useState('');
+  const [category, setCategory] = useState<StaffCategory>('목사');
   const [role, setRole] = useState('');
   const [detail, setDetail] = useState('');
   const [sortOrder, setSortOrder] = useState('');
@@ -29,6 +33,7 @@ export default function StaffEditorScreen() {
       .then((found) => {
         if (!active || !found) return;
         setName(found.name);
+        setCategory(found.category);
         setRole(found.role);
         setDetail(found.detail);
         setSortOrder(String(found.sortOrder));
@@ -50,6 +55,7 @@ export default function StaffEditorScreen() {
     try {
       const input = {
         name: name.trim(),
+        category,
         role: role.trim(),
         detail: detail.trim(),
         sortOrder: Number.parseInt(sortOrder, 10) || 0,
@@ -100,7 +106,33 @@ export default function StaffEditorScreen() {
       <Stack.Screen options={{ title: isNew ? '섬기는 분 등록' : '섬기는 분 수정' }} />
       <View style={styles.form}>
         <Field label="이름" value={name} onChangeText={setName} placeholder="예) 공진수" />
-        <Field label="직분" value={role} onChangeText={setRole} placeholder="예) 담임목사 · 부목사 · 전도사 · 장로" />
+        <View style={styles.pickerBlock}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            분류
+          </ThemedText>
+          <View style={styles.segment}>
+            {STAFF_CATEGORIES.map((c) => {
+              const selected = c === category;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => setCategory(c)}
+                  style={[
+                    styles.segmentItem,
+                    {
+                      backgroundColor: selected ? theme.primary : theme.backgroundSelected,
+                      borderColor: selected ? theme.primary : theme.border,
+                    },
+                  ]}>
+                  <ThemedText type="smallBold" style={{ color: selected ? '#FFFFFF' : theme.textSecondary }}>
+                    {c}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+        <Field label="직분" value={role} onChangeText={setRole} placeholder="예) 담임목사 · 부목사 · 전도사 · 장로 · 사무장" />
         <Field
           label="담당·부서 (선택)"
           value={detail}
@@ -135,4 +167,14 @@ export default function StaffEditorScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: Spacing.three },
+  pickerBlock: { gap: Spacing.two },
+  segment: { flexDirection: 'row', gap: Spacing.two },
+  segmentItem: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: Radius.small,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

@@ -12,12 +12,20 @@ export interface AppUser {
 /** 예배 안내 화면에서 묶어 보여 주는 분류 */
 export type ServiceCategory = '예배' | '교육부서';
 
+/** 섬기는 사람들을 묶어 보여 주는 큰 분류 */
+export type StaffCategory = '목사' | '장로' | '관리';
+
+/** 화면에 표시하는 순서 */
+export const STAFF_CATEGORIES: StaffCategory[] = ['목사', '장로', '관리'];
+
 /** 섬기는 사람들 (교역자·직분자) */
 export interface StaffMember {
   id: string;
   /** 이름 */
   name: string;
-  /** 직분·직책 (예: 담임목사, 부목사, 전도사, 장로) */
+  /** 큰 분류 (목사 · 장로 · 관리) */
+  category: StaffCategory;
+  /** 직분·직책 (예: 담임목사, 부목사, 전도사, 장로, 사무장) */
   role: string;
   /** 담당·부서 등 부가 설명 (선택) */
   detail: string;

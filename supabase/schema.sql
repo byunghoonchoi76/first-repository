@@ -167,10 +167,13 @@ create table if not exists public.new_families (
 create table if not exists public.church_staff (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  category text not null default '관리',
   role text not null default '',
   detail text not null default '',
   sort_order smallint not null default 0
 );
+
+alter table public.church_staff add column if not exists category text not null default '관리';
 
 create table if not exists public.small_groups (
   id uuid primary key default gen_random_uuid(),

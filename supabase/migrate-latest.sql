@@ -9,14 +9,24 @@
 -- (schema.sql 전체를 다시 실행해도 동일한 결과가 됩니다.)
 -- ────────────────────────────────────────────────────────────
 
--- 1) 섬기는 사람들
+-- 1) 섬기는 사람들 (목사 · 장로 · 관리 3개 분류)
 create table if not exists public.church_staff (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  category text not null default '관리',
   role text not null default '',
   detail text not null default '',
   sort_order smallint not null default 0
 );
+
+-- 이미 church_staff 가 있던 경우 분류(category) 컬럼을 추가합니다.
+alter table public.church_staff add column if not exists category text not null default '관리';
+
+-- 기존에 등록된 사람들의 분류를 직분(role)으로 자동 지정합니다.
+update public.church_staff set category = '장로'
+  where category = '관리' and role like '%장로%';
+update public.church_staff set category = '목사'
+  where category = '관리' and (role like '%목사%' or role like '%전도사%' or role like '%강도사%');
 
 alter table public.church_staff enable row level security;
 
@@ -28,8 +38,8 @@ create policy "church_staff 관리자 쓰기" on public.church_staff
   for all using (public.is_admin()) with check (public.is_admin());
 
 -- 담임목사 한 명을 기본으로 넣어 둡니다(이미 있으면 건너뜁니다).
-insert into public.church_staff (name, role, detail, sort_order)
-select '공진수', '담임목사', '', 1
+insert into public.church_staff (name, category, role, detail, sort_order)
+select '공진수', '목사', '담임목사', '', 1
 where not exists (select 1 from public.church_staff);
 
 -- 2) 새가족 등록

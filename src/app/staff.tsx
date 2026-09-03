@@ -10,6 +10,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData } from '@/lib/data';
+import { STAFF_CATEGORIES } from '@/lib/data/types';
 
 /** 섬기는 사람들 — 교역자·직분자 소개. 관리자는 여기서 등록·수정합니다. */
 export default function StaffScreen() {
@@ -42,6 +43,15 @@ export default function StaffScreen() {
   }
 
   const items = staff.data ?? [];
+  // 큰 분류(목사 · 장로 · 관리)별로 묶고, 각 분류 안에서는 표시 순서대로 정렬합니다.
+  const sections = STAFF_CATEGORIES.map((category) => ({
+    category,
+    members: items
+      .filter((m) => m.category === category)
+      .sort((a, b) => a.sortOrder - b.sortOrder),
+  })).filter((section) => section.members.length > 0);
+
+  const openEditor = (id: string) => router.push(`/admin/staff/${id}`);
 
   return (
     <Screen onRefresh={reload}>
@@ -54,39 +64,52 @@ export default function StaffScreen() {
         />
       ) : null}
 
-      {items.length === 0 ? (
+      {sections.length === 0 ? (
         <EmptyState icon="people-outline" message="등록된 정보가 없습니다." />
       ) : (
-        <Card style={styles.card}>
-          {items.map((member, index) => (
-            <View key={member.id}>
-              {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
-              <Pressable
-                onPress={isAdmin ? () => router.push(`/admin/staff/${member.id}`) : undefined}
-                style={styles.row}>
-                <View style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
-                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                    {member.name.slice(0, 1)}
-                  </ThemedText>
-                </View>
-                <View style={styles.flex}>
-                  <View style={styles.nameRow}>
-                    <ThemedText type="smallBold">{member.name}</ThemedText>
-                    <ThemedText type="caption" themeColor="primary">
-                      {member.role}
-                    </ThemedText>
-                  </View>
-                  {member.detail ? (
-                    <ThemedText type="caption" themeColor="textSecondary">
-                      {member.detail}
-                    </ThemedText>
-                  ) : null}
-                </View>
-                {isAdmin ? <Ionicons name="create-outline" size={18} color={theme.textMuted} /> : null}
-              </Pressable>
+        sections.map((section) => (
+          <View key={section.category} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionBar, { backgroundColor: theme.primary }]} />
+              <ThemedText type="smallBold" themeColor="primary">
+                {section.category}
+              </ThemedText>
+              <ThemedText type="caption" themeColor="textMuted">
+                {section.members.length}명
+              </ThemedText>
             </View>
-          ))}
-        </Card>
+            <Card style={styles.card}>
+              {section.members.map((member, index) => (
+                <View key={member.id}>
+                  {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
+                  <Pressable
+                    onPress={isAdmin ? () => openEditor(member.id) : undefined}
+                    style={styles.row}>
+                    <View style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
+                      <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                        {member.name.slice(0, 1)}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.flex}>
+                      <View style={styles.nameRow}>
+                        <ThemedText type="smallBold">{member.name}</ThemedText>
+                        <ThemedText type="caption" themeColor="primary">
+                          {member.role}
+                        </ThemedText>
+                      </View>
+                      {member.detail ? (
+                        <ThemedText type="caption" themeColor="textSecondary">
+                          {member.detail}
+                        </ThemedText>
+                      ) : null}
+                    </View>
+                    {isAdmin ? <Ionicons name="create-outline" size={18} color={theme.textMuted} /> : null}
+                  </Pressable>
+                </View>
+              ))}
+            </Card>
+          </View>
+        ))
       )}
     </Screen>
   );
@@ -94,6 +117,9 @@ export default function StaffScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  section: { gap: Spacing.two },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.one },
+  sectionBar: { width: 3, height: 14, borderRadius: 2 },
   card: { paddingVertical: Spacing.two },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.two },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },

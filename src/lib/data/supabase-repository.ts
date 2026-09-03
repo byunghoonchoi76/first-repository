@@ -16,6 +16,7 @@ import type {
   SmallGroupInput,
   StaffMember,
   StaffInput,
+  StaffCategory,
   NewFamily,
   NewFamilyInput,
 } from '@/lib/data/types';
@@ -141,9 +142,17 @@ const toNewFamily = (row: Row): NewFamily => ({
   createdAt: row.created_at,
 });
 
+// category 컬럼이 아직 없거나 비어 있으면 직분(role)으로 큰 분류를 유추합니다.
+const inferCategory = (role: string): StaffCategory => {
+  if (role.includes('장로')) return '장로';
+  if (role.includes('목사') || role.includes('전도사') || role.includes('강도사')) return '목사';
+  return '관리';
+};
+
 const toStaff = (row: Row): StaffMember => ({
   id: row.id,
   name: row.name,
+  category: (row.category as StaffCategory) || inferCategory(row.role ?? ''),
   role: row.role,
   detail: row.detail ?? '',
   sortOrder: row.sort_order ?? 0,
@@ -151,6 +160,7 @@ const toStaff = (row: Row): StaffMember => ({
 
 const fromStaff = (input: StaffInput) => ({
   name: input.name,
+  category: input.category,
   role: input.role,
   detail: input.detail,
   sort_order: input.sortOrder,

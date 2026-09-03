@@ -320,8 +320,8 @@ export const samplePrayerRequests: PrayerRequest[] = [
 ];
 
 export const sampleStaff: StaffMember[] = [
-  { id: 'staff-1', name: '공진수', role: '담임목사', detail: '', sortOrder: 1 },
-  // 실제 교역자·직분자는 관리자 화면에서 추가·수정할 수 있습니다.
+  { id: 'staff-1', name: '공진수', category: '목사', role: '담임목사', detail: '', sortOrder: 1 },
+  // 실제 교역자·장로·관리 직원은 관리자 화면에서 추가·수정할 수 있습니다.
 ];
 
 export const sampleGroups: SmallGroup[] = [

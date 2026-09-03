@@ -41,7 +41,7 @@ const STORAGE_KEY = 'church-app/sample-db';
  * 기기에 저장된 값이 이 버전과 다르면 새 샘플 데이터로 다시 시작합니다.
  * (그렇지 않으면 앱을 한 번 실행한 기기에는 예전 내용이 계속 남습니다.)
  */
-const SAMPLE_VERSION = '2026-09-02-a';
+const SAMPLE_VERSION = '2026-09-03-a';
 
 interface SampleDb {
   announcements: Announcement[];
