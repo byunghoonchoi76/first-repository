@@ -72,11 +72,7 @@ export default function NewPrayerRequestScreen() {
           onChangeText={setBody}
           multiline
         />
-        <Toggle
-          label="성도들에게 기도 요청 (함께 기도 받기)"
-          value={shared}
-          onChange={setShared}
-        />
+        <Toggle label="함께 기도해주세요" value={shared} onChange={setShared} />
         <Toggle label="익명으로 올리기" value={anonymous} onChange={setAnonymous} />
         {anonymous ? (
           <ThemedText type="caption" themeColor="textMuted">
