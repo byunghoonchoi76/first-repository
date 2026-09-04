@@ -33,6 +33,10 @@ html = html.replace(
 
 const tags = [
   `<link rel="manifest" href="${base}/manifest.json" />`,
+  // 시작 화면 표어용 한국어 붓글씨체 + 영문 세리프
+  `<link rel="preconnect" href="https://fonts.googleapis.com" />`,
+  `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />`,
+  `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Nanum+Brush+Script&display=swap" />`,
   `<meta name="theme-color" content="#104C6E" />`,
   `<meta name="apple-mobile-web-app-capable" content="yes" />`,
   `<meta name="mobile-web-app-capable" content="yes" />`,
