@@ -29,8 +29,10 @@ function useStartupGate() {
   useEffect(() => {
     if (!ready) return;
     const onWelcome = segments[0] === 'welcome';
+    // 아직 로그인/손님을 정하지 않아도 로그인·회원가입 화면은 열 수 있어야 합니다.
+    const onAuthFlow = onWelcome || segments[0] === 'sign-in';
     const decided = !!user || guestAck === true;
-    if (!decided && !onWelcome) {
+    if (!decided && !onAuthFlow) {
       router.replace('/welcome');
     } else if (decided && onWelcome) {
       router.replace('/(tabs)');

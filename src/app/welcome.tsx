@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Radius, Spacing } from '@/constants/theme';
@@ -21,7 +22,15 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <ImageBackground source={SLOGAN} resizeMode="cover" style={styles.root}>
+    <View style={styles.root}>
+      {/* 표어 이미지를 화면 전체에 꽉 차게(cover) 깝니다. 표어가 위쪽에 오도록 위 정렬. */}
+      <Image
+        source={SLOGAN}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        contentPosition="center"
+      />
+
       {/* 버튼은 화면 하단 중앙에 절대 위치로 고정합니다. */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + Spacing.five }]}>
         <View style={styles.actions}>
@@ -41,7 +50,7 @@ export default function WelcomeScreen() {
           </Pressable>
         </View>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
