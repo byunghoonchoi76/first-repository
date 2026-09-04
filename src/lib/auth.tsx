@@ -5,6 +5,8 @@ import type { AppUser, Role } from '@/lib/data/types';
 import { hasSupabaseConfig, supabase } from '@/lib/supabase';
 
 const STORAGE_KEY = 'church-app/local-user';
+/** '손님으로 둘러보기'를 선택했는지 기억하는 키. 로그아웃하면 초기화되어 시작 화면이 다시 뜹니다. */
+const GUEST_KEY = 'church-app/guest-ack';
 
 /** Supabase 가 돌려주는 영어 오류를 알아보기 쉬운 말로 바꿔 줍니다. */
 function translateAuthError(message: string): string {
@@ -21,6 +23,10 @@ interface AuthContextValue {
   user: AppUser | null;
   loading: boolean;
   isAdmin: boolean;
+  /** '손님으로 둘러보기' 선택 여부. null 이면 아직 불러오는 중. */
+  guestAck: boolean | null;
+  /** 손님으로 둘러보기를 선택합니다(기억됨). */
+  chooseGuest: () => Promise<void>;
   /** 샘플 모드: 이름과 역할만으로 로그인. Supabase 모드: 이메일/비밀번호 로그인. */
   signIn: (params: { name?: string; role?: Role; email?: string; password?: string }) => Promise<void>;
   /** 가입 결과. 확인 메일을 눌러야 하는 경우 needsEmailConfirmation 이 true 입니다. */
@@ -58,9 +64,14 @@ async function loadSupabaseUser(): Promise<AppUser | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [guestAck, setGuestAck] = useState<boolean | null>(null);
 
   useEffect(() => {
     let active = true;
+
+    AsyncStorage.getItem(GUEST_KEY)
+      .then((v) => active && setGuestAck(v === 'true'))
+      .catch(() => active && setGuestAck(false));
 
     (async () => {
       try {
@@ -129,18 +140,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { needsEmailConfirmation: false };
   }, []);
 
+  const chooseGuest = useCallback(async () => {
+    await AsyncStorage.setItem(GUEST_KEY, 'true');
+    setGuestAck(true);
+  }, []);
+
   const signOut = useCallback(async () => {
     if (hasSupabaseConfig && supabase) {
       await supabase.auth.signOut();
     } else {
       await AsyncStorage.removeItem(STORAGE_KEY);
     }
+    // 로그아웃하면 손님 선택도 초기화해 시작 화면이 다시 뜨게 합니다.
+    await AsyncStorage.removeItem(GUEST_KEY);
+    setGuestAck(false);
     setUser(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, isAdmin: user?.role === 'admin', signIn, signUp, signOut }),
-    [user, loading, signIn, signUp, signOut],
+    () => ({ user, loading, isAdmin: user?.role === 'admin', guestAck, chooseGuest, signIn, signUp, signOut }),
+    [user, loading, guestAck, chooseGuest, signIn, signUp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

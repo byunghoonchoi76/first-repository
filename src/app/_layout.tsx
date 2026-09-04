@@ -7,7 +7,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
-import { useGuestAck } from '@/lib/guest';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -17,12 +16,11 @@ SplashScreen.preventAutoHideAsync();
  * - 아직 아무것도 고르지 않은 새 사용자는 시작 화면으로.
  */
 function useStartupGate() {
-  const { user, loading } = useAuth();
-  const { ack } = useGuestAck();
+  const { user, loading, guestAck } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
-  const ready = !loading && ack !== null;
+  const ready = !loading && guestAck !== null;
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -31,13 +29,13 @@ function useStartupGate() {
   useEffect(() => {
     if (!ready) return;
     const onWelcome = segments[0] === 'welcome';
-    const decided = !!user || ack === true;
+    const decided = !!user || guestAck === true;
     if (!decided && !onWelcome) {
       router.replace('/welcome');
     } else if (decided && onWelcome) {
       router.replace('/(tabs)');
     }
-  }, [ready, user, ack, segments, router]);
+  }, [ready, user, guestAck, segments, router]);
 }
 
 export default function RootLayout() {

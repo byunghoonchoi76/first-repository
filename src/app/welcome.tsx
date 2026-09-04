@@ -9,13 +9,13 @@ import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui';
 import { ChurchInfo } from '@/constants/church';
 import { Gradients, Radius, Spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
 import { dataMode } from '@/lib/data';
-import { useGuestAck } from '@/lib/guest';
 
 /** 앱을 처음 열었을 때 보여 주는 시작 화면 — 로그인 · 회원가입 · 손님으로 둘러보기. */
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { chooseGuest } = useGuestAck();
+  const { chooseGuest } = useAuth();
   const isSupabase = dataMode === 'supabase';
 
   const startAsGuest = async () => {
