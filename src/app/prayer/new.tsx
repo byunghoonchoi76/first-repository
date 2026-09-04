@@ -32,7 +32,7 @@ export default function NewPrayerRequestScreen() {
         body: body.trim(),
         author: user?.name ?? '성도',
         authorId: user?.id,
-        anonymous: shared ? anonymous : false,
+        anonymous,
         shared,
       });
       router.back();
@@ -77,7 +77,12 @@ export default function NewPrayerRequestScreen() {
           value={shared}
           onChange={setShared}
         />
-        {shared ? <Toggle label="익명으로 올리기" value={anonymous} onChange={setAnonymous} /> : null}
+        <Toggle label="익명으로 올리기" value={anonymous} onChange={setAnonymous} />
+        {anonymous ? (
+          <ThemedText type="caption" themeColor="textMuted">
+            기도 요청으로 공개할 때 이름 대신 &lsquo;익명&rsquo;으로 표시됩니다.
+          </ThemedText>
+        ) : null}
         {error ? (
           <ThemedText type="small" themeColor="danger">
             {error}
