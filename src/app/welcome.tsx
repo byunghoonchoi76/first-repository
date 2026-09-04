@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Radius, Spacing } from '@/constants/theme';
@@ -21,24 +21,30 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <ImageBackground source={SLOGAN} resizeMode="cover" style={styles.root}>
-      <View style={[styles.actions, { paddingBottom: insets.bottom + Spacing.five }]}>
-        {isSupabase ? (
-          <>
-            <SolidButton label="로그인" onPress={() => router.push('/sign-in')} />
-            <OutlineButton
-              label="회원가입"
-              onPress={() => router.push({ pathname: '/sign-in', params: { mode: 'signUp' } })}
-            />
-          </>
-        ) : (
-          <SolidButton label="이름으로 시작하기" onPress={() => router.push('/sign-in')} />
-        )}
-        <Pressable onPress={() => void startAsGuest()} hitSlop={8} style={styles.guestBtn}>
-          <Text style={styles.guestText}>손님으로 둘러보기</Text>
-        </Pressable>
+    <View style={styles.root}>
+      {/* 표어 이미지를 화면 전체에 꽉 차게(cover) 깝니다. */}
+      <Image source={SLOGAN} style={StyleSheet.absoluteFill} resizeMode="cover" />
+
+      {/* 버튼은 화면 하단 중앙에 고정합니다. */}
+      <View style={[styles.bottom, { paddingBottom: insets.bottom + Spacing.five }]}>
+        <View style={styles.actions}>
+          {isSupabase ? (
+            <>
+              <SolidButton label="로그인" onPress={() => router.push('/sign-in')} />
+              <OutlineButton
+                label="회원가입"
+                onPress={() => router.push({ pathname: '/sign-in', params: { mode: 'signUp' } })}
+              />
+            </>
+          ) : (
+            <SolidButton label="이름으로 시작하기" onPress={() => router.push('/sign-in')} />
+          )}
+          <Pressable onPress={() => void startAsGuest()} hitSlop={8} style={styles.guestBtn}>
+            <Text style={styles.guestText}>손님으로 둘러보기</Text>
+          </Pressable>
+        </View>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
@@ -59,8 +65,16 @@ function OutlineButton({ label, onPress }: { label: string; onPress: () => void 
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#5E1410', justifyContent: 'flex-end' },
-  actions: { paddingHorizontal: Spacing.four, gap: Spacing.two },
+  root: { flex: 1, backgroundColor: '#5E1410' },
+  bottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+  },
+  actions: { width: '100%', maxWidth: 440, gap: Spacing.two },
   solidBtn: {
     minHeight: 52,
     borderRadius: Radius.medium,
@@ -73,12 +87,13 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: Radius.medium,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.85)',
+    borderColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(94,20,16,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   outlineText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  guestBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  guestText: { color: 'rgba(255,255,255,0.92)', fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
+  guestBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.one },
+  guestText: { color: 'rgba(255,255,255,0.95)', fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
   pressed: { opacity: 0.85 },
 });
