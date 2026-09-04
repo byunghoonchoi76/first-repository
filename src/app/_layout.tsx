@@ -20,7 +20,7 @@ function useStartupGate() {
   const segments = useSegments();
   const router = useRouter();
 
-  const ready = !loading && guestAck !== null;
+  const ready = !loading;
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();

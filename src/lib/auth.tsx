@@ -5,8 +5,6 @@ import type { AppUser, Role } from '@/lib/data/types';
 import { hasSupabaseConfig, supabase } from '@/lib/supabase';
 
 const STORAGE_KEY = 'church-app/local-user';
-/** '손님으로 둘러보기'를 선택했는지 기억하는 키. 로그아웃하면 초기화되어 시작 화면이 다시 뜹니다. */
-const GUEST_KEY = 'church-app/guest-ack';
 
 /** Supabase 가 돌려주는 영어 오류를 알아보기 쉬운 말로 바꿔 줍니다. */
 function translateAuthError(message: string): string {
@@ -23,9 +21,9 @@ interface AuthContextValue {
   user: AppUser | null;
   loading: boolean;
   isAdmin: boolean;
-  /** '손님으로 둘러보기' 선택 여부. null 이면 아직 불러오는 중. */
-  guestAck: boolean | null;
-  /** 손님으로 둘러보기를 선택합니다(기억됨). */
+  /** 이번 실행에서 '손님으로 둘러보기'를 선택했는지 (저장하지 않아 앱을 다시 열면 초기화됩니다). */
+  guestAck: boolean;
+  /** 손님으로 둘러보기를 선택합니다(이번 세션에만 유지). */
   chooseGuest: () => Promise<void>;
   /** 샘플 모드: 이름과 역할만으로 로그인. Supabase 모드: 이메일/비밀번호 로그인. */
   signIn: (params: { name?: string; role?: Role; email?: string; password?: string }) => Promise<void>;
@@ -64,14 +62,11 @@ async function loadSupabaseUser(): Promise<AppUser | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [guestAck, setGuestAck] = useState<boolean | null>(null);
+  // 저장하지 않는 세션 값 — 앱을 새로 열면 false 로 시작해 표어 시작 화면이 다시 뜹니다.
+  const [guestAck, setGuestAck] = useState(false);
 
   useEffect(() => {
     let active = true;
-
-    AsyncStorage.getItem(GUEST_KEY)
-      .then((v) => active && setGuestAck(v === 'true'))
-      .catch(() => active && setGuestAck(false));
 
     (async () => {
       try {
@@ -141,7 +136,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const chooseGuest = useCallback(async () => {
-    await AsyncStorage.setItem(GUEST_KEY, 'true');
     setGuestAck(true);
   }, []);
 
@@ -152,7 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.removeItem(STORAGE_KEY);
     }
     // 로그아웃하면 손님 선택도 초기화해 시작 화면이 다시 뜨게 합니다.
-    await AsyncStorage.removeItem(GUEST_KEY);
     setGuestAck(false);
     setUser(null);
   }, []);
