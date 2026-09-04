@@ -57,11 +57,20 @@ export function useAsyncData<T>(loader: () => Promise<T>, deps: unknown[] = []):
 
   useEffect(() => {
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
     setError(undefined);
 
-    loaderRef
-      .current()
+    // 응답이 너무 오래 걸리면(네트워크 지연 등) 무한 로딩 대신 오류로 알려 줍니다.
+    const withTimeout = new Promise<T>((resolve, reject) => {
+      timer = setTimeout(
+        () => reject(new Error('서버 응답이 늦어지고 있습니다. 잠시 후 다시 시도해 주세요.')),
+        20000,
+      );
+      loaderRef.current().then(resolve, reject);
+    });
+
+    withTimeout
       .then((result) => {
         if (cancelled || !mounted.current) return;
         setDataState(result);
@@ -71,12 +80,14 @@ export function useAsyncData<T>(loader: () => Promise<T>, deps: unknown[] = []):
         setError(toFriendlyMessage(e));
       })
       .finally(() => {
+        if (timer) clearTimeout(timer);
         if (cancelled || !mounted.current) return;
         setLoading(false);
       });
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, nonce]);
