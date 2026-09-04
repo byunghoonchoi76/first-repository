@@ -1,20 +1,17 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ChurchLogoWhite } from '@/components/church-logo';
-import { Screen } from '@/components/screen';
-import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui';
 import { ChurchInfo } from '@/constants/church';
-import { Gradients, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode } from '@/lib/data';
 
-/** 앱을 처음 열었을 때 보여 주는 시작 화면 — 로그인 · 회원가입 · 손님으로 둘러보기. */
+/** 앱을 처음 열었을 때 보여 주는 시작 화면 — 교회 표어 위에 로그인·회원가입·손님 진입. */
 export default function WelcomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { chooseGuest } = useAuth();
   const isSupabase = dataMode === 'supabase';
 
@@ -24,81 +21,114 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <Screen contentStyle={styles.content}>
+    <View style={styles.root}>
+      {/* 표어 이미지의 붉은 배경을 닮은 그라데이션 (가운데가 밝고 위·아래가 짙게) */}
       <LinearGradient
-        colors={Gradients.navy}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}>
-        <ChurchLogoWhite width={200} />
-        <ThemedText type="title" style={styles.slogan}>
-          {ChurchInfo.slogan}
-        </ThemedText>
-        <ThemedText type="small" style={styles.verse}>
-          {ChurchInfo.sloganVerse}
-        </ThemedText>
-      </LinearGradient>
+        colors={['#5E1410', '#A6362A', '#B23C2E', '#7A1C14', '#4E100C']}
+        locations={[0, 0.32, 0.5, 0.78, 1]}
+        style={StyleSheet.absoluteFill}
+      />
 
-      <View style={styles.intro}>
-        <ThemedText type="heading" style={styles.introTitle}>
-          환영합니다
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.introText}>
-          주보 · 설교 · 기도 · 소식을 한곳에서 만나 보세요. 로그인하면 나의 기도시간이 계정에 저장되어
-          기기를 바꿔도 이어집니다.
-        </ThemedText>
-      </View>
+      <View style={[styles.content, { paddingTop: insets.top + Spacing.six, paddingBottom: insets.bottom + Spacing.four }]}>
+        <View style={styles.sloganBlock}>
+          <Text style={styles.slogan}>두려워하지 말라,</Text>
+          <Text style={styles.slogan}>강하고</Text>
+          <Text style={styles.slogan}>담대하라</Text>
+          <Text style={styles.verse}>{ChurchInfo.sloganVerse}</Text>
+          <View style={styles.rule} />
+          <Text style={styles.english}>Do not be afraid,</Text>
+          <Text style={styles.english}>Be strong and courageous</Text>
+        </View>
 
-      <View style={styles.actions}>
-        {isSupabase ? (
-          <>
-            <Button label="로그인" icon="log-in-outline" onPress={() => router.push('/sign-in')} />
-            <Button
-              label="회원가입"
-              icon="person-add-outline"
-              variant="secondary"
-              onPress={() => router.push({ pathname: '/sign-in', params: { mode: 'signUp' } })}
-            />
-          </>
-        ) : (
-          <Button label="이름으로 시작하기" icon="log-in-outline" onPress={() => router.push('/sign-in')} />
-        )}
-
-        <Button label="손님으로 둘러보기" variant="ghost" onPress={() => void startAsGuest()} />
-
-        <View style={styles.guestNote}>
-          <Ionicons name="information-circle-outline" size={15} color="#9C9384" />
-          <ThemedText type="caption" themeColor="textMuted" style={styles.flex}>
-            가입하지 않아도 앱의 기본 기능을 자유롭게 이용할 수 있어요. 로그인은 나중에 &lsquo;더보기&rsquo;에서
-            언제든 할 수 있습니다.
-          </ThemedText>
+        <View style={styles.actions}>
+          {isSupabase ? (
+            <>
+              <SolidButton label="로그인" onPress={() => router.push('/sign-in')} />
+              <OutlineButton
+                label="회원가입"
+                onPress={() => router.push({ pathname: '/sign-in', params: { mode: 'signUp' } })}
+              />
+            </>
+          ) : (
+            <SolidButton label="이름으로 시작하기" onPress={() => router.push('/sign-in')} />
+          )}
+          <Pressable onPress={() => void startAsGuest()} hitSlop={8} style={styles.guestBtn}>
+            <Text style={styles.guestText}>손님으로 둘러보기</Text>
+          </Pressable>
         </View>
       </View>
-    </Screen>
+    </View>
+  );
+}
+
+function SolidButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.solidBtn, pressed && styles.pressed]}>
+      <Text style={styles.solidText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function OutlineButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]}>
+      <Text style={styles.outlineText}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  content: { gap: Spacing.four },
-  hero: {
-    borderRadius: Radius.large,
-    paddingVertical: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.two,
+  root: { flex: 1, backgroundColor: '#5E1410' },
+  content: { flex: 1, paddingHorizontal: Spacing.four, justifyContent: 'space-between' },
+  sloganBlock: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  slogan: {
+    color: '#FFFFFF',
+    fontSize: 40,
+    lineHeight: 52,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.25)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
-  slogan: { color: '#FFFFFF', textAlign: 'center', marginTop: Spacing.two },
-  verse: { color: 'rgba(255,255,255,0.82)' },
-  intro: { gap: Spacing.two, alignItems: 'center' },
-  introTitle: { textAlign: 'center' },
-  introText: { textAlign: 'center', lineHeight: 21 },
+  verse: { color: 'rgba(255,255,255,0.9)', fontSize: 15, marginTop: Spacing.four, letterSpacing: 1 },
+  rule: {
+    width: 44,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+    borderRadius: 2,
+    marginTop: Spacing.four,
+    marginBottom: Spacing.three,
+  },
+  english: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 15,
+    lineHeight: 22,
+    letterSpacing: 3,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    fontFamily: 'serif',
+  },
   actions: { gap: Spacing.two },
-  guestNote: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    alignItems: 'flex-start',
-    marginTop: Spacing.two,
-    paddingHorizontal: Spacing.one,
+  solidBtn: {
+    minHeight: 52,
+    borderRadius: Radius.medium,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  solidText: { color: '#8A1F16', fontSize: 16, fontWeight: '800' },
+  outlineBtn: {
+    minHeight: 52,
+    borderRadius: Radius.medium,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outlineText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  guestBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  guestText: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
+  pressed: { opacity: 0.85 },
 });
