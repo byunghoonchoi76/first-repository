@@ -3,9 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { Screen } from '@/components/screen';
 import { ServiceTimesCompact } from '@/components/service-times';
 import { ThemedText } from '@/components/themed-text';
-import { Card, ErrorState, LoadingState, SectionHeader } from '@/components/ui';
+import { ErrorState, LoadingState, SectionHeader } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { repository, useAsyncData, type ServiceCategory } from '@/lib/data';
 
 const GROUPS: { category: ServiceCategory; title: string; caption: string }[] = [
@@ -14,7 +13,6 @@ const GROUPS: { category: ServiceCategory; title: string; caption: string }[] = 
 ];
 
 export default function ServicesScreen() {
-  const theme = useTheme();
   const profile = useAsyncData(() => repository.getChurchProfile());
 
   if (profile.loading) {
@@ -51,21 +49,10 @@ export default function ServicesScreen() {
           </View>
         );
       })}
-
-      <Card>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          찾아오시는 길
-        </ThemedText>
-        <ThemedText type="body">{profile.data.address}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          문의 {profile.data.phone}
-        </ThemedText>
-      </Card>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   caption: { marginTop: -Spacing.one, marginBottom: Spacing.two },
-  divider: { height: StyleSheet.hairlineWidth },
 });

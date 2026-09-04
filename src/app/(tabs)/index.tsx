@@ -187,14 +187,14 @@ export default function HomeScreen() {
             icon="flower-outline"
             title="개인 기도제목"
             subtitle="나만의 기도제목을 적고 관리해요"
-            onPress={() => router.push('/prayer')}
+            onPress={() => router.push('/prayer/personal')}
           />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow
             icon="hand-right-outline"
             title="기도 요청"
             subtitle="성도들과 나누고 함께 기도해요"
-            onPress={() => router.push('/prayer')}
+            onPress={() => router.push('/prayer/personal')}
           />
         </Card>
       </View>
