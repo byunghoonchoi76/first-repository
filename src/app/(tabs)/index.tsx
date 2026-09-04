@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
@@ -16,6 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
 import { formatDate, formatFullDate, minutesLabel } from '@/lib/format';
+import { useLiveStatus } from '@/lib/live-status';
 import { usePrayerTime } from '@/lib/prayer-log';
 import { useYouTubeTitle } from '@/lib/use-youtube-title';
 import { parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
@@ -33,6 +35,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const prayerLog = usePrayerTime('personal');
+  const live = useLiveStatus();
 
   const profile = useAsyncData(() => repository.getChurchProfile());
   const bulletin = useAsyncData(() => repository.getLatestBulletin());
@@ -70,10 +73,11 @@ export default function HomeScreen() {
   const dailyVerse = todaysVerse();
 
   const openLive = () => {
-    if (!ChurchInfo.youtubeUrl) return;
-    const live = `${ChurchInfo.youtubeUrl}/streams`;
-    if (Platform.OS === 'web') void Linking.openURL(live);
-    else void WebBrowser.openBrowserAsync(live);
+    // 방송 중이면 그 라이브 영상으로 바로, 아니면 채널의 실시간/다시보기 목록으로.
+    const target = live.live && live.watchUrl ? live.watchUrl : ChurchInfo.youtubeUrl ? `${ChurchInfo.youtubeUrl}/streams` : null;
+    if (!target) return;
+    if (Platform.OS === 'web') void Linking.openURL(target);
+    else void WebBrowser.openBrowserAsync(target);
   };
 
   return (
@@ -103,7 +107,13 @@ export default function HomeScreen() {
 
       {/* 빠른 메뉴 */}
       <View style={styles.quickRow}>
-        <QuickAction icon="radio-outline" label="실시간 예배" badge="LIVE" onPress={openLive} />
+        <QuickAction
+          icon="radio-outline"
+          label={live.live ? '실시간 방송 중' : '실시간 예배'}
+          badge={live.live ? 'LIVE' : undefined}
+          pulse={live.live}
+          onPress={openLive}
+        />
         <QuickAction icon="book-outline" label="이번 주 주보" onPress={() => router.push('/bulletins')} />
         <QuickAction icon="card-outline" label="온라인 헌금" onPress={() => router.push('/giving')} />
         <QuickAction icon="hand-right-outline" label="기도 요청" onPress={() => router.push('/prayer')} />
@@ -261,24 +271,41 @@ function QuickAction({
   icon,
   label,
   badge,
+  pulse,
   onPress,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
   badge?: string;
+  /** 실제 방송 중일 때처럼 배지를 은은하게 깜빡이게 합니다. */
+  pulse?: boolean;
   onPress: () => void;
 }) {
   const theme = useTheme();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!pulse) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.35, duration: 700, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: Platform.OS !== 'web' }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse, pulseAnim]);
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}>
       <View style={[styles.quickIcon, { backgroundColor: theme.backgroundSelected }]}>
         <Ionicons name={icon} size={22} color={theme.primary} />
         {badge ? (
-          <View style={[styles.liveBadge, { backgroundColor: theme.danger }]}>
+          <Animated.View style={[styles.liveBadge, { backgroundColor: theme.danger, opacity: pulse ? pulseAnim : 1 }]}>
             <ThemedText type="caption" style={styles.liveText}>
               {badge}
             </ThemedText>
-          </View>
+          </Animated.View>
         ) : null}
       </View>
       <ThemedText type="caption" themeColor="textSecondary" style={styles.quickLabel} numberOfLines={2}>
