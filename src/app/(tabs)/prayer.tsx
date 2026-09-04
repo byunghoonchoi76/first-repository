@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
+import { Button, Card, EmptyState, ErrorState, LoadingState, SectionHeader } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
@@ -198,18 +198,6 @@ export default function PrayerScreen() {
         )}
       </View>
 
-      {/* 개인 기도제목 · 기도 요청 (별도 화면) */}
-      <View>
-        <SectionHeader title="개인 기도제목" />
-        <Card style={styles.linkCard}>
-          <ListRow
-            icon="flower-outline"
-            title="개인 기도제목 · 기도 요청"
-            subtitle="나만의 기도제목을 적고, 원하면 성도들과 함께 기도해요"
-            onPress={() => router.push('/prayer/personal')}
-          />
-        </Card>
-      </View>
     </Screen>
   );
 }
@@ -344,6 +332,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.medium,
     marginVertical: Spacing.one,
   },
-  linkCard: { paddingVertical: Spacing.one },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

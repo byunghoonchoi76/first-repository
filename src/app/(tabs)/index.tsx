@@ -194,7 +194,7 @@ export default function HomeScreen() {
             icon="hand-right-outline"
             title="기도 요청"
             subtitle="성도들과 나누고 함께 기도해요"
-            onPress={() => router.push('/prayer/personal')}
+            onPress={() => router.push('/prayer/requests')}
           />
         </Card>
       </View>
