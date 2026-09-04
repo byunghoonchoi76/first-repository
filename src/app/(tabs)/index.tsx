@@ -9,6 +9,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
 import { ChurchInfo } from '@/constants/church';
+import { todaysVerse } from '@/constants/daily-verses';
 import { Photos } from '@/constants/photos';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -66,6 +67,7 @@ export default function HomeScreen() {
 
   const topAnnouncements = (announcements.data ?? []).slice(0, 5);
   const latestSermon = sermons.data?.[0];
+  const dailyVerse = todaysVerse();
 
   const openLive = () => {
     if (!ChurchInfo.youtubeUrl) return;
@@ -76,20 +78,24 @@ export default function HomeScreen() {
 
   return (
     <Screen onRefresh={reloadAll} refreshing={false}>
-      {/* 히어로 — 이 주의 말씀/표어 */}
-      <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={196}>
+      {/* 히어로 — 오늘의 말씀 (매일 자동으로 바뀝니다) */}
+      <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={210}>
         <ThemedText type="caption" style={styles.heroLabel}>
           {greeting()}
           {user ? `, ${user.name}님` : ''} · {formatFullDate(new Date().toISOString().slice(0, 10))}
         </ThemedText>
-        <ThemedText type="title" style={styles.heroTitle}>
-          {profile.data?.slogan ?? ChurchInfo.slogan}
-        </ThemedText>
-        {profile.data?.sloganVerse ? (
-          <ThemedText type="small" style={styles.heroVerse}>
-            {profile.data.sloganVerse}
+        <View style={styles.heroTagRow}>
+          <Ionicons name="book-outline" size={13} color="#fff" />
+          <ThemedText type="caption" style={styles.heroTag}>
+            오늘의 말씀
           </ThemedText>
-        ) : null}
+        </View>
+        <ThemedText type="subtitle" style={styles.heroTitle} numberOfLines={3}>
+          {dailyVerse.text}
+        </ThemedText>
+        <ThemedText type="small" style={styles.heroVerse}>
+          {dailyVerse.ref}
+        </ThemedText>
       </HeroBanner>
 
       {/* 이번 주 말씀 (최신 설교) */}
@@ -289,7 +295,9 @@ const styles = StyleSheet.create({
   menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
 
   heroLabel: { color: 'rgba(255,255,255,0.9)' },
-  heroTitle: { color: '#fff', marginTop: Spacing.one },
+  heroTagRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.two },
+  heroTag: { color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
+  heroTitle: { color: '#fff', marginTop: Spacing.one, lineHeight: 26 },
   heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one },
 
   weekly: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
