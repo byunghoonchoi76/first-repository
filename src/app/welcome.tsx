@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Radius, Spacing } from '@/constants/theme';
@@ -21,11 +21,8 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      {/* 표어 이미지를 화면 전체에 꽉 차게(cover) 깝니다. */}
-      <Image source={SLOGAN} style={StyleSheet.absoluteFill} resizeMode="cover" />
-
-      {/* 버튼은 화면 하단 중앙에 고정합니다. */}
+    <ImageBackground source={SLOGAN} resizeMode="cover" style={styles.root}>
+      {/* 버튼은 화면 하단 중앙에 절대 위치로 고정합니다. */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + Spacing.five }]}>
         <View style={styles.actions}>
           {isSupabase ? (
@@ -44,7 +41,7 @@ export default function WelcomeScreen() {
           </Pressable>
         </View>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -65,7 +62,7 @@ function OutlineButton({ label, onPress }: { label: string; onPress: () => void 
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#5E1410' },
+  root: { flex: 1, backgroundColor: '#5E1410', overflow: 'hidden' },
   bottom: {
     position: 'absolute',
     left: 0,
@@ -88,7 +85,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.medium,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.9)',
-    backgroundColor: 'rgba(94,20,16,0.25)',
+    backgroundColor: 'rgba(94,20,16,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
   },
