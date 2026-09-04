@@ -1,18 +1,14 @@
 import { useRouter } from 'expo-router';
-import { Linking, Platform, StyleSheet, View } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 
-import { ChurchLogo } from '@/components/church-logo';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, ListRow, SectionHeader } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
 import { resetSampleData } from '@/lib/data/sample-repository';
 
 export default function SettingsScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const { user, isAdmin, signOut } = useAuth();
   const profile = useAsyncData(() => repository.getChurchProfile());
@@ -55,8 +51,6 @@ export default function SettingsScreen() {
       <View>
         <SectionHeader title="교회 정보" />
         <Card>
-          <ChurchLogo size={36} subtitle={church?.slogan} verse={church?.sloganVerse} />
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
           {church?.pastor ? (
             <ListRow icon="person-outline" title="담임목사" subtitle={church.pastor} />
           ) : null}
@@ -164,7 +158,3 @@ export default function SettingsScreen() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
-});
