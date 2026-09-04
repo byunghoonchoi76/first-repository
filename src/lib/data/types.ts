@@ -153,11 +153,13 @@ export interface PrayerRequest {
   authorId?: string;
   anonymous: boolean;
   answered: boolean;
+  /** true 면 '기도 요청'으로 성도들에게 공개되어 함께 기도할 수 있습니다. false 면 나만 보는 개인 기도제목입니다. */
+  shared: boolean;
   prayCount: number;
   createdAt: string;
 }
 
-export type PrayerRequestInput = Pick<PrayerRequest, 'title' | 'body' | 'author' | 'anonymous'> & {
+export type PrayerRequestInput = Pick<PrayerRequest, 'title' | 'body' | 'author' | 'anonymous' | 'shared'> & {
   authorId?: string;
 };
 
@@ -239,10 +241,15 @@ export interface ChurchRepository {
   updateSermon(id: string, input: SermonInput): Promise<Sermon>;
   deleteSermon(id: string): Promise<void>;
 
-  listPrayerRequests(): Promise<PrayerRequest[]>;
+  /** 성도들에게 공개된 '기도 요청' 목록 (shared = true) */
+  listSharedPrayerRequests(): Promise<PrayerRequest[]>;
+  /** 로그인한 본인이 올린 개인 기도제목 목록 (공개 여부 무관) */
+  listMyPrayerRequests(): Promise<PrayerRequest[]>;
   createPrayerRequest(input: PrayerRequestInput): Promise<PrayerRequest>;
   prayForRequest(id: string): Promise<PrayerRequest>;
   markPrayerAnswered(id: string, answered: boolean): Promise<PrayerRequest>;
+  /** 개인 기도제목을 '기도 요청'으로 공개하거나 다시 비공개로 되돌립니다. */
+  setPrayerShared(id: string, shared: boolean): Promise<PrayerRequest>;
 
   listCommunalPrayers(): Promise<CommunalPrayer[]>;
   getCommunalPrayer(id: string): Promise<CommunalPrayer | null>;

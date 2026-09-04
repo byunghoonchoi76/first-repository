@@ -14,6 +14,7 @@ export default function NewPrayerRequestScreen() {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [shared, setShared] = useState(false);
   const [anonymous, setAnonymous] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -31,7 +32,8 @@ export default function NewPrayerRequestScreen() {
         body: body.trim(),
         author: user?.name ?? '성도',
         authorId: user?.id,
-        anonymous,
+        anonymous: shared ? anonymous : false,
+        shared,
       });
       router.back();
     } catch (e) {
@@ -70,7 +72,12 @@ export default function NewPrayerRequestScreen() {
           onChangeText={setBody}
           multiline
         />
-        <Toggle label="익명으로 올리기" value={anonymous} onChange={setAnonymous} />
+        <Toggle
+          label="성도들에게 기도 요청 (함께 기도 받기)"
+          value={shared}
+          onChange={setShared}
+        />
+        {shared ? <Toggle label="익명으로 올리기" value={anonymous} onChange={setAnonymous} /> : null}
         {error ? (
           <ThemedText type="small" themeColor="danger">
             {error}

@@ -122,6 +122,7 @@ const toPrayer = (row: Row): PrayerRequest => ({
   authorId: row.author_id ?? undefined,
   anonymous: row.anonymous,
   answered: row.answered,
+  shared: row.shared ?? true,
   prayCount: row.pray_count ?? 0,
   createdAt: row.created_at,
 });
@@ -352,9 +353,25 @@ export const supabaseRepository: ChurchRepository = {
     if (error) throw new Error(error.message);
   },
 
-  async listPrayerRequests() {
+  async listSharedPrayerRequests() {
     const sb = requireSupabase();
-    const res = await sb.from('prayer_requests').select('*').order('created_at', { ascending: false });
+    const res = await sb
+      .from('prayer_requests')
+      .select('*')
+      .eq('shared', true)
+      .order('created_at', { ascending: false });
+    return unwrap(res).map(toPrayer);
+  },
+
+  async listMyPrayerRequests() {
+    const sb = requireSupabase();
+    const uid = await currentUserId();
+    if (!uid) return [];
+    const res = await sb
+      .from('prayer_requests')
+      .select('*')
+      .eq('author_id', uid)
+      .order('created_at', { ascending: false });
     return unwrap(res).map(toPrayer);
   },
 
@@ -367,6 +384,7 @@ export const supabaseRepository: ChurchRepository = {
         body: input.body,
         author: input.anonymous ? '익명' : input.author,
         anonymous: input.anonymous,
+        shared: input.shared,
         // 본인이 올린 기도제목만 수정·삭제할 수 있게 작성자를 남깁니다.
         author_id: await currentUserId(),
       })
@@ -388,6 +406,17 @@ export const supabaseRepository: ChurchRepository = {
     const res = await sb
       .from('prayer_requests')
       .update({ answered })
+      .eq('id', id)
+      .select()
+      .single();
+    return toPrayer(unwrap(res));
+  },
+
+  async setPrayerShared(id, shared) {
+    const sb = requireSupabase();
+    const res = await sb
+      .from('prayer_requests')
+      .update({ shared })
       .eq('id', id)
       .select()
       .single();

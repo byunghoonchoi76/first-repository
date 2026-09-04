@@ -45,7 +45,7 @@ const STORAGE_KEY = 'church-app/sample-db';
  * 기기에 저장된 값이 이 버전과 다르면 새 샘플 데이터로 다시 시작합니다.
  * (그렇지 않으면 앱을 한 번 실행한 기기에는 예전 내용이 계속 남습니다.)
  */
-const SAMPLE_VERSION = '2026-09-04-b';
+const SAMPLE_VERSION = '2026-09-04-c';
 
 interface SampleDb {
   announcements: Announcement[];
@@ -253,9 +253,16 @@ export const sampleRepository: ChurchRepository = {
     await persist();
   },
 
-  async listPrayerRequests() {
+  async listSharedPrayerRequests() {
     await ready();
     await delay();
+    return clone(db.prayers.filter((p) => p.shared)).sort((a, b) => byDateDesc(a.createdAt, b.createdAt));
+  },
+
+  async listMyPrayerRequests() {
+    await ready();
+    await delay();
+    // 샘플 모드에서는 계정 개념이 없어 이 기기에 올린 개인 기도제목을 모두 보여 줍니다.
     return clone(db.prayers).sort((a, b) => byDateDesc(a.createdAt, b.createdAt));
   },
 
@@ -270,6 +277,7 @@ export const sampleRepository: ChurchRepository = {
       authorId: input.authorId,
       anonymous: input.anonymous,
       answered: false,
+      shared: input.shared,
       prayCount: 0,
       createdAt: new Date().toISOString(),
     };
@@ -294,6 +302,16 @@ export const sampleRepository: ChurchRepository = {
     const target = db.prayers.find((p) => p.id === id);
     if (!target) throw new Error('기도제목을 찾을 수 없습니다.');
     target.answered = answered;
+    await persist();
+    return clone(target);
+  },
+
+  async setPrayerShared(id, shared) {
+    await ready();
+    await delay(60);
+    const target = db.prayers.find((p) => p.id === id);
+    if (!target) throw new Error('기도제목을 찾을 수 없습니다.');
+    target.shared = shared;
     await persist();
     return clone(target);
   },

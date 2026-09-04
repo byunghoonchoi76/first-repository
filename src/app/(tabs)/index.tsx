@@ -178,15 +178,22 @@ export default function HomeScreen() {
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow
             icon="people-circle-outline"
-            title="공동 기도제목 나눔"
+            title="공동 기도제목"
             subtitle="온 성도가 함께 기도하며 시간을 쌓아가요"
             onPress={() => router.push('/prayer')}
           />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow
             icon="flower-outline"
-            title="개인 기도제목 나눔"
-            subtitle="나의 기도제목을 나누고 함께 기도해요"
+            title="개인 기도제목"
+            subtitle="나만의 기도제목을 적고 관리해요"
+            onPress={() => router.push('/prayer')}
+          />
+          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+          <ListRow
+            icon="hand-right-outline"
+            title="기도 요청"
+            subtitle="성도들과 나누고 함께 기도해요"
             onPress={() => router.push('/prayer')}
           />
         </Card>

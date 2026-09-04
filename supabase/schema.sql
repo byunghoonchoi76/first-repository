@@ -131,9 +131,13 @@ create table if not exists public.prayer_requests (
   author_id uuid references auth.users on delete set null,
   anonymous boolean not null default false,
   answered boolean not null default false,
+  -- true 면 '기도 요청'으로 성도들에게 공개. false 면 작성자만 보는 개인 기도제목.
+  shared boolean not null default true,
   pray_count integer not null default 0,
   created_at timestamptz not null default now()
 );
+
+alter table public.prayer_requests add column if not exists shared boolean not null default true;
 
 create index if not exists prayer_requests_created_idx on public.prayer_requests (created_at desc);
 
@@ -294,7 +298,7 @@ $$;
 -- 기도제목은 민감할 수 있어 로그인한 성도만 읽을 수 있습니다.
 drop policy if exists "기도제목 조회" on public.prayer_requests;
 create policy "기도제목 조회" on public.prayer_requests
-  for select using (auth.uid() is not null);
+  for select using (shared or auth.uid() = author_id or public.is_admin());
 
 drop policy if exists "기도제목 작성" on public.prayer_requests;
 create policy "기도제목 작성" on public.prayer_requests

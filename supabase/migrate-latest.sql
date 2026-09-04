@@ -152,3 +152,13 @@ as $$
   do update set minutes = public.prayer_time.minutes + greatest(0, p_minutes);
 $$;
 grant execute on function public.add_prayer_time(date, text, integer) to authenticated;
+
+-- 6) 개인 기도제목 / 기도 요청 분리: prayer_requests 에 공개 여부(shared) 컬럼 추가
+--    · shared = true  → '기도 요청'으로 성도들에게 공개 (함께 기도 가능)
+--    · shared = false → 작성자만 보는 개인 기도제목
+alter table public.prayer_requests add column if not exists shared boolean not null default true;
+
+-- 개인(비공개) 기도제목은 작성자·관리자만, 공개된 기도 요청은 모두가 볼 수 있게 정책을 갱신합니다.
+drop policy if exists "기도제목 조회" on public.prayer_requests;
+create policy "기도제목 조회" on public.prayer_requests
+  for select using (shared or auth.uid() = author_id or public.is_admin());

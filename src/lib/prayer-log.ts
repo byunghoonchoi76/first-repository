@@ -82,6 +82,8 @@ export function usePrayerTime(kind: PrayerKind) {
 
   const [entries, setEntries] = useState<PrayerLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nonce, setNonce] = useState(0);
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
     let active = true;
@@ -111,7 +113,7 @@ export function usePrayerTime(kind: PrayerKind) {
     return () => {
       active = false;
     };
-  }, [server, kind, storageKey]);
+  }, [server, kind, storageKey, nonce]);
 
   const addMinutes = useCallback(
     async (minutes: number, note?: string) => {
@@ -146,6 +148,8 @@ export function usePrayerTime(kind: PrayerKind) {
   return {
     entries,
     loading,
+    server,
+    reload,
     todayMinutes: today?.minutes ?? 0,
     streak: calculateStreak(entries),
     week: recentDays(entries, 7),
@@ -153,4 +157,35 @@ export function usePrayerTime(kind: PrayerKind) {
     addMinutes,
     clearToday,
   };
+}
+
+/** 로그인 계정에 아직 옮기지 않은 이 기기의 기도시간(분) 합계. 0 이면 가져올 것이 없습니다. */
+export async function pendingLocalPrayerMinutes(): Promise<number> {
+  let total = 0;
+  for (const kind of ['communal', 'personal'] as PrayerKind[]) {
+    const synced = await AsyncStorage.getItem(syncedFlagKey(kind));
+    if (synced === 'true') continue;
+    const local = await readLog(KEY_BY_KIND[kind]);
+    total += local.reduce((sum, e) => sum + e.minutes, 0);
+  }
+  return total;
+}
+
+/** 이 기기에 저장된 기도시간을 로그인 계정(서버)으로 1회 옮깁니다. 중복 반영되지 않도록 플래그를 남깁니다. */
+export async function syncLocalPrayerTimeToAccount(): Promise<void> {
+  for (const kind of ['communal', 'personal'] as PrayerKind[]) {
+    const synced = await AsyncStorage.getItem(syncedFlagKey(kind));
+    if (synced === 'true') continue;
+    const local = await readLog(KEY_BY_KIND[kind]);
+    for (const entry of local) {
+      if (entry.minutes > 0) {
+        await repository.addMyPrayerTime(kind, entry.date, entry.minutes);
+      }
+    }
+    await AsyncStorage.setItem(syncedFlagKey(kind), 'true');
+  }
+}
+
+function syncedFlagKey(kind: PrayerKind): string {
+  return `church-app/prayer-synced/${kind}`;
 }
