@@ -35,17 +35,18 @@ export default function PrayerScreen() {
     () => (needsSignIn ? Promise.resolve([]) : repository.listSharedPrayerRequests()),
     [needsSignIn],
   );
+  // useAsyncData 의 reload 는 안정적인 함수라 이것만 의존성으로 씁니다.
+  // (결과 객체 전체를 의존성에 넣으면 매 렌더마다 새로 만들어져 무한 새로고침이 됩니다.)
+  const reloadCommunal = communal.reload;
+  const reloadMy = myRequests.reload;
+  const reloadShared = sharedRequests.reload;
   const reloadAll = useCallback(() => {
-    communal.reload();
-    myRequests.reload();
-    sharedRequests.reload();
-  }, [communal, myRequests, sharedRequests]);
+    reloadCommunal();
+    reloadMy();
+    reloadShared();
+  }, [reloadCommunal, reloadMy, reloadShared]);
 
-  useFocusEffect(
-    useCallback(() => {
-      reloadAll();
-    }, [reloadAll]),
-  );
+  useFocusEffect(reloadAll);
 
   // 이 기기에 저장된 기도시간을 계정으로 1회 가져오기
   const [pendingSync, setPendingSync] = useState(0);
