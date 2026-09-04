@@ -161,6 +161,19 @@ export type PrayerRequestInput = Pick<PrayerRequest, 'title' | 'body' | 'author'
   authorId?: string;
 };
 
+/** 공동 기도제목 — 온 성도가 함께 기도하며 시간을 쌓아 가는 교회 공통 제목 */
+export interface CommunalPrayer {
+  id: string;
+  title: string;
+  body: string;
+  /** 온 성도가 이 제목으로 기도한 시간의 합계(분). 모두가 함께 쌓아 갑니다. */
+  totalMinutes: number;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export type CommunalPrayerInput = Pick<CommunalPrayer, 'title' | 'body' | 'sortOrder'>;
+
 export interface SmallGroup {
   id: string;
   name: string;
@@ -219,6 +232,14 @@ export interface ChurchRepository {
   createPrayerRequest(input: PrayerRequestInput): Promise<PrayerRequest>;
   prayForRequest(id: string): Promise<PrayerRequest>;
   markPrayerAnswered(id: string, answered: boolean): Promise<PrayerRequest>;
+
+  listCommunalPrayers(): Promise<CommunalPrayer[]>;
+  getCommunalPrayer(id: string): Promise<CommunalPrayer | null>;
+  createCommunalPrayer(input: CommunalPrayerInput): Promise<CommunalPrayer>;
+  updateCommunalPrayer(id: string, input: CommunalPrayerInput): Promise<CommunalPrayer>;
+  deleteCommunalPrayer(id: string): Promise<void>;
+  /** 이 제목으로 minutes 만큼 기도한 시간을 전체 누적에 더합니다. */
+  prayCommunal(id: string, minutes: number): Promise<CommunalPrayer>;
 
   createNewFamily(input: NewFamilyInput): Promise<NewFamily>;
   listNewFamilies(): Promise<NewFamily[]>;

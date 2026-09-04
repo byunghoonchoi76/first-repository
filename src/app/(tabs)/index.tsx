@@ -157,9 +157,9 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* 나의 기도 */}
+      {/* 우리의 기도 */}
       <View>
-        <SectionHeader title="나의 기도" actionLabel="기록하기" onAction={() => router.push('/prayer')} />
+        <SectionHeader title="우리의 기도" actionLabel="기도하기" onAction={() => router.push('/prayer')} />
         <Card>
           <View style={styles.prayerRow}>
             <View style={styles.flex}>
@@ -175,9 +175,20 @@ export default function HomeScreen() {
               <ThemedText type="smallBold">{prayerLog.streak}일 연속</ThemedText>
             </View>
           </View>
-          {prayerLog.todayMinutes === 0 ? (
-            <Button label="오늘 기도 기록하기" icon="add" onPress={() => router.push('/prayer')} />
-          ) : null}
+          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+          <ListRow
+            icon="people-circle-outline"
+            title="공동 기도제목 나눔"
+            subtitle="온 성도가 함께 기도하며 시간을 쌓아가요"
+            onPress={() => router.push('/prayer')}
+          />
+          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+          <ListRow
+            icon="flower-outline"
+            title="개인 기도제목 나눔"
+            subtitle="나의 기도제목을 나누고 함께 기도해요"
+            onPress={() => router.push('/prayer')}
+          />
         </Card>
       </View>
 

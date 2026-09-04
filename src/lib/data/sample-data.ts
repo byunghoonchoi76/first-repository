@@ -7,6 +7,7 @@ import type {
   Announcement,
   Bulletin,
   ChurchProfile,
+  CommunalPrayer,
   GroupMessage,
   PrayerRequest,
   Sermon,
@@ -316,6 +317,33 @@ export const samplePrayerRequests: PrayerRequest[] = [
     answered: false,
     prayCount: 18,
     createdAt: dateTime(8),
+  },
+];
+
+export const sampleCommunalPrayers: CommunalPrayer[] = [
+  {
+    id: 'communal-1',
+    title: '민족 복음화와 나라를 위하여',
+    body: '이 땅의 회복과 위정자들의 지혜, 다음 세대의 신앙 계승을 위해 함께 기도합니다.',
+    totalMinutes: 1840,
+    sortOrder: 1,
+    createdAt: dateTime(30),
+  },
+  {
+    id: 'communal-2',
+    title: '교회 부흥과 성도의 하나됨',
+    body: '예배의 회복과 전도의 열정, 성도 간의 사랑과 섬김을 위해 함께 기도합니다.',
+    totalMinutes: 1260,
+    sortOrder: 2,
+    createdAt: dateTime(30),
+  },
+  {
+    id: 'communal-3',
+    title: '선교사와 열방을 위하여',
+    body: '파송 선교사님들의 건강과 사역, 복음이 열방 가운데 전해지도록 함께 기도합니다.',
+    totalMinutes: 720,
+    sortOrder: 3,
+    createdAt: dateTime(30),
   },
 ];
 

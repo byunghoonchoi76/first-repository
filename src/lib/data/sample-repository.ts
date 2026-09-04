@@ -4,6 +4,7 @@ import {
   sampleAnnouncements,
   sampleBulletins,
   sampleChurchProfile,
+  sampleCommunalPrayers,
   sampleGroupMessages,
   sampleGroups,
   samplePrayerRequests,
@@ -16,6 +17,8 @@ import type {
   Bulletin,
   BulletinInput,
   ChurchRepository,
+  CommunalPrayer,
+  CommunalPrayerInput,
   GroupMessage,
   PrayerRequest,
   PrayerRequestInput,
@@ -41,13 +44,14 @@ const STORAGE_KEY = 'church-app/sample-db';
  * 기기에 저장된 값이 이 버전과 다르면 새 샘플 데이터로 다시 시작합니다.
  * (그렇지 않으면 앱을 한 번 실행한 기기에는 예전 내용이 계속 남습니다.)
  */
-const SAMPLE_VERSION = '2026-09-03-b';
+const SAMPLE_VERSION = '2026-09-04-a';
 
 interface SampleDb {
   announcements: Announcement[];
   bulletins: Bulletin[];
   sermons: Sermon[];
   prayers: PrayerRequest[];
+  communalPrayers: CommunalPrayer[];
   staff: StaffMember[];
   newFamilies: NewFamily[];
   groups: SmallGroup[];
@@ -59,6 +63,7 @@ const initialDb = (): SampleDb => ({
   bulletins: [...sampleBulletins],
   sermons: [...sampleSermons],
   prayers: [...samplePrayerRequests],
+  communalPrayers: [...sampleCommunalPrayers],
   staff: [...sampleStaff],
   newFamilies: [],
   groups: [...sampleGroups],
@@ -286,6 +291,62 @@ export const sampleRepository: ChurchRepository = {
     const target = db.prayers.find((p) => p.id === id);
     if (!target) throw new Error('기도제목을 찾을 수 없습니다.');
     target.answered = answered;
+    await persist();
+    return clone(target);
+  },
+
+  async listCommunalPrayers() {
+    await ready();
+    await delay(120);
+    return clone(db.communalPrayers).sort((a, b) => a.sortOrder - b.sortOrder);
+  },
+
+  async getCommunalPrayer(id) {
+    await ready();
+    await delay(80);
+    return clone(db.communalPrayers.find((p) => p.id === id) ?? null);
+  },
+
+  async createCommunalPrayer(input: CommunalPrayerInput) {
+    await ready();
+    await delay();
+    const created: CommunalPrayer = {
+      id: newId('communal'),
+      title: input.title,
+      body: input.body,
+      totalMinutes: 0,
+      sortOrder: input.sortOrder,
+      createdAt: new Date().toISOString(),
+    };
+    db.communalPrayers = [...db.communalPrayers, created];
+    await persist();
+    return clone(created);
+  },
+
+  async updateCommunalPrayer(id, input) {
+    await ready();
+    await delay();
+    const index = db.communalPrayers.findIndex((p) => p.id === id);
+    if (index < 0) throw new Error('공동 기도제목을 찾을 수 없습니다.');
+    const updated: CommunalPrayer = { ...db.communalPrayers[index], ...input };
+    db.communalPrayers[index] = updated;
+    await persist();
+    return clone(updated);
+  },
+
+  async deleteCommunalPrayer(id) {
+    await ready();
+    await delay();
+    db.communalPrayers = db.communalPrayers.filter((p) => p.id !== id);
+    await persist();
+  },
+
+  async prayCommunal(id, minutes) {
+    await ready();
+    await delay(60);
+    const target = db.communalPrayers.find((p) => p.id === id);
+    if (!target) throw new Error('공동 기도제목을 찾을 수 없습니다.');
+    target.totalMinutes += Math.max(0, Math.round(minutes));
     await persist();
     return clone(target);
   },

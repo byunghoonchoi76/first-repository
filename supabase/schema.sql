@@ -150,6 +150,32 @@ as $$
   returning *;
 $$;
 
+-- 공동 기도제목 — 온 성도가 함께 기도하며 시간(분)을 쌓아 가는 교회 공통 제목
+create table if not exists public.communal_prayers (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null default '',
+  total_minutes integer not null default 0,
+  sort_order smallint not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- 이 제목으로 기도한 시간(분)을 전체 누적에 안전하게 더합니다 (동시 기도에도 합계가 어긋나지 않도록).
+create or replace function public.add_communal_prayer_minutes(p_id uuid, p_minutes integer)
+returns setof public.communal_prayers
+language sql
+security definer
+set search_path = public
+as $$
+  update public.communal_prayers
+  set total_minutes = total_minutes + greatest(0, p_minutes)
+  where id = p_id
+  returning *;
+$$;
+
+-- 로그인하지 않은 성도도 함께 기도할 수 있도록 실행 권한을 부여합니다.
+grant execute on function public.add_communal_prayer_minutes(uuid, integer) to anon, authenticated;
+
 -- ─────────────────────────────────────────────
 -- 소그룹 · 소통방
 -- ─────────────────────────────────────────────
@@ -205,6 +231,7 @@ alter table public.bulletins enable row level security;
 alter table public.announcements enable row level security;
 alter table public.sermons enable row level security;
 alter table public.prayer_requests enable row level security;
+alter table public.communal_prayers enable row level security;
 alter table public.new_families enable row level security;
 alter table public.church_staff enable row level security;
 alter table public.small_groups enable row level security;
@@ -228,7 +255,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['church_profile', 'service_times', 'bulletins', 'announcements', 'sermons', 'small_groups', 'church_staff']
+  foreach t in array array['church_profile', 'service_times', 'bulletins', 'announcements', 'sermons', 'small_groups', 'church_staff', 'communal_prayers']
   loop
     execute format('drop policy if exists "%s 공개 조회" on public.%I', t, t);
     execute format('create policy "%s 공개 조회" on public.%I for select using (true)', t, t);

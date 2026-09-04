@@ -10,8 +10,9 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
+import type { CommunalPrayer } from '@/lib/data/types';
 import { formatRelative, minutesLabel } from '@/lib/format';
-import { usePrayerLog } from '@/lib/prayer-log';
+import { COMMUNAL_PRAYER_KEY, usePrayerLog } from '@/lib/prayer-log';
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
 const QUICK_MINUTES = [5, 10, 30];
@@ -19,73 +20,106 @@ const QUICK_MINUTES = [5, 10, 30];
 export default function PrayerScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const prayerLog = usePrayerLog();
+  const personalTime = usePrayerLog();
+  const communalTime = usePrayerLog(COMMUNAL_PRAYER_KEY);
   const { user, isAdmin } = useAuth();
-  // Supabase 모드에서는 로그인한 성도만 기도제목을 볼 수 있습니다.
+  // Supabase 모드에서는 로그인한 성도만 개인 기도제목을 볼 수 있습니다.
   const needsSignIn = dataMode === 'supabase' && !user;
+
+  const communal = useAsyncData(() => repository.listCommunalPrayers());
   const requests = useAsyncData(
     () => (needsSignIn ? Promise.resolve([]) : repository.listPrayerRequests()),
     [needsSignIn],
   );
-  const { reload, setData } = requests;
+  const reloadCommunal = communal.reload;
+  const reloadRequests = requests.reload;
 
   useFocusEffect(
     useCallback(() => {
-      reload();
-    }, [reload]),
+      reloadCommunal();
+      reloadRequests();
+    }, [reloadCommunal, reloadRequests]),
   );
 
-  /** 본인이 올린 기도제목(또는 관리자)만 '응답됨' 으로 바꿀 수 있습니다. */
   const toggleAnswered = async (id: string, answered: boolean) => {
-    setData((current) => current?.map((item) => (item.id === id ? { ...item, answered } : item)));
+    requests.setData((current) => current?.map((item) => (item.id === id ? { ...item, answered } : item)));
     try {
       const updated = await repository.markPrayerAnswered(id, answered);
-      setData((current) => current?.map((item) => (item.id === id ? updated : item)));
+      requests.setData((current) => current?.map((item) => (item.id === id ? updated : item)));
     } catch {
-      reload();
+      reloadRequests();
     }
   };
 
   const pray = async (id: string) => {
-    // 먼저 화면을 올려두고, 저장 결과로 값을 맞춥니다.
-    setData((current) =>
+    requests.setData((current) =>
       current?.map((item) => (item.id === id ? { ...item, prayCount: item.prayCount + 1 } : item)),
     );
     try {
       const updated = await repository.prayForRequest(id);
-      setData((current) => current?.map((item) => (item.id === id ? updated : item)));
+      requests.setData((current) => current?.map((item) => (item.id === id ? updated : item)));
     } catch {
-      reload();
+      reloadRequests();
     }
   };
 
-  const maxMinutes = Math.max(30, ...prayerLog.week.map((d) => d.minutes));
+  /** 공동 기도제목으로 기도를 마치면: 전체 누적(서버) + 나의 공동 기도시간(기기)에 더합니다. */
+  const prayCommunal = async (id: string, minutes: number) => {
+    communal.setData((current) =>
+      current?.map((item) =>
+        item.id === id ? { ...item, totalMinutes: item.totalMinutes + minutes } : item,
+      ),
+    );
+    await communalTime.addMinutes(minutes);
+    try {
+      const updated = await repository.prayCommunal(id, minutes);
+      communal.setData((current) => current?.map((item) => (item.id === id ? updated : item)));
+    } catch {
+      reloadCommunal();
+    }
+  };
+
+  // 나의 기도시간 = 공동 + 개인
+  const myCommunal = communalTime.totalMinutes;
+  const myPersonal = personalTime.totalMinutes;
+  const myTotal = myCommunal + myPersonal;
+
+  // 최근 7일 합산(공동 + 개인) 막대그래프
+  const week = personalTime.week.map((day, i) => ({
+    date: day.date,
+    minutes: day.minutes + (communalTime.week[i]?.minutes ?? 0),
+  }));
+  const maxMinutes = Math.max(30, ...week.map((d) => d.minutes));
+
+  const communalItems = communal.data ?? [];
+  const communalTotalAll = communalItems.reduce((sum, item) => sum + item.totalMinutes, 0);
 
   return (
-    <Screen onRefresh={reload}>
-      {/* 개인 기도시간 */}
+    <Screen
+      onRefresh={() => {
+        reloadCommunal();
+        reloadRequests();
+      }}>
+      {/* 나의 기도시간 (공동 + 개인) */}
       <View>
         <SectionHeader title="나의 기도시간" />
         <Card>
           <View style={styles.statRow}>
-            <Stat label="오늘" value={prayerLog.todayMinutes > 0 ? minutesLabel(prayerLog.todayMinutes) : '-'} />
-            <Stat label="연속" value={`${prayerLog.streak}일`} />
-            <Stat label="누적" value={minutesLabel(prayerLog.totalMinutes)} />
+            <Stat label="공동 기도" value={myCommunal > 0 ? minutesLabel(myCommunal) : '-'} />
+            <Stat label="개인 기도" value={myPersonal > 0 ? minutesLabel(myPersonal) : '-'} />
+            <Stat label="합계" value={myTotal > 0 ? minutesLabel(myTotal) : '-'} highlight />
           </View>
 
           <View style={styles.chart}>
-            {prayerLog.week.map((day) => {
-              const height = Math.max(4, Math.round((day.minutes / maxMinutes) * 64));
+            {week.map((day) => {
+              const height = Math.max(4, Math.round((day.minutes / maxMinutes) * 60));
               const weekday = WEEKDAY_LABEL[new Date(`${day.date}T00:00:00`).getDay()];
               return (
                 <View key={day.date} style={styles.chartColumn}>
                   <View
                     style={[
                       styles.bar,
-                      {
-                        height,
-                        backgroundColor: day.minutes > 0 ? theme.primary : theme.border,
-                      },
+                      { height, backgroundColor: day.minutes > 0 ? theme.primary : theme.border },
                     ]}
                   />
                   <ThemedText type="caption" themeColor="textMuted">
@@ -96,8 +130,13 @@ export default function PrayerScreen() {
             })}
           </View>
 
-          <PrayerTimer onSave={prayerLog.addMinutes} />
+          <ThemedText type="caption" themeColor="textMuted" style={styles.chartHint}>
+            최근 7일 · 공동 기도와 개인 기도를 합한 시간이에요.
+          </ThemedText>
 
+          <View style={styles.divider} />
+          <ThemedText type="smallBold">개인 기도 기록</ThemedText>
+          <PrayerTimer onSave={personalTime.addMinutes} />
           <View style={styles.quickRow}>
             {QUICK_MINUTES.map((minutes) => (
               <Button
@@ -105,24 +144,68 @@ export default function PrayerScreen() {
                 label={`+${minutes}분`}
                 variant="ghost"
                 style={styles.flex}
-                onPress={() => void prayerLog.addMinutes(minutes)}
+                onPress={() => void personalTime.addMinutes(minutes)}
               />
             ))}
           </View>
-
-          {prayerLog.todayMinutes > 0 ? (
-            <Pressable onPress={() => void prayerLog.clearToday()} hitSlop={6}>
+          {personalTime.todayMinutes > 0 ? (
+            <Pressable onPress={() => void personalTime.clearToday()} hitSlop={6}>
               <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-                오늘 기록 지우기
+                오늘 개인 기도 기록 지우기
               </ThemedText>
             </Pressable>
           ) : null}
         </Card>
       </View>
 
-      {/* 기도제목 나눔 */}
+      {/* 공동 기도제목 나눔 */}
       <View>
-        <SectionHeader title="기도제목 나눔" />
+        <SectionHeader title="공동 기도제목 나눔" />
+        <Card style={styles.communalHero}>
+          <ThemedText type="caption" themeColor="textSecondary">
+            온 성도가 함께 기도한 시간
+          </ThemedText>
+          <ThemedText type="title" themeColor="primary">
+            {minutesLabel(communalTotalAll)}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textMuted">
+            이 중 나의 공동 기도 {myCommunal > 0 ? minutesLabel(myCommunal) : '0분'}
+          </ThemedText>
+        </Card>
+
+        {isAdmin ? (
+          <Button
+            label="공동 기도제목 추가"
+            icon="add-circle-outline"
+            variant="secondary"
+            onPress={() => router.push('/admin/communal/new')}
+          />
+        ) : null}
+
+        {communal.loading && !communal.data ? (
+          <LoadingState />
+        ) : communal.error ? (
+          <ErrorState message={communal.error} onRetry={reloadCommunal} />
+        ) : communalItems.length === 0 ? (
+          <EmptyState icon="people-outline" message="등록된 공동 기도제목이 없습니다." />
+        ) : (
+          <View style={styles.stack}>
+            {communalItems.map((item) => (
+              <CommunalCard
+                key={item.id}
+                item={item}
+                isAdmin={isAdmin}
+                onPray={(minutes) => prayCommunal(item.id, minutes)}
+                onEdit={() => router.push(`/admin/communal/${item.id}`)}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* 개인 기도제목 나눔 */}
+      <View>
+        <SectionHeader title="개인 기도제목 나눔" />
         {requests.data && requests.data.length > 0 ? (
           <Card style={styles.statsCard}>
             <View style={styles.statRow}>
@@ -147,13 +230,13 @@ export default function PrayerScreen() {
 
       {needsSignIn ? (
         <Card>
-          <EmptyState icon="lock-closed-outline" message="기도제목은 로그인한 성도만 볼 수 있습니다." />
+          <EmptyState icon="lock-closed-outline" message="개인 기도제목은 로그인한 성도만 볼 수 있습니다." />
           <Button label="로그인하기" icon="log-in-outline" onPress={() => router.push('/sign-in')} />
         </Card>
       ) : requests.loading && !requests.data ? (
         <LoadingState />
       ) : requests.error ? (
-        <ErrorState message={requests.error} onRetry={reload} />
+        <ErrorState message={requests.error} onRetry={reloadRequests} />
       ) : (requests.data ?? []).length === 0 ? (
         <EmptyState icon="flower-outline" message="첫 기도제목을 나눠 주세요." />
       ) : (
@@ -203,19 +286,71 @@ export default function PrayerScreen() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <View style={styles.stat}>
       <ThemedText type="caption" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <ThemedText type="heading">{value}</ThemedText>
+      <ThemedText type="heading" themeColor={highlight ? 'primary' : undefined}>
+        {value}
+      </ThemedText>
     </View>
   );
 }
 
+/** 공동 기도제목 카드 — 전체 누적 시간 표시 + 함께 기도 타이머 */
+function CommunalCard({
+  item,
+  isAdmin,
+  onPray,
+  onEdit,
+}: {
+  item: CommunalPrayer;
+  isAdmin: boolean;
+  onPray: (minutes: number) => void;
+  onEdit: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Card>
+      <View style={styles.rowBetween}>
+        <ThemedText type="smallBold" style={styles.flex}>
+          {item.title}
+        </ThemedText>
+        {isAdmin ? (
+          <Pressable onPress={onEdit} hitSlop={8}>
+            <Ionicons name="create-outline" size={18} color={theme.textMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+      {item.body ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {item.body}
+        </ThemedText>
+      ) : null}
+      <View style={[styles.communalTotal, { backgroundColor: theme.backgroundSelected }]}>
+        <Ionicons name="time-outline" size={15} color={theme.primary} />
+        <ThemedText type="caption" themeColor="textSecondary">
+          함께 기도한 시간
+        </ThemedText>
+        <ThemedText type="smallBold" themeColor="primary" style={styles.flexEnd}>
+          {minutesLabel(item.totalMinutes)}
+        </ThemedText>
+      </View>
+      <PrayerTimer onSave={async (minutes) => onPray(minutes)} startLabel="이 제목으로 기도" />
+    </Card>
+  );
+}
+
 /** 기도 시작 → 정지 시 경과 시간을 분 단위로 기록합니다. */
-function PrayerTimer({ onSave }: { onSave: (minutes: number) => Promise<void> }) {
+function PrayerTimer({
+  onSave,
+  startLabel = '기도 시작',
+}: {
+  onSave: (minutes: number) => Promise<void> | void;
+  startLabel?: string;
+}) {
   const theme = useTheme();
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -240,7 +375,7 @@ function PrayerTimer({ onSave }: { onSave: (minutes: number) => Promise<void> })
   const display = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
   if (startedAt === null) {
-    return <Button label="기도 시작" icon="play" onPress={() => setStartedAt(Date.now())} />;
+    return <Button label={startLabel} icon="play" onPress={() => setStartedAt(Date.now())} />;
   }
 
   return (
@@ -253,6 +388,7 @@ function PrayerTimer({ onSave }: { onSave: (minutes: number) => Promise<void> })
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  flexEnd: { flex: 1, textAlign: 'right' },
   stack: { gap: Spacing.two },
   center: { textAlign: 'center' },
   statRow: { flexDirection: 'row', gap: Spacing.two },
@@ -266,9 +402,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   chartColumn: { flex: 1, alignItems: 'center', gap: Spacing.one },
+  chartHint: { marginBottom: Spacing.two },
   bar: { width: '70%', borderRadius: Radius.small },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: 'transparent', marginVertical: Spacing.one },
   quickRow: { flexDirection: 'row', gap: Spacing.two },
   timerBox: { borderRadius: Radius.medium, padding: Spacing.three, alignItems: 'center', gap: Spacing.two },
+  communalHero: { alignItems: 'center', gap: 2, marginBottom: Spacing.two },
+  communalTotal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.medium,
+    marginVertical: Spacing.one,
+  },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   prayButton: {
     flexDirection: 'row',

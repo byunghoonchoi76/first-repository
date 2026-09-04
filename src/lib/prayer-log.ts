@@ -4,11 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { toDateKey } from '@/lib/format';
 import type { PrayerLogEntry } from '@/lib/data/types';
 
-const STORAGE_KEY = 'church-app/prayer-log';
+/** 개인(나의) 기도시간 저장 키 */
+export const PERSONAL_PRAYER_KEY = 'church-app/prayer-log';
+/** 공동 기도에 내가 참여한 시간 저장 키 (기기 로컬, 나의 몫) */
+export const COMMUNAL_PRAYER_KEY = 'church-app/communal-prayer-log';
 
-async function readLog(): Promise<PrayerLogEntry[]> {
+async function readLog(storageKey: string): Promise<PrayerLogEntry[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const raw = await AsyncStorage.getItem(storageKey);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as PrayerLogEntry[]) : [];
@@ -49,14 +52,15 @@ export function recentDays(entries: PrayerLogEntry[], days = 7): PrayerLogEntry[
   return result;
 }
 
-/** 개인 기도시간 기록을 기기 로컬에 저장·조회하는 훅 */
-export function usePrayerLog() {
+/** 기도시간 기록을 기기 로컬에 저장·조회하는 훅. 저장 키로 개인/공동을 구분합니다. */
+export function usePrayerLog(storageKey: string = PERSONAL_PRAYER_KEY) {
   const [entries, setEntries] = useState<PrayerLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    readLog().then((stored) => {
+    setLoading(true);
+    readLog(storageKey).then((stored) => {
       if (!active) return;
       setEntries(stored);
       setLoading(false);
@@ -64,12 +68,15 @@ export function usePrayerLog() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [storageKey]);
 
-  const persist = useCallback(async (next: PrayerLogEntry[]) => {
-    setEntries(next);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }, []);
+  const persist = useCallback(
+    async (next: PrayerLogEntry[]) => {
+      setEntries(next);
+      await AsyncStorage.setItem(storageKey, JSON.stringify(next));
+    },
+    [storageKey],
+  );
 
   /** 같은 날 여러 번 기록하면 시간을 더합니다. */
   const addMinutes = useCallback(

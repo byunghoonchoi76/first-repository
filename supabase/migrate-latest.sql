@@ -78,3 +78,45 @@ alter table public.church_profile add column if not exists map_url text not null
 
 -- 네이버 플레이스 정확 위치 링크를 설정합니다.
 update public.church_profile set map_url = 'https://naver.me/5CCocDC6' where coalesce(map_url, '') = '';
+
+-- 4) 공동 기도제목 (온 성도가 함께 기도하며 시간을 쌓아 가는 교회 공통 제목)
+create table if not exists public.communal_prayers (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null default '',
+  total_minutes integer not null default 0,
+  sort_order smallint not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table public.communal_prayers enable row level security;
+
+drop policy if exists "communal_prayers 공개 조회" on public.communal_prayers;
+create policy "communal_prayers 공개 조회" on public.communal_prayers for select using (true);
+
+drop policy if exists "communal_prayers 관리자 쓰기" on public.communal_prayers;
+create policy "communal_prayers 관리자 쓰기" on public.communal_prayers
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- 기도한 시간(분)을 전체 누적에 안전하게 더하는 함수 (로그인 없이도 실행 가능)
+create or replace function public.add_communal_prayer_minutes(p_id uuid, p_minutes integer)
+returns setof public.communal_prayers
+language sql
+security definer
+set search_path = public
+as $$
+  update public.communal_prayers
+  set total_minutes = total_minutes + greatest(0, p_minutes)
+  where id = p_id
+  returning *;
+$$;
+grant execute on function public.add_communal_prayer_minutes(uuid, integer) to anon, authenticated;
+
+-- 처음 시작할 기본 공동 기도제목을 넣어 둡니다(이미 있으면 건너뜁니다).
+insert into public.communal_prayers (title, body, sort_order)
+select * from (values
+  ('민족 복음화와 나라를 위하여', '이 땅의 회복과 위정자들의 지혜, 다음 세대의 신앙 계승을 위해 함께 기도합니다.', 1),
+  ('교회 부흥과 성도의 하나됨', '예배의 회복과 전도의 열정, 성도 간의 사랑과 섬김을 위해 함께 기도합니다.', 2),
+  ('선교사와 열방을 위하여', '파송 선교사님들의 건강과 사역, 복음이 열방 가운데 전해지도록 함께 기도합니다.', 3)
+) as v(title, body, sort_order)
+where not exists (select 1 from public.communal_prayers);

@@ -7,6 +7,8 @@ import type {
   BulletinInput,
   ChurchProfile,
   ChurchRepository,
+  CommunalPrayer,
+  CommunalPrayerInput,
   GroupMessage,
   PrayerRequest,
   PrayerRequestInput,
@@ -120,6 +122,21 @@ const toPrayer = (row: Row): PrayerRequest => ({
   answered: row.answered,
   prayCount: row.pray_count ?? 0,
   createdAt: row.created_at,
+});
+
+const toCommunal = (row: Row): CommunalPrayer => ({
+  id: row.id,
+  title: row.title,
+  body: row.body ?? '',
+  totalMinutes: row.total_minutes ?? 0,
+  sortOrder: row.sort_order ?? 0,
+  createdAt: row.created_at,
+});
+
+const fromCommunal = (input: CommunalPrayerInput) => ({
+  title: input.title,
+  body: input.body,
+  sort_order: input.sortOrder,
 });
 
 const toGroup = (row: Row): SmallGroup => ({
@@ -373,6 +390,48 @@ export const supabaseRepository: ChurchRepository = {
       .select()
       .single();
     return toPrayer(unwrap(res));
+  },
+
+  async listCommunalPrayers() {
+    const sb = requireSupabase();
+    const res = await sb.from('communal_prayers').select('*').order('sort_order', { ascending: true });
+    return unwrap(res).map(toCommunal);
+  },
+
+  async getCommunalPrayer(id) {
+    const sb = requireSupabase();
+    const res = await sb.from('communal_prayers').select('*').eq('id', id).maybeSingle();
+    if (res.error) throw new Error(res.error.message);
+    return res.data ? toCommunal(res.data) : null;
+  },
+
+  async createCommunalPrayer(input) {
+    const sb = requireSupabase();
+    const res = await sb.from('communal_prayers').insert(fromCommunal(input)).select().single();
+    return toCommunal(unwrap(res));
+  },
+
+  async updateCommunalPrayer(id, input) {
+    const sb = requireSupabase();
+    const res = await sb.from('communal_prayers').update(fromCommunal(input)).eq('id', id).select().single();
+    return toCommunal(unwrap(res));
+  },
+
+  async deleteCommunalPrayer(id) {
+    const sb = requireSupabase();
+    const { error } = await sb.from('communal_prayers').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async prayCommunal(id, minutes) {
+    const sb = requireSupabase();
+    // 여러 성도가 동시에 기도해도 합계가 어긋나지 않도록 DB 함수로 누적합니다.
+    const res = await sb
+      .rpc('add_communal_prayer_minutes', { p_id: id, p_minutes: Math.max(0, Math.round(minutes)) })
+      .select()
+      .single();
+    if (res.error) throw new Error(res.error.message);
+    return toCommunal(res.data as Row);
   },
 
   async createNewFamily(input) {
