@@ -49,6 +49,19 @@ alter table public.church_profile add column if not exists slogan_verse text not
 alter table public.church_profile add column if not exists giving_url text not null default '';
 alter table public.church_profile add column if not exists map_url text not null default '';
 
+-- 앱 전역 설정 (실시간 방송 강제 표시 등) — 한 줄(id=1)만 사용합니다.
+create table if not exists public.app_settings (
+  id smallint primary key default 1 check (id = 1),
+  live_override text not null default 'auto' check (live_override in ('auto', 'on', 'off')),
+  updated_at timestamptz not null default now()
+);
+insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+alter table public.app_settings enable row level security;
+drop policy if exists "설정 공개 조회" on public.app_settings;
+create policy "설정 공개 조회" on public.app_settings for select using (true);
+drop policy if exists "설정 관리자 쓰기" on public.app_settings;
+create policy "설정 관리자 쓰기" on public.app_settings for all using (public.is_admin()) with check (public.is_admin());
+
 create table if not exists public.service_times (
   id uuid primary key default gen_random_uuid(),
   name text not null,

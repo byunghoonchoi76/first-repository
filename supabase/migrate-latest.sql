@@ -162,3 +162,16 @@ alter table public.prayer_requests add column if not exists shared boolean not n
 drop policy if exists "기도제목 조회" on public.prayer_requests;
 create policy "기도제목 조회" on public.prayer_requests
   for select using (shared or auth.uid() = author_id or public.is_admin());
+
+-- 7) 앱 전역 설정 (실시간 방송 강제 on/off) — 관리자가 홈의 LIVE 배지를 직접 켜고 끌 수 있습니다.
+create table if not exists public.app_settings (
+  id smallint primary key default 1 check (id = 1),
+  live_override text not null default 'auto' check (live_override in ('auto', 'on', 'off')),
+  updated_at timestamptz not null default now()
+);
+insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+alter table public.app_settings enable row level security;
+drop policy if exists "설정 공개 조회" on public.app_settings;
+create policy "설정 공개 조회" on public.app_settings for select using (true);
+drop policy if exists "설정 관리자 쓰기" on public.app_settings;
+create policy "설정 관리자 쓰기" on public.app_settings for all using (public.is_admin()) with check (public.is_admin());

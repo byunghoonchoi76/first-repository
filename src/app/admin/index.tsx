@@ -1,14 +1,17 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ListRow, SectionHeader } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
 import { formatDate, formatRelative } from '@/lib/format';
+import { useLiveOverride, type LiveOverride } from '@/lib/live-status';
 
 export default function AdminHomeScreen() {
   const router = useRouter();
@@ -53,6 +56,8 @@ export default function AdminHomeScreen() {
           </ThemedText>
         </Card>
       ) : null}
+
+      <LiveOverrideCard />
 
       <View>
         <SectionHeader title="주보" actionLabel="새로 등록" onAction={() => router.push('/admin/bulletin/new')} />
@@ -166,4 +171,71 @@ export default function AdminHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({});
+/** 실시간 방송 표시 강제 스위치 (자동 / 강제 켜기 / 강제 끄기) */
+const LIVE_OPTIONS: { mode: LiveOverride; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+  { mode: 'auto', label: '자동', icon: 'sync-outline' },
+  { mode: 'on', label: '강제 켜기', icon: 'radio-outline' },
+  { mode: 'off', label: '강제 끄기', icon: 'close-circle-outline' },
+];
+
+const LIVE_HINTS: Record<LiveOverride, string> = {
+  auto: '유튜브 방송을 자동으로 감지해, 실제 방송 중일 때만 LIVE 배지를 켭니다.',
+  on: '지금 모든 성도 화면에 LIVE 배지가 켜집니다. 예배가 끝나면 다시 꺼 주세요.',
+  off: 'LIVE 배지를 항상 숨깁니다.',
+};
+
+function LiveOverrideCard() {
+  const theme = useTheme();
+  const { mode, setMode, loading, saving } = useLiveOverride();
+
+  return (
+    <View>
+      <SectionHeader title="실시간 방송 표시" />
+      <Card>
+        <ThemedText type="small" themeColor="textSecondary">
+          홈 화면 ‘실시간 예배’의 LIVE 배지를 어떻게 표시할지 정합니다.
+        </ThemedText>
+        <View style={styles.liveRow}>
+          {LIVE_OPTIONS.map((option) => {
+            const active = mode === option.mode;
+            return (
+              <Pressable
+                key={option.mode}
+                disabled={loading || saving}
+                onPress={() => void setMode(option.mode)}
+                style={[
+                  styles.liveChip,
+                  {
+                    backgroundColor: active ? theme.primary : theme.backgroundElement,
+                    borderColor: active ? theme.primary : theme.border,
+                    opacity: loading || saving ? 0.6 : 1,
+                  },
+                ]}>
+                <Ionicons name={option.icon} size={18} color={active ? theme.onPrimary : theme.textSecondary} />
+                <ThemedText type="smallBold" style={{ color: active ? theme.onPrimary : theme.text }}>
+                  {option.label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
+        <ThemedText type="caption" themeColor="textMuted" style={styles.liveHint}>
+          {LIVE_HINTS[mode]}
+        </ThemedText>
+      </Card>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  liveRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.three },
+  liveChip: {
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.medium,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  liveHint: { marginTop: Spacing.two, lineHeight: 17 },
+});
