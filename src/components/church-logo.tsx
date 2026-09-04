@@ -9,8 +9,16 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ChurchInfo } from '@/constants/church';
-import { LogoMarkRatio, LogoSource, LogoWhite, LogoWhiteRatio } from '@/constants/logo';
+import {
+  LogoMarkRatio,
+  LogoSource,
+  LogoWhite,
+  LogoWhiteRatio,
+  LogoWordmark,
+  LogoWordmarkRatio,
+} from '@/constants/logo';
 import { Brand, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 /**
  * 교회 CI 심볼.
@@ -103,13 +111,23 @@ export function ChurchLogo({
   /** 표어의 성구 출처 */
   verse?: string;
 }) {
+  const theme = useTheme();
+  // 교회명은 공식 CI에서 잘라낸 '목양교회' 워드마크를 씁니다. 흰색 실루엣이라 글자 색을 입혀 줍니다.
+  const wordmarkColor = color ?? theme.text;
+  // 워드마크 높이는 심볼보다 살짝 작게 맞춰 균형을 잡습니다.
+  const wordmarkHeight = Math.round(size * 0.62);
+
   return (
     <View style={styles.logoRow}>
       <ChurchMark size={size} />
       <View style={styles.flex}>
-        <ThemedText type="heading" style={color ? { color } : undefined}>
-          {ChurchInfo.name}
-        </ThemedText>
+        <Image
+          source={LogoWordmark}
+          tintColor={wordmarkColor}
+          resizeMode="contain"
+          style={{ width: wordmarkHeight * LogoWordmarkRatio, height: wordmarkHeight }}
+          accessibilityLabel={ChurchInfo.name}
+        />
         {subtitle ? (
           <ThemedText type="small" style={color ? { color, opacity: 0.9 } : undefined} themeColor="primary">
             {subtitle}
