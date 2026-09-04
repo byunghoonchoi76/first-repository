@@ -15,7 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
 import { formatDate, formatFullDate, minutesLabel } from '@/lib/format';
-import { usePrayerLog } from '@/lib/prayer-log';
+import { usePrayerTime } from '@/lib/prayer-log';
 import { useYouTubeTitle } from '@/lib/use-youtube-title';
 import { parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 
@@ -31,7 +31,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const prayerLog = usePrayerLog();
+  const prayerLog = usePrayerTime('personal');
 
   const profile = useAsyncData(() => repository.getChurchProfile());
   const bulletin = useAsyncData(() => repository.getLatestBulletin());

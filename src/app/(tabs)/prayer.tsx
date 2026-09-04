@@ -12,7 +12,7 @@ import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
 import type { CommunalPrayer } from '@/lib/data/types';
 import { formatRelative, minutesLabel } from '@/lib/format';
-import { COMMUNAL_PRAYER_KEY, usePrayerLog } from '@/lib/prayer-log';
+import { usePrayerTime } from '@/lib/prayer-log';
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
 const QUICK_MINUTES = [5, 10, 30];
@@ -20,8 +20,8 @@ const QUICK_MINUTES = [5, 10, 30];
 export default function PrayerScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const personalTime = usePrayerLog();
-  const communalTime = usePrayerLog(COMMUNAL_PRAYER_KEY);
+  const personalTime = usePrayerTime('personal');
+  const communalTime = usePrayerTime('communal');
   const { user, isAdmin } = useAuth();
   // Supabase 모드에서는 로그인한 성도만 개인 기도제목을 볼 수 있습니다.
   const needsSignIn = dataMode === 'supabase' && !user;

@@ -22,6 +22,7 @@ import type {
   GroupMessage,
   PrayerRequest,
   PrayerRequestInput,
+  PrayerTimeEntry,
   Sermon,
   SermonInput,
   SmallGroup,
@@ -44,7 +45,7 @@ const STORAGE_KEY = 'church-app/sample-db';
  * 기기에 저장된 값이 이 버전과 다르면 새 샘플 데이터로 다시 시작합니다.
  * (그렇지 않으면 앱을 한 번 실행한 기기에는 예전 내용이 계속 남습니다.)
  */
-const SAMPLE_VERSION = '2026-09-04-a';
+const SAMPLE_VERSION = '2026-09-04-b';
 
 interface SampleDb {
   announcements: Announcement[];
@@ -52,6 +53,7 @@ interface SampleDb {
   sermons: Sermon[];
   prayers: PrayerRequest[];
   communalPrayers: CommunalPrayer[];
+  myPrayerTime: PrayerTimeEntry[];
   staff: StaffMember[];
   newFamilies: NewFamily[];
   groups: SmallGroup[];
@@ -64,6 +66,7 @@ const initialDb = (): SampleDb => ({
   sermons: [...sampleSermons],
   prayers: [...samplePrayerRequests],
   communalPrayers: [...sampleCommunalPrayers],
+  myPrayerTime: [],
   staff: [...sampleStaff],
   newFamilies: [],
   groups: [...sampleGroups],
@@ -349,6 +352,31 @@ export const sampleRepository: ChurchRepository = {
     target.totalMinutes += Math.max(0, Math.round(minutes));
     await persist();
     return clone(target);
+  },
+
+  async listMyPrayerTime() {
+    await ready();
+    await delay(80);
+    return clone(db.myPrayerTime);
+  },
+
+  async addMyPrayerTime(kind, date, minutes) {
+    await ready();
+    const add = Math.max(0, Math.round(minutes));
+    if (add <= 0) return;
+    const existing = db.myPrayerTime.find((e) => e.date === date && e.kind === kind);
+    if (existing) {
+      existing.minutes += add;
+    } else {
+      db.myPrayerTime = [...db.myPrayerTime, { date, kind, minutes: add }];
+    }
+    await persist();
+  },
+
+  async clearMyPrayerTime(kind, date) {
+    await ready();
+    db.myPrayerTime = db.myPrayerTime.filter((e) => !(e.date === date && e.kind === kind));
+    await persist();
   },
 
   async createNewFamily(input: NewFamilyInput) {

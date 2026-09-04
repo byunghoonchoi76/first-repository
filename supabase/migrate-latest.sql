@@ -120,3 +120,35 @@ select * from (values
   ('선교사와 열방을 위하여', '파송 선교사님들의 건강과 사역, 복음이 열방 가운데 전해지도록 함께 기도합니다.', 3)
 ) as v(title, body, sort_order)
 where not exists (select 1 from public.communal_prayers);
+
+-- 5) 나의 기도시간 계정별 저장 (로그인한 성도의 공동/개인 기도시간을 서버에 보관)
+create table if not exists public.prayer_time (
+  user_id uuid not null references auth.users on delete cascade,
+  date date not null,
+  kind text not null,
+  minutes integer not null default 0,
+  primary key (user_id, date, kind)
+);
+
+alter table public.prayer_time enable row level security;
+
+drop policy if exists "본인 기도시간 조회" on public.prayer_time;
+create policy "본인 기도시간 조회" on public.prayer_time
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "본인 기도시간 삭제" on public.prayer_time;
+create policy "본인 기도시간 삭제" on public.prayer_time
+  for delete using (auth.uid() = user_id);
+
+create or replace function public.add_prayer_time(p_date date, p_kind text, p_minutes integer)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.prayer_time (user_id, date, kind, minutes)
+  values (auth.uid(), p_date, p_kind, greatest(0, p_minutes))
+  on conflict (user_id, date, kind)
+  do update set minutes = public.prayer_time.minutes + greatest(0, p_minutes);
+$$;
+grant execute on function public.add_prayer_time(date, text, integer) to authenticated;

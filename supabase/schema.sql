@@ -176,6 +176,29 @@ $$;
 -- 로그인하지 않은 성도도 함께 기도할 수 있도록 실행 권한을 부여합니다.
 grant execute on function public.add_communal_prayer_minutes(uuid, integer) to anon, authenticated;
 
+-- 로그인한 성도 본인의 기도시간 기록 (공동/개인). 계정별로 저장되어 기기를 바꿔도 유지됩니다.
+create table if not exists public.prayer_time (
+  user_id uuid not null references auth.users on delete cascade,
+  date date not null,
+  kind text not null,
+  minutes integer not null default 0,
+  primary key (user_id, date, kind)
+);
+
+-- 하루치 기도시간을 더합니다. auth.uid() 로 본인 것만 기록됩니다.
+create or replace function public.add_prayer_time(p_date date, p_kind text, p_minutes integer)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.prayer_time (user_id, date, kind, minutes)
+  values (auth.uid(), p_date, p_kind, greatest(0, p_minutes))
+  on conflict (user_id, date, kind)
+  do update set minutes = public.prayer_time.minutes + greatest(0, p_minutes);
+$$;
+grant execute on function public.add_prayer_time(date, text, integer) to authenticated;
+
 -- ─────────────────────────────────────────────
 -- 소그룹 · 소통방
 -- ─────────────────────────────────────────────
@@ -232,6 +255,7 @@ alter table public.announcements enable row level security;
 alter table public.sermons enable row level security;
 alter table public.prayer_requests enable row level security;
 alter table public.communal_prayers enable row level security;
+alter table public.prayer_time enable row level security;
 alter table public.new_families enable row level security;
 alter table public.church_staff enable row level security;
 alter table public.small_groups enable row level security;
@@ -283,6 +307,15 @@ create policy "기도제목 수정" on public.prayer_requests
 drop policy if exists "기도제목 삭제" on public.prayer_requests;
 create policy "기도제목 삭제" on public.prayer_requests
   for delete using (auth.uid() = author_id or public.is_admin());
+
+-- 나의 기도시간: 본인 것만 읽고·지울 수 있습니다 (기록 추가는 add_prayer_time 함수로).
+drop policy if exists "본인 기도시간 조회" on public.prayer_time;
+create policy "본인 기도시간 조회" on public.prayer_time
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "본인 기도시간 삭제" on public.prayer_time;
+create policy "본인 기도시간 삭제" on public.prayer_time
+  for delete using (auth.uid() = user_id);
 
 -- 소그룹 대화: 로그인 사용자만 읽고 쓰기
 drop policy if exists "소그룹 대화 조회" on public.group_messages;

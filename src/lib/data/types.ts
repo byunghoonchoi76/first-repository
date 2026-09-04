@@ -193,12 +193,23 @@ export interface GroupMessage {
   createdAt: string;
 }
 
-/** 개인 기도시간 기록 (기기 로컬에 저장) */
+/** 기도시간 기록 (기기 로컬에 저장) */
 export interface PrayerLogEntry {
   /** YYYY-MM-DD */
   date: string;
   minutes: number;
   note?: string;
+}
+
+/** 기도시간 종류 — 공동 기도 / 개인 기도 */
+export type PrayerKind = 'communal' | 'personal';
+
+/** 로그인 계정별로 서버에 저장하는 기도시간 기록 */
+export interface PrayerTimeEntry {
+  /** YYYY-MM-DD */
+  date: string;
+  kind: PrayerKind;
+  minutes: number;
 }
 
 export type DataMode = 'sample' | 'supabase';
@@ -240,6 +251,11 @@ export interface ChurchRepository {
   deleteCommunalPrayer(id: string): Promise<void>;
   /** 이 제목으로 minutes 만큼 기도한 시간을 전체 누적에 더합니다. */
   prayCommunal(id: string, minutes: number): Promise<CommunalPrayer>;
+
+  /** 로그인한 성도 본인의 기도시간 기록 (계정별, 기기 간 공유) */
+  listMyPrayerTime(): Promise<PrayerTimeEntry[]>;
+  addMyPrayerTime(kind: PrayerKind, date: string, minutes: number): Promise<void>;
+  clearMyPrayerTime(kind: PrayerKind, date: string): Promise<void>;
 
   createNewFamily(input: NewFamilyInput): Promise<NewFamily>;
   listNewFamilies(): Promise<NewFamily[]>;

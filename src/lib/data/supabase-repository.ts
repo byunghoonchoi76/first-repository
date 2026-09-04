@@ -12,6 +12,8 @@ import type {
   GroupMessage,
   PrayerRequest,
   PrayerRequestInput,
+  PrayerKind,
+  PrayerTimeEntry,
   Sermon,
   SermonInput,
   SmallGroup,
@@ -432,6 +434,36 @@ export const supabaseRepository: ChurchRepository = {
       .single();
     if (res.error) throw new Error(res.error.message);
     return toCommunal(res.data as Row);
+  },
+
+  async listMyPrayerTime() {
+    const sb = requireSupabase();
+    // RLS 로 본인 행만 조회됩니다.
+    const res = await sb.from('prayer_time').select('date, kind, minutes');
+    return unwrap(res).map(
+      (row: Row): PrayerTimeEntry => ({
+        date: row.date,
+        kind: (row.kind as PrayerKind) ?? 'personal',
+        minutes: row.minutes ?? 0,
+      }),
+    );
+  },
+
+  async addMyPrayerTime(kind, date, minutes) {
+    const sb = requireSupabase();
+    const { error } = await sb.rpc('add_prayer_time', {
+      p_date: date,
+      p_kind: kind,
+      p_minutes: Math.max(0, Math.round(minutes)),
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  async clearMyPrayerTime(kind, date) {
+    const sb = requireSupabase();
+    // RLS 로 본인 행만 삭제됩니다.
+    const { error } = await sb.from('prayer_time').delete().eq('date', date).eq('kind', kind);
+    if (error) throw new Error(error.message);
   },
 
   async createNewFamily(input) {

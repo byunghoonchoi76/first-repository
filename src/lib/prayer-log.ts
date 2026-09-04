@@ -1,13 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
+import { useAuth } from '@/lib/auth';
+import { dataMode, repository } from '@/lib/data';
 import { toDateKey } from '@/lib/format';
-import type { PrayerLogEntry } from '@/lib/data/types';
+import type { PrayerKind, PrayerLogEntry } from '@/lib/data/types';
 
 /** 개인(나의) 기도시간 저장 키 */
 export const PERSONAL_PRAYER_KEY = 'church-app/prayer-log';
 /** 공동 기도에 내가 참여한 시간 저장 키 (기기 로컬, 나의 몫) */
 export const COMMUNAL_PRAYER_KEY = 'church-app/communal-prayer-log';
+
+const KEY_BY_KIND: Record<PrayerKind, string> = {
+  personal: PERSONAL_PRAYER_KEY,
+  communal: COMMUNAL_PRAYER_KEY,
+};
+
+/** 같은 날 기록을 합쳐 최신이 앞에 오도록 정리합니다. */
+function mergeToday(entries: PrayerLogEntry[], date: string, minutes: number, note?: string): PrayerLogEntry[] {
+  const existing = entries.find((e) => e.date === date);
+  const merged: PrayerLogEntry = {
+    date,
+    minutes: (existing?.minutes ?? 0) + minutes,
+    note: note?.trim() || existing?.note,
+  };
+  return [merged, ...entries.filter((e) => e.date !== date)];
+}
 
 async function readLog(storageKey: string): Promise<PrayerLogEntry[]> {
   try {
@@ -52,51 +70,75 @@ export function recentDays(entries: PrayerLogEntry[], days = 7): PrayerLogEntry[
   return result;
 }
 
-/** 기도시간 기록을 기기 로컬에 저장·조회하는 훅. 저장 키로 개인/공동을 구분합니다. */
-export function usePrayerLog(storageKey: string = PERSONAL_PRAYER_KEY) {
+/**
+ * 계정 인식 기도시간 훅.
+ * - 로그인한 성도(Supabase): 서버에 계정별로 저장되어 기기를 바꿔도 유지됩니다.
+ * - 비로그인/샘플 모드: 지금처럼 이 기기에만 저장됩니다.
+ */
+export function usePrayerTime(kind: PrayerKind) {
+  const { user } = useAuth();
+  const server = dataMode === 'supabase' && !!user;
+  const storageKey = KEY_BY_KIND[kind];
+
   const [entries, setEntries] = useState<PrayerLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    readLog(storageKey).then((stored) => {
-      if (!active) return;
-      setEntries(stored);
-      setLoading(false);
-    });
+    const load = async (): Promise<PrayerLogEntry[]> => {
+      if (server) {
+        const rows = await repository.listMyPrayerTime();
+        return rows
+          .filter((r) => r.kind === kind)
+          .map((r) => ({ date: r.date, minutes: r.minutes }));
+      }
+      return readLog(storageKey);
+    };
+    load()
+      .then((loaded) => {
+        if (active) {
+          setEntries(loaded);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setEntries([]);
+          setLoading(false);
+        }
+      });
     return () => {
       active = false;
     };
-  }, [storageKey]);
+  }, [server, kind, storageKey]);
 
-  const persist = useCallback(
-    async (next: PrayerLogEntry[]) => {
-      setEntries(next);
-      await AsyncStorage.setItem(storageKey, JSON.stringify(next));
-    },
-    [storageKey],
-  );
-
-  /** 같은 날 여러 번 기록하면 시간을 더합니다. */
   const addMinutes = useCallback(
     async (minutes: number, note?: string) => {
       if (minutes <= 0) return;
       const today = toDateKey();
-      const existing = entries.find((e) => e.date === today);
-      const merged: PrayerLogEntry = {
-        date: today,
-        minutes: (existing?.minutes ?? 0) + minutes,
-        note: note?.trim() || existing?.note,
-      };
-      await persist([merged, ...entries.filter((e) => e.date !== today)]);
+      // 화면을 먼저 올려 두고, 저장은 뒤에서 처리합니다.
+      setEntries((prev) => mergeToday(prev, today, minutes, note));
+      if (server) {
+        await repository.addMyPrayerTime(kind, today, minutes);
+      } else {
+        const next = mergeToday(entries, today, minutes, note);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(next));
+      }
     },
-    [entries, persist],
+    [server, kind, entries, storageKey],
   );
 
   const clearToday = useCallback(async () => {
-    await persist(entries.filter((e) => e.date !== toDateKey()));
-  }, [entries, persist]);
+    const today = toDateKey();
+    setEntries((prev) => prev.filter((e) => e.date !== today));
+    if (server) {
+      await repository.clearMyPrayerTime(kind, today);
+    } else {
+      const next = entries.filter((e) => e.date !== today);
+      await AsyncStorage.setItem(storageKey, JSON.stringify(next));
+    }
+  }, [server, kind, entries, storageKey]);
 
   const today = entries.find((e) => e.date === toDateKey());
   const totalMinutes = entries.reduce((sum, e) => sum + e.minutes, 0);
