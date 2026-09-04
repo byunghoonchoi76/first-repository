@@ -66,7 +66,7 @@ export default function SignInScreen() {
   return (
     <Screen>
       <View style={styles.logoRow}>
-        <ChurchLogo size={40} subtitle={ChurchInfo.slogan} verse={ChurchInfo.sloganVerse} />
+        <ChurchLogo size={40} subtitle={ChurchInfo.slogan} />
       </View>
       {isSupabase ? (
         <Card>
