@@ -80,7 +80,7 @@ export default function HomeScreen() {
     <Screen onRefresh={reloadAll} refreshing={false}>
       {/* 히어로 — 오늘의 말씀 (매일 자동으로 바뀝니다) */}
       <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={210}>
-        <ThemedText type="caption" style={styles.heroLabel}>
+        <ThemedText type="small" style={styles.heroLabel}>
           {greeting()}
           {user ? `, ${user.name}님` : ''} · {formatFullDate(new Date().toISOString().slice(0, 10))}
         </ThemedText>
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
 
-  heroLabel: { color: 'rgba(255,255,255,0.9)' },
+  heroLabel: { color: 'rgba(255,255,255,0.95)', fontSize: 15, fontWeight: '600' },
   heroTagRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.two },
   heroTag: { color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
   heroTitle: { color: '#fff', marginTop: Spacing.one, lineHeight: 26 },
