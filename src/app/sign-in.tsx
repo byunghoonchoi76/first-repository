@@ -6,7 +6,6 @@ import { ChurchLogo } from '@/components/church-logo';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Field } from '@/components/ui';
-import { ChurchInfo } from '@/constants/church';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode } from '@/lib/data';
@@ -66,7 +65,7 @@ export default function SignInScreen() {
   return (
     <Screen>
       <View style={styles.logoRow}>
-        <ChurchLogo size={40} subtitle={ChurchInfo.slogan} />
+        <ChurchLogo size={40} />
       </View>
       {isSupabase ? (
         <Card>
