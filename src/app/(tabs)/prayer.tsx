@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
@@ -9,10 +9,10 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, SectionHeader } fro
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { dataMode, repository, useAsyncData } from '@/lib/data';
+import { repository, useAsyncData } from '@/lib/data';
 import type { CommunalPrayer } from '@/lib/data/types';
 import { minutesLabel } from '@/lib/format';
-import { pendingLocalPrayerMinutes, syncLocalPrayerTimeToAccount, usePrayerTime } from '@/lib/prayer-log';
+import { usePrayerTime } from '@/lib/prayer-log';
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
 const QUICK_MINUTES = [5, 10, 30];
@@ -22,40 +22,12 @@ export default function PrayerScreen() {
   const router = useRouter();
   const personalTime = usePrayerTime('personal');
   const communalTime = usePrayerTime('communal');
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
 
   const communal = useAsyncData(() => repository.listCommunalPrayers());
   const reloadCommunal = communal.reload;
 
   useFocusEffect(reloadCommunal);
-
-  // 이 기기에 저장된 기도시간을 계정으로 1회 가져오기
-  const [pendingSync, setPendingSync] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-  const canSync = dataMode === 'supabase' && !!user;
-  useEffect(() => {
-    if (!canSync) {
-      setPendingSync(0);
-      return;
-    }
-    let active = true;
-    pendingLocalPrayerMinutes().then((m) => active && setPendingSync(m));
-    return () => {
-      active = false;
-    };
-  }, [canSync]);
-
-  const runSync = async () => {
-    setSyncing(true);
-    try {
-      await syncLocalPrayerTimeToAccount();
-      setPendingSync(0);
-      personalTime.reload();
-      communalTime.reload();
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const prayCommunal = async (id: string, minutes: number) => {
     communal.setData((cur) =>
@@ -88,18 +60,6 @@ export default function PrayerScreen() {
       {/* 나의 기도시간 (공동 + 개인) */}
       <View>
         <SectionHeader title="나의 기도시간" />
-        {pendingSync > 0 ? (
-          <Card style={styles.syncCard}>
-            <Ionicons name="cloud-upload-outline" size={20} color={theme.primary} />
-            <View style={styles.flex}>
-              <ThemedText type="smallBold">이 기기의 기도 기록을 계정으로 가져오기</ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                로그인 전 이 기기에 쌓인 {minutesLabel(pendingSync)}을 내 계정으로 옮깁니다.
-              </ThemedText>
-            </View>
-            <Button label="가져오기" variant="secondary" loading={syncing} onPress={() => void runSync()} />
-          </Card>
-        ) : null}
         <Card>
           <View style={styles.statRow}>
             <Stat label="공동 기도" value={myCommunal > 0 ? minutesLabel(myCommunal) : '-'} />
@@ -321,7 +281,6 @@ const styles = StyleSheet.create({
   bar: { width: '70%', borderRadius: Radius.small },
   quickRow: { flexDirection: 'row', gap: Spacing.two },
   timerBox: { borderRadius: Radius.medium, padding: Spacing.three, alignItems: 'center', gap: Spacing.two },
-  syncCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
   communalHero: { alignItems: 'center', gap: 2, marginBottom: Spacing.two },
   communalTotal: {
     flexDirection: 'row',
