@@ -186,7 +186,7 @@ const LIVE_HINTS: Record<LiveOverride, string> = {
 
 function LiveOverrideCard() {
   const theme = useTheme();
-  const { mode, setMode, loading, saving } = useLiveOverride();
+  const { mode, setMode, loading, saving, error } = useLiveOverride();
 
   return (
     <View>
@@ -222,6 +222,11 @@ function LiveOverrideCard() {
         <ThemedText type="caption" themeColor="textMuted" style={styles.liveHint}>
           {LIVE_HINTS[mode]}
         </ThemedText>
+        {error ? (
+          <ThemedText type="caption" themeColor="danger" style={styles.liveHint}>
+            {error}
+          </ThemedText>
+        ) : null}
       </Card>
     </View>
   );
