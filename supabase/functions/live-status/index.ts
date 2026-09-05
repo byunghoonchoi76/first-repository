@@ -16,8 +16,10 @@ const HANDLE = (Deno.env.get('YT_HANDLE') ?? '@mychmedia').replace(/^@?/, '@');
 const API_KEY = Deno.env.get('YOUTUBE_API_KEY') ?? '';
 const CHANNEL_ID = Deno.env.get('YT_CHANNEL_ID') ?? '';
 
-// 여러 사람이 동시에 열어도 유튜브를 자주 두드리지 않도록 결과를 잠깐(30초) 재사용합니다.
-const CACHE_TTL_MS = 30_000;
+// 여러 사람이 동시에 열어도 유튜브를 자주 두드리지 않도록 결과를 잠깐 재사용합니다.
+// (공식 API 사용 시 하루 무료 할당량을 넉넉히 지키도록 120초로 둡니다. 방송 시작
+//  후 최대 2분 안에 배지가 켜집니다. 더 빠르게 원하면 값을 줄이세요.)
+const CACHE_TTL_MS = 120_000;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
