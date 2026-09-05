@@ -32,6 +32,10 @@ interface LiveStatus {
   title: string | null;
   source: 'api' | 'scrape';
   checkedAt: string;
+  // 진단용 정보 (앱은 무시합니다) — 문제 파악을 위해 함께 돌려줍니다.
+  keyed?: boolean;
+  httpStatus?: number;
+  note?: string;
 }
 
 let cache: { at: number; data: LiveStatus } | null = null;
@@ -105,6 +109,14 @@ async function checkViaScrape(): Promise<LiveStatus> {
   const titleMatch = html.match(/<meta property="og:title" content="([^"]*)"/);
   const title = titleMatch ? decodeEntities(titleMatch[1]) : null;
 
+  // 유튜브가 서버 IP 를 막으면(403 등) 스크랩으로는 감지할 수 없습니다 → 진단에 남깁니다.
+  const note =
+    res.status !== 200
+      ? `유튜브가 스크랩 요청을 차단했습니다(HTTP ${res.status}). 유튜브 API 키(YOUTUBE_API_KEY)를 설정하면 안정적으로 감지됩니다.`
+      : live
+        ? undefined
+        : '라이브 신호를 찾지 못했습니다(방송 아님이거나 페이지 형식 변경).';
+
   return {
     live,
     videoId: live ? videoId : null,
@@ -112,6 +124,8 @@ async function checkViaScrape(): Promise<LiveStatus> {
     title: live ? title : null,
     source: 'scrape',
     checkedAt: new Date().toISOString(),
+    httpStatus: res.status,
+    note,
   };
 }
 
@@ -120,10 +134,20 @@ async function getStatus(): Promise<LiveStatus> {
   let data: LiveStatus;
   try {
     data = API_KEY ? await checkViaApi() : await checkViaScrape();
-  } catch (_e) {
+  } catch (e) {
     // 확인에 실패하면 '방송 아님'으로 안전하게 처리합니다(배지를 잘못 켜지 않도록).
-    data = { live: false, videoId: null, watchUrl: null, title: null, source: API_KEY ? 'api' : 'scrape', checkedAt: new Date().toISOString() };
+    data = {
+      live: false,
+      videoId: null,
+      watchUrl: null,
+      title: null,
+      source: API_KEY ? 'api' : 'scrape',
+      checkedAt: new Date().toISOString(),
+      note: `확인 중 오류: ${e instanceof Error ? e.message : String(e)}`,
+    };
   }
+  data.keyed = Boolean(API_KEY);
+  data.note = data.note ?? undefined;
   cache = { at: Date.now(), data };
   return data;
 }
