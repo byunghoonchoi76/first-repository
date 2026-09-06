@@ -6,7 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, EmptyState, ErrorState, LoadingState, SectionHeader } from '@/components/ui';
+import { Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
@@ -61,6 +61,8 @@ export default function PrayerScreen() {
       <GrassCard active={active} />
       <AverageCard active={active} />
       <InputCard active={active} kind={kind} />
+
+      <TopicsCard />
 
       {kind === 'communal' ? (
         <View>
@@ -346,6 +348,32 @@ function AverageCard({ active }: { active: PrayerTime }) {
   );
 }
 
+// ── 기도제목 · 기도 요청 진입 ────────────────────────────────────
+function TopicsCard() {
+  const theme = useTheme();
+  const router = useRouter();
+  return (
+    <View>
+      <SectionHeader title="기도제목" />
+      <Card>
+        <ListRow
+          icon="flower-outline"
+          title="개인 기도제목"
+          subtitle="나만의 기도제목을 적고 관리해요"
+          onPress={() => router.push('/prayer/personal')}
+        />
+        <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+        <ListRow
+          icon="hand-right-outline"
+          title="기도 요청"
+          subtitle="성도들과 나누고 함께 기도해요"
+          onPress={() => router.push('/prayer/requests')}
+        />
+      </Card>
+    </View>
+  );
+}
+
 // ── 기도 시간 입력 ──────────────────────────────────────────────
 function InputCard({ active, kind }: { active: PrayerTime; kind: PrayerKind }) {
   return (
@@ -468,6 +496,7 @@ const styles = StyleSheet.create({
   flexEnd: { flex: 1, textAlign: 'right' },
   stack: { gap: Spacing.two },
   center: { alignItems: 'center', textAlign: 'center' },
+  menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
 
   toggle: { flexDirection: 'row', padding: 4, borderRadius: Radius.pill, borderWidth: StyleSheet.hairlineWidth, gap: 4 },
   toggleItem: {
