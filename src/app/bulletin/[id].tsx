@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
@@ -163,22 +164,39 @@ export default function BulletinScreen() {
 function BulletinSheet({ url, onPress }: { url: string; onPress: () => void }) {
   const theme = useTheme();
   const [ratio, setRatio] = useState(1.4);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
+    setFailed(false);
     Image.getSize(
       url,
       (width, height) => {
         if (active && height > 0) setRatio(width / height);
       },
       () => {
-        // 크기를 못 읽으면 기본 비율로 둡니다.
+        // 크기를 못 읽으면(주소가 깨졌거나 삭제됨) 안내 화면을 보여 줍니다.
+        if (active) setFailed(true);
       },
     );
     return () => {
       active = false;
     };
   }, [url]);
+
+  if (failed) {
+    return (
+      <View style={[styles.sheetFallback, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+        <Ionicons name="image-outline" size={26} color={theme.textMuted} />
+        <ThemedText type="small" themeColor="textSecondary" style={styles.fallbackText}>
+          원본 이미지를 불러올 수 없습니다.
+        </ThemedText>
+        <ThemedText type="caption" themeColor="textMuted" style={styles.fallbackText}>
+          홈페이지에서 사진이 삭제·이동되었을 수 있어요. 관리자 화면에서 주보 사진을 다시 올려 주세요.
+        </ThemedText>
+      </View>
+    );
+  }
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => (pressed ? styles.pressed : undefined)}>
@@ -187,6 +205,7 @@ function BulletinSheet({ url, onPress }: { url: string; onPress: () => void }) {
         style={[styles.sheetImage, { aspectRatio: ratio, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
         resizeMode="contain"
         accessibilityLabel="주보 원본 이미지"
+        onError={() => setFailed(true)}
       />
     </Pressable>
   );
@@ -202,5 +221,15 @@ const styles = StyleSheet.create({
   adminRow: { flexDirection: 'row', gap: Spacing.two },
   sheets: { gap: Spacing.two },
   sheetImage: { width: '100%', borderRadius: Radius.small, borderWidth: StyleSheet.hairlineWidth },
+  sheetFallback: {
+    width: '100%',
+    borderRadius: Radius.small,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  fallbackText: { textAlign: 'center' },
   pressed: { opacity: 0.8 },
 });
