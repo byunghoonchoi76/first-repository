@@ -38,7 +38,6 @@ export default function BulletinEditorScreen() {
   const [scripture, setScripture] = useState('');
   const [weeklyVerse, setWeeklyVerse] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [urlInput, setUrlInput] = useState('');
   const [uploading, setUploading] = useState(false);
   // 같은 날짜의 주보가 이미 있을 때, 한 번 더 누르면 그대로 등록되도록 하는 표시
   const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
@@ -143,13 +142,6 @@ export default function BulletinEditorScreen() {
     setImageUrls((current) => current.filter((item) => item !== url));
     // 저장소에 올려 둔 파일이면 함께 정리합니다.
     void deleteBulletinImage(url);
-  };
-
-  const addUrl = () => {
-    const trimmed = urlInput.trim();
-    if (!trimmed) return;
-    setImageUrls((current) => [...current, trimmed]);
-    setUrlInput('');
   };
 
   const save = async () => {
@@ -270,27 +262,9 @@ export default function BulletinEditorScreen() {
 
           <ThemedText type="caption" themeColor="textMuted">
             {dataMode === 'supabase'
-              ? '앞면·뒷면 순서대로 고르시면 됩니다. 여러 장을 한 번에 고를 수 있습니다.'
+              ? '앞면·뒷면 순서대로 고르시면 됩니다. 여러 장을 한 번에 고를 수 있습니다. 올린 사진은 안전하게 보관되어 사라지지 않습니다.'
               : '샘플 모드에서는 사진이 이 기기에만 남습니다. Supabase 를 연결하면 모든 성도에게 보입니다.'}
           </ThemedText>
-
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-          <ThemedText type="caption" themeColor="textSecondary">
-            홈페이지에 이미 올린 주보라면 주소를 붙여넣어도 됩니다.
-          </ThemedText>
-          <View style={styles.urlRow}>
-            <View style={styles.flex}>
-              <Field
-                label=""
-                value={urlInput}
-                onChangeText={setUrlInput}
-                placeholder="https://www.mych.or.kr/... .jpg"
-                autoCapitalize="none"
-              />
-            </View>
-            <Button label="추가" variant="ghost" onPress={addUrl} style={styles.addUrlButton} />
-          </View>
         </Card>
       </View>
 
@@ -388,16 +362,12 @@ export default function BulletinEditorScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   form: { gap: Spacing.three },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
   thumbRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   thumbBox: { width: 96 },
   thumb: { width: 96, height: 72, borderRadius: Radius.small },
   thumbRemove: { position: 'absolute', top: -6, right: -6 },
   thumbLabel: { textAlign: 'center', marginTop: 2 },
-  urlRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
-  addUrlButton: { marginBottom: 0 },
   sectionTitle: { marginBottom: Spacing.two },
   orderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
   orderFields: { flex: 1, gap: Spacing.two, paddingBottom: Spacing.two },
