@@ -255,7 +255,7 @@ function GrassCard({ active }: { active: PrayerTime }) {
   return (
     <View>
       <View style={styles.grassHead}>
-        <SectionHeader title="나의 기도 잔디 기록" />
+        <SectionHeader title="나의 기도 기록" />
         {active.streak > 0 ? (
           <View style={[styles.streakBadge, { backgroundColor: theme.backgroundSelected }]}>
             <Ionicons name="flame" size={13} color={theme.accent} />
