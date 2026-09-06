@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -46,8 +47,10 @@ export default function RemindersScreen() {
   const toggleDay = (d: number) =>
     setDays(state.days.includes(d) ? state.days.filter((x) => x !== d) : [...state.days, d].sort((a, b) => a - b));
 
-  const stepHour = (delta: number) => setTime((state.hour + delta + 24) % 24, state.minute);
-  const stepMinute = (delta: number) => setTime(state.hour, (state.minute + delta + 60) % 60);
+  const meridiem: 'am' | 'pm' = state.hour < 12 ? 'am' : 'pm';
+  const hour12 = ((state.hour + 11) % 12) + 1; // 1~12
+  const setFromParts = (mer: 'am' | 'pm', h12: number, min: number) =>
+    setTime((h12 % 12) + (mer === 'pm' ? 12 : 0), min);
 
   return (
     <Screen>
@@ -103,13 +106,36 @@ export default function RemindersScreen() {
           시간
         </ThemedText>
         <Card>
-          <View style={styles.timeRow}>
-            <TimeStepper
-              value={`${state.hour < 12 ? '오전' : '오후'} ${((state.hour + 11) % 12) + 1}시`}
-              onMinus={() => stepHour(-1)}
-              onPlus={() => stepHour(1)}
+          <View style={[styles.ampmRow, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+            {(['am', 'pm'] as const).map((m) => {
+              const on = meridiem === m;
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() => setFromParts(m, hour12, state.minute)}
+                  style={[styles.ampmBtn, on && { backgroundColor: theme.primary }]}>
+                  <ThemedText type="smallBold" style={{ color: on ? theme.onPrimary : theme.textSecondary }}>
+                    {m === 'am' ? '오전' : '오후'}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View style={styles.pickerRow}>
+            <NumberPicker
+              suffix="시"
+              value={hour12}
+              options={HOURS}
+              format={(v) => `${v}`}
+              onSelect={(v) => setFromParts(meridiem, v, state.minute)}
             />
-            <TimeStepper value={`${String(state.minute).padStart(2, '0')}분`} onMinus={() => stepMinute(-5)} onPlus={() => stepMinute(5)} />
+            <NumberPicker
+              suffix="분"
+              value={state.minute}
+              options={MINUTES}
+              format={(v) => String(v).padStart(2, '0')}
+              onSelect={(v) => setTime(state.hour, v)}
+            />
           </View>
         </Card>
       </View>
@@ -135,20 +161,63 @@ export default function RemindersScreen() {
   );
 }
 
-function TimeStepper({ value, onMinus, onPlus }: { value: string; onMinus: () => void; onPlus: () => void }) {
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 1); // 1~12
+const MINUTES = Array.from({ length: 60 }, (_, i) => i); // 0~59
+
+/** 숫자 선택 — 누르면 목록에서 고릅니다. (시 1~12 / 분 00~59) */
+function NumberPicker({
+  value,
+  options,
+  format,
+  suffix,
+  onSelect,
+}: {
+  value: number;
+  options: number[];
+  format: (v: number) => string;
+  suffix: string;
+  onSelect: (v: number) => void;
+}) {
   const theme = useTheme();
+  const [open, setOpen] = useState(false);
   return (
-    <View style={styles.stepper}>
-      <Pressable onPress={onMinus} hitSlop={8} style={[styles.stepBtn, { borderColor: theme.border }]}>
-        <Ionicons name="remove" size={18} color={theme.textSecondary} />
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={[styles.pickerField, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+        <ThemedText type="heading">{format(value)}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {suffix}
+        </ThemedText>
+        <Ionicons name="chevron-down" size={16} color={theme.textMuted} style={styles.pickerCaret} />
       </Pressable>
-      <ThemedText type="heading" style={styles.stepValue}>
-        {value}
-      </ThemedText>
-      <Pressable onPress={onPlus} hitSlop={8} style={[styles.stepBtn, { borderColor: theme.border }]}>
-        <Ionicons name="add" size={18} color={theme.textSecondary} />
-      </Pressable>
-    </View>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+          <View style={[styles.sheet, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <ScrollView>
+              {options.map((o) => {
+                const on = o === value;
+                return (
+                  <Pressable
+                    key={o}
+                    onPress={() => {
+                      onSelect(o);
+                      setOpen(false);
+                    }}
+                    style={[styles.optionRow, on && { backgroundColor: theme.backgroundSelected }]}>
+                    <ThemedText type={on ? 'smallBold' : 'small'} themeColor={on ? 'primary' : undefined}>
+                      {format(o)}
+                      {suffix}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -168,16 +237,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  timeRow: { flexDirection: 'row', gap: Spacing.three },
-  stepper: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
-  stepBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  ampmRow: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: Radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
+    gap: 4,
+    marginBottom: Spacing.three,
+  },
+  ampmBtn: { flex: 1, alignItems: 'center', paddingVertical: Spacing.two, borderRadius: Radius.pill },
+  pickerRow: { flexDirection: 'row', gap: Spacing.three },
+  pickerField: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.medium,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  stepValue: { flex: 1, textAlign: 'center' },
+  pickerCaret: { marginLeft: 2 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: Spacing.five },
+  sheet: {
+    width: '70%',
+    maxHeight: '60%',
+    borderRadius: Radius.large,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  optionRow: { paddingVertical: Spacing.three, paddingHorizontal: Spacing.four, alignItems: 'center' },
   tip: { marginTop: Spacing.two },
 });
