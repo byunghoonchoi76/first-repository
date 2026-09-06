@@ -1,17 +1,19 @@
 // 기도 알림 발송 — 매분 스케줄(cron)로 호출됩니다.
 // push_subscriptions 에서 "지금(사용자 시간대 기준) 보낼 대상"을 찾아 웹 푸시를 보냅니다.
 //
-// 필요 시크릿:
-//   VAPID_KEYS  : { "publicKey": {...}, "privateKey": {...} }  (JWK 번들)
+// 필요 시크릿(Edge Functions → Secrets):
+//   VAPID_PUBLIC   : 앱에 넣은 것과 같은 공개키
+//   VAPID_PRIVATE  : 개인키 (여기 서버에만)
 //   (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 는 자동 주입됩니다)
-// 배포:  supabase functions deploy send-reminders --no-verify-jwt
-// 스케줄:  supabase/cron-reminders.sql 참고 (pg_cron 으로 매분 호출)
+// 배포:  Verify JWT 끄고 배포.  스케줄:  supabase/cron-reminders.sql
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
-import * as webpush from 'jsr:@negrel/webpush@0.3.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3.6.7';
 
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://byunghoonchoi76.github.io/first-repository/';
 const CONTACT = Deno.env.get('PUSH_CONTACT') ?? 'mailto:stewardk@hanmail.net';
+
+webpush.setVapidDetails(CONTACT, Deno.env.get('VAPID_PUBLIC')!, Deno.env.get('VAPID_PRIVATE')!);
 
 interface Row {
   endpoint: string;
@@ -20,7 +22,6 @@ interface Row {
   days: number[] | null;
   time_hhmm: string | null;
   tz: string | null;
-  enabled: boolean;
   last_sent_date: string | null;
 }
 
@@ -51,9 +52,6 @@ function nowInTz(tz: string) {
 Deno.serve(async () => {
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-  const vapidKeys = await webpush.importVapidKeys(JSON.parse(Deno.env.get('VAPID_KEYS')!), { extractable: false });
-  const appServer = await webpush.ApplicationServer.new({ contactInformation: CONTACT, vapidKeys });
-
   const { data, error } = await supabase.from('push_subscriptions').select('*').eq('enabled', true);
   if (error) return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500 });
 
@@ -78,16 +76,11 @@ Deno.serve(async () => {
     });
 
     try {
-      const subscriber = appServer.subscribe({
-        endpoint: row.endpoint,
-        keys: { p256dh: row.p256dh, auth: row.auth },
-      });
-      await subscriber.pushTextMessage(payload, {});
+      await webpush.sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, payload);
       await supabase.from('push_subscriptions').update({ last_sent_date: now.date }).eq('endpoint', row.endpoint);
       sent += 1;
     } catch (e) {
-      // 만료·해지된 구독(404/410)은 정리합니다.
-      const status = (e as { response?: Response })?.response?.status;
+      const status = (e as { statusCode?: number })?.statusCode;
       if (status === 404 || status === 410) {
         await supabase.from('push_subscriptions').delete().eq('endpoint', row.endpoint);
         cleaned += 1;
