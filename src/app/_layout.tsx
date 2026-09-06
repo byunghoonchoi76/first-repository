@@ -102,6 +102,7 @@ function RootNavigator() {
       <Stack.Screen name="prayer/requests" options={{ title: '기도 요청' }} />
       <Stack.Screen name="prayer/new" options={{ title: '기도제목 나누기', presentation: 'modal' }} />
       <Stack.Screen name="settings" options={{ title: '더보기' }} />
+      <Stack.Screen name="reminders" options={{ title: '기도 알림' }} />
       <Stack.Screen name="sign-in" options={{ title: '로그인', presentation: 'modal' }} />
       <Stack.Screen name="admin/index" options={{ title: '관리자' }} />
       <Stack.Screen name="admin/bulletin/[id]" options={{ title: '주보 등록' }} />

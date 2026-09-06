@@ -38,6 +38,18 @@ export default function SettingsScreen() {
         )}
       </Card>
 
+      <View>
+        <SectionHeader title="알림" />
+        <Card>
+          <ListRow
+            icon="notifications-outline"
+            title="기도 알림"
+            subtitle="정한 요일·시간에 기도 알림을 받아요"
+            onPress={() => router.push('/reminders')}
+          />
+        </Card>
+      </View>
+
       {isAdmin ? (
         <Card>
           <ThemedText type="heading">관리자</ThemedText>

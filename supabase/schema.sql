@@ -376,3 +376,27 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- 기도 알림(웹 푸시) 구독 저장. 기기(endpoint)별로 요일·시간을 둡니다.
+create table if not exists public.push_subscriptions (
+  endpoint text primary key,
+  p256dh text not null,
+  auth text not null,
+  user_id uuid references auth.users(id) on delete set null,
+  days smallint[] not null default '{}',
+  time_hhmm text not null default '21:00',
+  tz text not null default 'Asia/Seoul',
+  enabled boolean not null default true,
+  last_sent_date text,
+  updated_at timestamptz not null default now()
+);
+alter table public.push_subscriptions enable row level security;
+-- 구독은 불투명한 endpoint 로만 접근하므로 공개 정책으로 둡니다(교회 앱 특성).
+drop policy if exists "구독 조회" on public.push_subscriptions;
+create policy "구독 조회" on public.push_subscriptions for select using (true);
+drop policy if exists "구독 저장" on public.push_subscriptions;
+create policy "구독 저장" on public.push_subscriptions for insert with check (true);
+drop policy if exists "구독 수정" on public.push_subscriptions;
+create policy "구독 수정" on public.push_subscriptions for update using (true);
+drop policy if exists "구독 삭제" on public.push_subscriptions;
+create policy "구독 삭제" on public.push_subscriptions for delete using (true);
