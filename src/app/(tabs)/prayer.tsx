@@ -58,11 +58,20 @@ export default function PrayerScreen() {
       <KindToggle value={kind} onChange={setKind} />
 
       <GaugeCard active={active} kind={kind} goal={goal} onGoal={setGoal} />
-      <GrassCard active={active} />
+      <CalendarCard active={active} />
       <AverageCard active={active} />
       <InputCard active={active} kind={kind} />
 
       <TopicsCard />
+
+      <Card>
+        <ListRow
+          icon="notifications-outline"
+          title="기도 알림"
+          subtitle="정한 요일·시간에 기도 알림을 받아요"
+          onPress={() => router.push('/reminders')}
+        />
+      </Card>
 
       {kind === 'communal' ? (
         <View>
@@ -227,32 +236,29 @@ function grassColor(minutes: number, emptyColor: string): string {
   return '#2F8F2A';
 }
 
-function buildGrass(entries: PrayerLogEntry[], weeks = 5) {
-  const map = new Map(entries.map((e) => [e.date, e.minutes]));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const endSat = new Date(today);
-  endSat.setDate(endSat.getDate() + (6 - today.getDay())); // 이번 주 토요일
-  const start = new Date(endSat);
-  start.setDate(start.getDate() - (weeks * 7 - 1)); // 시작(일요일)
-
-  const rows: { key: string; minutes: number; future: boolean }[][] = [];
-  for (let w = 0; w < weeks; w += 1) {
-    const row: { key: string; minutes: number; future: boolean }[] = [];
-    for (let d = 0; d < 7; d += 1) {
-      const cur = new Date(start);
-      cur.setDate(start.getDate() + w * 7 + d);
-      const key = toDateKey(cur);
-      row.push({ key, minutes: map.get(key) ?? 0, future: cur > today });
-    }
-    rows.push(row);
-  }
-  return rows;
-}
-
-function GrassCard({ active }: { active: PrayerTime }) {
+function CalendarCard({ active }: { active: PrayerTime }) {
   const theme = useTheme();
-  const rows = buildGrass(active.entries);
+  const [offset, setOffset] = useState(0); // 0 = 이번 달
+  const map = new Map(active.entries.map((e) => [e.date, e.minutes]));
+  const todayKey = toDateKey(new Date());
+
+  const base = new Date();
+  base.setDate(1);
+  base.setMonth(base.getMonth() + offset);
+  const year = base.getFullYear();
+  const month = base.getMonth(); // 0~11
+  const startWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startWeekday; i += 1) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d += 1) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+
+  const keyOf = (d: number) => toDateKey(new Date(year, month, d));
+  const prayedDays = cells.filter((d) => d !== null && (map.get(keyOf(d)) ?? 0) > 0).length;
 
   return (
     <View>
@@ -268,42 +274,59 @@ function GrassCard({ active }: { active: PrayerTime }) {
         ) : null}
       </View>
       <Card>
-        <View style={styles.grassHeaderRow}>
-          {WEEKDAY_LABEL.map((w) => (
-            <ThemedText key={w} type="caption" themeColor="textMuted" style={styles.grassHeadCell}>
+        <View style={styles.calHeader}>
+          <Pressable onPress={() => setOffset(offset - 1)} hitSlop={8} style={styles.calNav}>
+            <Ionicons name="chevron-back" size={18} color={theme.textSecondary} />
+          </Pressable>
+          <ThemedText type="smallBold">
+            {year}년 {month + 1}월
+          </ThemedText>
+          <Pressable onPress={() => offset < 0 && setOffset(offset + 1)} hitSlop={8} style={styles.calNav}>
+            <Ionicons name="chevron-forward" size={18} color={offset < 0 ? theme.textSecondary : theme.border} />
+          </Pressable>
+        </View>
+
+        <View style={styles.calWeekRow}>
+          {WEEKDAY_LABEL.map((w, i) => (
+            <ThemedText key={w} type="caption" style={[styles.calWeekCell, { color: i === 0 ? '#D9534F' : theme.textMuted }]}>
               {w}
             </ThemedText>
           ))}
         </View>
-        <View style={styles.grassGrid}>
-          {rows.map((row, ri) => (
-            <View key={ri} style={styles.grassRow}>
-              {row.map((cell) => (
-                <View
-                  key={cell.key}
-                  style={[
-                    styles.grassCell,
-                    {
-                      backgroundColor: cell.future ? 'transparent' : grassColor(cell.minutes, theme.backgroundSelected),
-                      borderColor: theme.border,
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-          ))}
-        </View>
-        <View style={styles.grassLegend}>
-          <ThemedText type="caption" themeColor="textMuted">
-            적음
-          </ThemedText>
-          {['#BFE3B4', '#8AD07A', '#57B547', '#2F8F2A'].map((c) => (
-            <View key={c} style={[styles.legendCell, { backgroundColor: c }]} />
-          ))}
-          <ThemedText type="caption" themeColor="textMuted">
-            많음
-          </ThemedText>
-        </View>
+
+        {rows.map((row, ri) => (
+          <View key={ri} style={styles.calRow}>
+            {row.map((d, di) => {
+              if (d === null) return <View key={di} style={styles.calCell} />;
+              const minutes = map.get(keyOf(d)) ?? 0;
+              const prayed = minutes > 0;
+              const isToday = keyOf(d) === todayKey;
+              return (
+                <View key={di} style={styles.calCell}>
+                  <View
+                    style={[
+                      styles.calDay,
+                      prayed && { backgroundColor: grassColor(minutes, 'transparent') },
+                      isToday && { borderWidth: 2, borderColor: theme.primary },
+                    ]}>
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        color: prayed ? '#14340F' : di === 0 ? '#D9534F' : theme.text,
+                        fontWeight: prayed ? '800' : '500',
+                      }}>
+                      {d}
+                    </ThemedText>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ))}
+
+        <ThemedText type="caption" themeColor="textMuted" style={styles.calFooter}>
+          {offset === 0 ? '이번 달' : `${month + 1}월`} {prayedDays}일 기도했어요.
+        </ThemedText>
       </Card>
     </View>
   );
@@ -529,13 +552,14 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: Radius.pill,
   },
-  grassHeaderRow: { flexDirection: 'row', marginBottom: Spacing.one },
-  grassHeadCell: { flex: 1, textAlign: 'center' },
-  grassGrid: { gap: 5 },
-  grassRow: { flexDirection: 'row', gap: 5 },
-  grassCell: { flex: 1, aspectRatio: 1, borderRadius: 4, borderWidth: StyleSheet.hairlineWidth },
-  grassLegend: { flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'flex-end', marginTop: Spacing.two },
-  legendCell: { width: 12, height: 12, borderRadius: 3 },
+  calHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.two },
+  calNav: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  calWeekRow: { flexDirection: 'row', marginBottom: Spacing.one },
+  calWeekCell: { flex: 1, textAlign: 'center' },
+  calRow: { flexDirection: 'row' },
+  calCell: { flex: 1, aspectRatio: 1, alignItems: 'center', justifyContent: 'center', padding: 2 },
+  calDay: { width: '86%', aspectRatio: 1, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  calFooter: { textAlign: 'center', marginTop: Spacing.two },
 
   barChart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 2, paddingTop: Spacing.two },
   barCol: { flex: 1, alignItems: 'center', gap: 2 },
