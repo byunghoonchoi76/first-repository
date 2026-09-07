@@ -206,6 +206,36 @@ export function useReminders() {
     }
   }, [state.days, state.hour, state.minute, enable]);
 
+  /** 테스트 알림 — 이 기기에서 알림 "표시"가 되는지 즉시 확인(서버를 거치지 않음). */
+  const testNotify = useCallback(async () => {
+    if (!isSupported()) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      let permission = Notification.permission;
+      if (permission !== 'granted') {
+        permission = await Notification.requestPermission();
+      }
+      if (permission !== 'granted') {
+        setState((s) => ({ ...s, permission }));
+        setError('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 알림을 허용해 주세요.');
+        return;
+      }
+      const reg = await getRegistration();
+      await reg.showNotification('테스트 알림 🙏', {
+        body: '이 알림이 보이면 표시는 정상입니다. 이제 실제 알림도 옵니다.',
+        icon: `${basePath()}/app-icon.png`,
+        badge: `${basePath()}/app-icon.png`,
+        tag: 'prayer-test',
+      });
+      setState((s) => ({ ...s, permission }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '테스트 알림을 띄우지 못했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   /** 알림 끄기 */
   const disable = useCallback(async () => {
     if (!isSupported() || !supabase) return;
@@ -225,5 +255,5 @@ export function useReminders() {
     }
   }, []);
 
-  return { state, loading, busy, error, setDays, setTime, enable, save, disable };
+  return { state, loading, busy, error, setDays, setTime, enable, save, disable, testNotify };
 }

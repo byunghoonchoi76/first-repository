@@ -14,7 +14,7 @@ const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function RemindersScreen() {
   const theme = useTheme();
-  const { state, loading, busy, error, setDays, setTime, enable, save, disable } = useReminders();
+  const { state, loading, busy, error, setDays, setTime, enable, save, disable, testNotify } = useReminders();
 
   if (loading) {
     return (
@@ -151,6 +151,17 @@ export default function RemindersScreen() {
       ) : (
         <Button label="알림 켜기" icon="notifications-outline" loading={busy} onPress={() => void enable()} />
       )}
+
+      <Button
+        label="테스트 알림 보내기"
+        icon="paper-plane-outline"
+        variant="secondary"
+        loading={busy}
+        onPress={() => void testNotify()}
+      />
+      <ThemedText type="caption" themeColor="textMuted" style={styles.centerText}>
+        이 버튼을 눌러 알림이 바로 뜨면, 정한 시간에도 알림이 옵니다.
+      </ThemedText>
 
       <Card style={styles.tip}>
         <ThemedText type="caption" themeColor="textSecondary">
