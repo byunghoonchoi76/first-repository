@@ -3,19 +3,24 @@
 주보·공지·설교·기도·소그룹을 한 곳에서 볼 수 있는 교회 공동체 앱입니다.
 **Expo(React Native)** 한 코드베이스로 **iOS · Android · 웹**을 모두 지원합니다.
 
+> 📘 **교인·관리자용 사용설명서**: [`docs/사용설명서.md`](docs/사용설명서.md)
+> 📊 **개발 보고서(변경 내역)**: [`docs/보고서.md`](docs/보고서.md)
+> 🌐 **배포 주소**: https://byunghoonchoi76.github.io/first-repository/
+
 ## 무엇이 들어 있나요
 
 | 화면 | 내용 |
 | --- | --- |
-| 홈 | 이번 주 말씀, 빠른 메뉴, 이번 주 예배, 나의 기도 요약, 예배 시간 안내, 최근 소식·설교 |
+| 홈 | 오늘의 말씀(매일 순환), 빠른 메뉴, 이번 주 예배, **실시간 예배 LIVE 배지**, 나의 기도 요약, 최근 소식·설교 |
 | 주보 | 지난 주보 목록과 상세(예배 순서·광고·원본 이미지). 관리자는 사진 업로드·수정·삭제 |
 | 소식 | 공지 / 행사 / 소식 분류, 상단 고정, 상세 보기 |
 | 설교 | 시리즈·쇼츠별 목록(유튜브 썸네일·제목 자동), 상세에서 앱 안 바로 재생 (쇼츠는 세로 화면) |
-| 기도 | 기도 타이머와 빠른 기록, 연속 일수·최근 7일 그래프, 기도제목 나눔(익명 가능)과 '함께 기도', 응답 표시, 교회 전체 기도 통계 |
+| 기도 | 기도 타이머(정확한 분 단위), 개인/공동 분리, 달성률 게이지·월 달력·10일 평균 그래프, 기도제목 나눔(익명 가능)과 '함께 기도', 응답 표시 |
+| 기도 알림 | 정한 요일·시간에 "기도할 시간이에요" 웹 푸시 알림 (기기별 설정, 테스트 버튼) |
 | 소그룹 | 소그룹 목록과 소통방(채팅) |
 | 교회 안내 | 예배 안내·섬기는 사람들·교회 장소·새가족 등록·헌금 안내로 묶은 메뉴 |
 | 더보기 | 로그인/로그아웃, 교회 정보(전화·지도·이메일·유튜브 채널 바로 연결), 데이터 모드 |
-| 관리자 | 주보·공지·설교·소그룹 등록/수정/삭제 (관리자 계정만) |
+| 관리자 | 주보·공지·설교·소그룹·공동 기도제목 등록/수정/삭제, 실시간 배지 수동 제어 (관리자 계정만) |
 
 ## 바로 실행하기
 
@@ -96,6 +101,27 @@ npm run android    # Android 에뮬레이터
 
 anon 키는 앱에 그대로 들어가는 공개 키이므로, 실제 보호는 위 정책이 담당합니다.
 정책을 고치면 즉시 모든 사용자에게 적용됩니다.
+
+## 기도 알림 (웹 푸시) 설정
+
+정한 요일·시간에 기도 알림을 보내는 기능입니다. Supabase에서 세 단계로 설정합니다.
+
+1. **테이블** — `supabase/schema.sql`(또는 `migrate-latest.sql`)의 `push_subscriptions` 블록 실행.
+2. **함수 배포** — `supabase/functions/send-reminders/index.ts` 를 Edge Functions로 배포합니다.
+   - **Verify JWT 는 OFF** 로 둡니다(cron이 부를 내부 함수).
+   - 시크릿 등록: `VAPID_PUBLIC`, `VAPID_PRIVATE` (공개키는 `src/lib/reminders.ts` 의 값과 동일).
+3. **스케줄** — `supabase/cron-reminders.sql` 을 SQL Editor에서 실행해 매분 호출을 등록합니다.
+   - 함수 호출 시 **`apikey` 헤더에 publishable 키**(`sb_publishable_…`)를 넣습니다(신규 API 키 체계).
+
+> 클라이언트는 `src/lib/reminders.ts`(구독·저장)와 `src/app/reminders.tsx`(설정 화면),
+> `public/sw.js`(서비스워커: 알림 표시)로 구성됩니다.
+> 아이폰은 **사파리 → 홈 화면에 추가**로 설치한 PWA에서만 알림을 받습니다(iOS 16.4+).
+
+## 실시간 예배 배지 (선택)
+
+교회 유튜브 라이브 상태를 감지해 홈에 LIVE 배지를 표시합니다.
+`supabase/functions/live-status` 를 배포하고(선택적으로 `YOUTUBE_API_KEY` 시크릿 등록),
+`app_settings.live_override` 로 관리자가 강제 ON/OFF 할 수 있습니다.
 
 ## 배포
 
@@ -188,7 +214,9 @@ src/
 │  ├─ news/[id].tsx         공지 상세
 │  ├─ sermons/[id].tsx      설교 상세
 │  ├─ groups/[id].tsx       소그룹 소통방
-│  ├─ prayer/new.tsx        기도제목 나누기
+│  ├─ prayer/               기도제목 나누기 · 개인 기도제목 · 기도 요청
+│  ├─ reminders.tsx         기도 알림 설정 (요일·시간·테스트)
+│  ├─ welcome.tsx           시작(표어) 화면
 │  ├─ settings.tsx          더보기
 │  └─ sign-in.tsx           로그인
 ├─ components/              화면 틀(Screen)과 공용 UI 조각
@@ -196,14 +224,23 @@ src/
 ├─ hooks/                   색상 모드 · 테마
 └─ lib/
    ├─ auth.tsx              로그인 상태 (샘플 / Supabase 공용)
-   ├─ prayer-log.ts         개인 기도시간 기록 (기기 저장)
+   ├─ prayer-log.ts         개인/공동 기도시간 기록 (기기·계정 저장)
+   ├─ prayer-goal.ts        주간 기도 목표 (기기 저장)
+   ├─ reminders.ts          기도 알림 구독·저장 (웹 푸시)
+   ├─ live-status.ts        실시간 예배 감지 · 관리자 강제 스위치
    ├─ supabase.ts           Supabase 클라이언트
    └─ data/                 도메인 타입 + 샘플/Supabase 저장소
+public/
+└─ sw.js                    서비스워커 (기도 알림 표시)
 supabase/
-├─ schema.sql               테이블 · RLS 정책 · 트리거 (church_staff 포함)
+├─ schema.sql               테이블 · RLS 정책 · 트리거 (push_subscriptions 포함)
 ├─ seed.sql                 예시 데이터
 ├─ storage.sql              주보 사진 저장소(버킷 · 권한)
-└─ create-admin.sql         관리자 계정 만들기 · 지정 · 삭제
+├─ cron-reminders.sql       기도 알림 매분 스케줄(pg_cron)
+├─ create-admin.sql         관리자 계정 만들기 · 지정 · 삭제
+└─ functions/
+   ├─ send-reminders/       기도 알림 발송 함수 (매분 호출)
+   └─ live-status/          실시간 예배 감지 함수
 ```
 
 화면 코드는 `ChurchRepository` 인터페이스만 사용합니다. 샘플 저장소와 Supabase 저장소가
@@ -211,6 +248,7 @@ supabase/
 
 ## 다음에 붙이면 좋은 것들
 
-- 푸시 알림(`expo-notifications`)으로 새 공지·주보 알림
-- 소그룹 대화 실시간 반영(Supabase Realtime, 지금은 5초마다 새로고침)
+- 새 공지·주보 등록 시 푸시 알림 확장(현재 웹 푸시는 기도 알림 전용)
+- 소그룹 대화 실시간 반영(Supabase Realtime, 지금은 폴링)
 - 온라인 헌금 연동, 출석 체크, 성경 읽기표
+- 기도 시간 초 단위 기록(현재 분 단위)
