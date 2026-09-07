@@ -106,9 +106,6 @@ export default function GivingScreen() {
           <ThemedText type="small" themeColor="primary" style={styles.bold}>성명</ThemedText>,{' '}
           <ThemedText type="small" themeColor="primary" style={styles.bold}>생년</ThemedText>까지 반드시 기재 부탁드립니다.
         </ThemedText>
-        <ThemedText type="caption" themeColor="textMuted" style={styles.mt}>
-          예) 십일조 · 홍길동 · 1980년생 → <ThemedText type="caption" themeColor="text" style={styles.bold}>십홍길동1980</ThemedText>
-        </ThemedText>
 
         <View style={styles.abbrWrap}>
           {OFFERING_ABBR.map(([full, short]) => (
