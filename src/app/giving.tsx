@@ -99,15 +99,52 @@ export default function GivingScreen() {
         </View>
       ) : null}
 
-      <Card style={styles.noteCard}>
-        <ThemedText type="caption" themeColor="textMuted">
-          헌금 종류(주정헌금·감사헌금·선교헌금 등)는 보내실 때 입금자명이나 메모에 적어 주시면 정리에 도움이 됩니다.
-          문의는 교회 사무실로 연락해 주세요.
+      <Card style={[styles.guideCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+        <ThemedText type="smallBold">입금 시 안내</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.mt}>
+          헌금 종류의 <ThemedText type="small" themeColor="primary" style={styles.bold}>첫 글자</ThemedText>와{' '}
+          <ThemedText type="small" themeColor="primary" style={styles.bold}>성명</ThemedText>,{' '}
+          <ThemedText type="small" themeColor="primary" style={styles.bold}>생년</ThemedText>까지 반드시 기재 부탁드립니다.
+        </ThemedText>
+        <ThemedText type="caption" themeColor="textMuted" style={styles.mt}>
+          예) 십일조 · 홍길동 · 1980년생 → <ThemedText type="caption" themeColor="text" style={styles.bold}>십홍길동1980</ThemedText>
+        </ThemedText>
+
+        <View style={styles.abbrWrap}>
+          {OFFERING_ABBR.map(([full, short]) => (
+            <View key={full} style={[styles.abbrChip, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <ThemedText type="caption" themeColor="textSecondary">
+                {full}
+              </ThemedText>
+              <Ionicons name="arrow-forward" size={10} color={theme.textMuted} />
+              <ThemedText type="caption" themeColor="primary" style={styles.bold}>
+                {short}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+
+        <ThemedText type="caption" themeColor="textMuted" style={styles.mt}>
+          · 문의는 교회 사무실로 연락해 주세요.
         </ThemedText>
       </Card>
     </Screen>
   );
 }
+
+/** 헌금 종류별 기재 약자 (첫 글자) */
+const OFFERING_ABBR: [string, string][] = [
+  ['주정', '주'],
+  ['십일조', '십'],
+  ['감사', '감'],
+  ['선교', '선'],
+  ['일천번제', '일'],
+  ['예배드림', '예'],
+  ['북한', '북'],
+  ['비전', '비'],
+  ['건축', '건'],
+  ['전도', '전'],
+];
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
@@ -123,5 +160,17 @@ const styles = StyleSheet.create({
   },
   number: { letterSpacing: 0.5 },
   hint: { lineHeight: 18 },
-  noteCard: { backgroundColor: 'transparent' },
+  guideCard: { borderWidth: StyleSheet.hairlineWidth, gap: 2 },
+  mt: { marginTop: Spacing.two },
+  bold: { fontWeight: '700' },
+  abbrWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one, marginTop: Spacing.three },
+  abbrChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingVertical: 4,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
 });
