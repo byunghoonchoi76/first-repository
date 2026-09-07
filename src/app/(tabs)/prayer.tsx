@@ -255,11 +255,12 @@ function GoalPicker({ kind, goal, onGoal }: { kind: PrayerKind; goal: number; on
 
   return (
     <>
-      <Pressable onPress={start} hitSlop={6} style={styles.goalLabelBtn}>
-        <ThemedText type="caption" themeColor="textMuted">
-          목표: <ThemedText type="caption" themeColor="primary" style={styles.goalValue}>{goalLabel(goal)}</ThemedText>
-        </ThemedText>
-        <Ionicons name="pencil" size={11} color={theme.textMuted} style={{ marginLeft: 3 }} />
+      <Pressable
+        onPress={start}
+        style={[styles.goalLabelBtn, { borderColor: theme.primary, backgroundColor: theme.backgroundSelected }]}>
+        <ThemedText type="caption" themeColor="textMuted">목표 </ThemedText>
+        <ThemedText type="smallBold" themeColor="primary">{goalLabel(goal)}</ThemedText>
+        <Ionicons name="create-outline" size={14} color={theme.primary} style={{ marginLeft: 4 }} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -615,7 +616,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  goalLabelBtn: { flexDirection: 'row', alignItems: 'center' },
+  goalLabelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   goalValue: { fontWeight: '700' },
   mt4: { marginTop: 4 },
   goalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: Spacing.five },
