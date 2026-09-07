@@ -227,7 +227,8 @@ export function useReminders() {
         icon: `${basePath()}/app-icon.png`,
         badge: `${basePath()}/app-icon.png`,
         tag: 'prayer-test',
-      });
+        vibrate: [300, 150, 300, 150, 300],
+      } as NotificationOptions);
       setState((s) => ({ ...s, permission }));
     } catch (e) {
       setError(e instanceof Error ? e.message : '테스트 알림을 띄우지 못했습니다.');
