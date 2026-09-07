@@ -53,8 +53,11 @@ alter table public.church_profile add column if not exists map_url text not null
 create table if not exists public.app_settings (
   id smallint primary key default 1 check (id = 1),
   live_override text not null default 'auto' check (live_override in ('auto', 'on', 'off')),
+  communal_goal_minutes integer not null default 6000, -- 공동 기도 목표(분). 기본 100시간. 관리자만 변경
   updated_at timestamptz not null default now()
 );
+-- 기존 테이블에 컬럼이 없으면 추가(여러 번 실행해도 안전)
+alter table public.app_settings add column if not exists communal_goal_minutes integer not null default 6000;
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;
 alter table public.app_settings enable row level security;
 drop policy if exists "설정 공개 조회" on public.app_settings;

@@ -14,7 +14,7 @@ import { repository, useAsyncData } from '@/lib/data';
 import type { CommunalPrayer, PrayerKind, PrayerLogEntry } from '@/lib/data/types';
 import { minutesLabel } from '@/lib/format';
 import { toDateKey } from '@/lib/format';
-import { GOAL_CONFIG, useWeeklyGoal } from '@/lib/prayer-goal';
+import { GOAL_CONFIG, useCommunalGoal, useWeeklyGoal } from '@/lib/prayer-goal';
 import { recentDays, usePrayerTime } from '@/lib/prayer-log';
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
@@ -30,7 +30,11 @@ export default function PrayerScreen() {
 
   const [kind, setKind] = useState<PrayerKind>('personal');
   const active = kind === 'personal' ? personalTime : communalTime;
-  const { goal, setGoal } = useWeeklyGoal(kind);
+  const personalGoal = useWeeklyGoal('personal');
+  const communalGoal = useCommunalGoal();
+  const goal = kind === 'personal' ? personalGoal.goal : communalGoal.goal;
+  const setGoal = kind === 'personal' ? personalGoal.setGoal : communalGoal.setGoal;
+  const canEditGoal = kind === 'personal' || isAdmin; // 공동 목표는 관리자만 변경
 
   const communal = useAsyncData(() => repository.listCommunalPrayers());
   const reloadCommunal = communal.reload;
@@ -57,7 +61,7 @@ export default function PrayerScreen() {
     <Screen onRefresh={reloadCommunal}>
       <KindToggle value={kind} onChange={setKind} />
 
-      <GaugeCard active={active} kind={kind} goal={goal} onGoal={setGoal} />
+      <GaugeCard active={active} kind={kind} goal={goal} onGoal={setGoal} canEdit={canEditGoal} />
       <CalendarCard active={active} />
       <AverageCard active={active} />
       <InputCard active={active} kind={kind} />
@@ -175,11 +179,13 @@ function GaugeCard({
   kind,
   goal,
   onGoal,
+  canEdit,
 }: {
   active: PrayerTime;
   kind: PrayerKind;
   goal: number;
-  onGoal: (n: number) => void;
+  onGoal: (n: number) => void | Promise<void>;
+  canEdit: boolean;
 }) {
   const theme = useTheme();
   const cfg = GOAL_CONFIG[kind];
@@ -209,17 +215,27 @@ function GaugeCard({
           </View>
         </View>
 
-        <View style={styles.goalRow}>
-          <Pressable onPress={() => onGoal(goal - cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
-            <Ionicons name="remove" size={16} color={theme.textSecondary} />
-          </Pressable>
-          <GoalPicker kind={kind} goal={goal} onGoal={onGoal} />
-          <Pressable onPress={() => onGoal(goal + cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
-            <Ionicons name="add" size={16} color={theme.textSecondary} />
-          </Pressable>
-        </View>
+        {canEdit ? (
+          <View style={styles.goalRow}>
+            <Pressable onPress={() => void onGoal(goal - cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
+              <Ionicons name="remove" size={16} color={theme.textSecondary} />
+            </Pressable>
+            <GoalPicker kind={kind} goal={goal} onGoal={onGoal} />
+            <Pressable onPress={() => void onGoal(goal + cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
+              <Ionicons name="add" size={16} color={theme.textSecondary} />
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.goalRow}>
+            <ThemedText type="caption" themeColor="textMuted">
+              목표 <ThemedText type="smallBold" themeColor="primary">{goalLabel(goal)}</ThemedText>
+            </ThemedText>
+          </View>
+        )}
         <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-          이번 주 {minutesLabel(week)} 기도했어요.
+          {kind === 'communal' && !canEdit
+            ? '공동 기도 목표는 관리자가 설정합니다.'
+            : `이번 주 ${minutesLabel(week)} 기도했어요.`}
         </ThemedText>
       </Card>
     </View>
@@ -236,21 +252,36 @@ function goalLabel(min: number): string {
 }
 
 /** 목표를 눌러 '시간'으로 직접 입력합니다. (공동은 최대 730,000시간까지) */
-function GoalPicker({ kind, goal, onGoal }: { kind: PrayerKind; goal: number; onGoal: (n: number) => void }) {
+function GoalPicker({ kind, goal, onGoal }: { kind: PrayerKind; goal: number; onGoal: (n: number) => void | Promise<void> }) {
   const theme = useTheme();
   const cfg = GOAL_CONFIG[kind];
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
+  const [error, setError] = useState<string | undefined>();
+  const [saving, setSaving] = useState(false);
   const maxHours = Math.round(cfg.max / 60);
 
   const start = () => {
     setText(String(Math.round((goal / 60) * 10) / 10));
+    setError(undefined);
     setOpen(true);
   };
-  const apply = () => {
+  const apply = async () => {
     const hours = parseFloat(text.replace(/,/g, '').trim());
-    if (Number.isFinite(hours) && hours > 0) onGoal(Math.round(hours * 60));
-    setOpen(false);
+    if (!Number.isFinite(hours) || hours <= 0) {
+      setError('시간을 숫자로 입력해 주세요.');
+      return;
+    }
+    setSaving(true);
+    setError(undefined);
+    try {
+      await onGoal(Math.round(hours * 60));
+      setOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '저장하지 못했습니다.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -289,9 +320,14 @@ function GoalPicker({ kind, goal, onGoal }: { kind: PrayerKind; goal: number; on
             <ThemedText type="caption" themeColor="textMuted" style={[styles.center, styles.mt4]}>
               1 ~ {maxHours.toLocaleString('ko-KR')}시간 사이로 입력하세요.
             </ThemedText>
+            {error ? (
+              <ThemedText type="caption" themeColor="danger" style={[styles.center, styles.mt4]}>
+                {error}
+              </ThemedText>
+            ) : null}
             <View style={styles.goalBtnRow}>
               <Button label="취소" variant="ghost" style={styles.flex} onPress={() => setOpen(false)} />
-              <Button label="저장" style={styles.flex} onPress={apply} />
+              <Button label="저장" style={styles.flex} loading={saving} onPress={() => void apply()} />
             </View>
           </Pressable>
         </Pressable>
