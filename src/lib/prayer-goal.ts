@@ -9,16 +9,31 @@ import type { PrayerKind } from '@/lib/data/types';
  */
 const KEY = (kind: PrayerKind) => `church-app/prayer-goal/${kind}`;
 
-/** 기본 목표: 개인 3시간 30분(210분), 공동 1시간(60분) */
-const DEFAULT_GOAL: Record<PrayerKind, number> = { personal: 210, communal: 60 };
+/** 종류별 목표 설정(모두 '분' 단위)
+ *  - 개인: 나 한 사람의 주간 기도 목표 (최대 24시간)
+ *  - 공동: 온 성도가 함께 채우는 목표. 전교인 규모를 고려해 아주 크게 잡을 수 있습니다.
+ *          예) 2,000명 × 365일 × 1시간 = 730,000시간
+ */
+export interface GoalConfig {
+  default: number; // 분
+  min: number; // 분
+  max: number; // 분
+  step: number; // ± 버튼 단위(분)
+}
 
-/** 목표 조절 단위(분)와 허용 범위 */
-export const GOAL_STEP = 30;
-export const GOAL_MIN = 30;
-export const GOAL_MAX = 60 * 20; // 20시간
+export const GOAL_CONFIG: Record<PrayerKind, GoalConfig> = {
+  personal: { default: 210, min: 30, max: 60 * 24, step: 30 },
+  communal: { default: 60 * 100, min: 60, max: 60 * 730000, step: 60 * 10 }, // 최대 730,000시간, ±10시간
+};
+
+// 이전 코드 호환용(개인 기준). 새 코드는 GOAL_CONFIG[kind]를 쓰세요.
+export const GOAL_STEP = GOAL_CONFIG.personal.step;
+export const GOAL_MIN = GOAL_CONFIG.personal.min;
+export const GOAL_MAX = GOAL_CONFIG.personal.max;
 
 export function useWeeklyGoal(kind: PrayerKind) {
-  const [goal, setGoalState] = useState<number>(DEFAULT_GOAL[kind]);
+  const cfg = GOAL_CONFIG[kind];
+  const [goal, setGoalState] = useState<number>(cfg.default);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,7 +43,7 @@ export function useWeeklyGoal(kind: PrayerKind) {
       .then((raw) => {
         if (!active) return;
         const parsed = raw ? parseInt(raw, 10) : NaN;
-        setGoalState(Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_GOAL[kind]);
+        setGoalState(Number.isFinite(parsed) && parsed > 0 ? parsed : cfg.default);
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
@@ -39,11 +54,11 @@ export function useWeeklyGoal(kind: PrayerKind) {
 
   const setGoal = useCallback(
     (next: number) => {
-      const clamped = Math.min(GOAL_MAX, Math.max(GOAL_MIN, next));
+      const clamped = Math.min(cfg.max, Math.max(cfg.min, Math.round(next)));
       setGoalState(clamped);
       void AsyncStorage.setItem(KEY(kind), String(clamped));
     },
-    [kind],
+    [kind, cfg.max, cfg.min],
   );
 
   return { goal, setGoal, loading };

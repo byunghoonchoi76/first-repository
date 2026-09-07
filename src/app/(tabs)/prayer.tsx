@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Screen } from '@/components/screen';
@@ -14,7 +14,7 @@ import { repository, useAsyncData } from '@/lib/data';
 import type { CommunalPrayer, PrayerKind, PrayerLogEntry } from '@/lib/data/types';
 import { minutesLabel } from '@/lib/format';
 import { toDateKey } from '@/lib/format';
-import { GOAL_STEP, useWeeklyGoal } from '@/lib/prayer-goal';
+import { GOAL_CONFIG, useWeeklyGoal } from '@/lib/prayer-goal';
 import { recentDays, usePrayerTime } from '@/lib/prayer-log';
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
@@ -182,6 +182,7 @@ function GaugeCard({
   onGoal: (n: number) => void;
 }) {
   const theme = useTheme();
+  const cfg = GOAL_CONFIG[kind];
   const week = thisWeekMinutes(active.entries);
   const pct = goal > 0 ? Math.min(1, week / goal) : 0;
   const pct100 = Math.round(pct * 100);
@@ -209,13 +210,11 @@ function GaugeCard({
         </View>
 
         <View style={styles.goalRow}>
-          <Pressable onPress={() => onGoal(goal - GOAL_STEP)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
+          <Pressable onPress={() => onGoal(goal - cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
             <Ionicons name="remove" size={16} color={theme.textSecondary} />
           </Pressable>
-          <ThemedText type="caption" themeColor="textMuted">
-            목표: {minutesLabel(goal)}
-          </ThemedText>
-          <Pressable onPress={() => onGoal(goal + GOAL_STEP)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
+          <GoalPicker kind={kind} goal={goal} onGoal={onGoal} />
+          <Pressable onPress={() => onGoal(goal + cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
             <Ionicons name="add" size={16} color={theme.textSecondary} />
           </Pressable>
         </View>
@@ -224,6 +223,79 @@ function GaugeCard({
         </ThemedText>
       </Card>
     </View>
+  );
+}
+
+/** 목표 시간을 큰 값도 편하게 표시(시간 단위, 천 단위 콤마). */
+function goalLabel(min: number): string {
+  if (min < 60) return `${min}분`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  const hs = h.toLocaleString('ko-KR');
+  return m === 0 ? `${hs}시간` : `${hs}시간 ${m}분`;
+}
+
+/** 목표를 눌러 '시간'으로 직접 입력합니다. (공동은 최대 730,000시간까지) */
+function GoalPicker({ kind, goal, onGoal }: { kind: PrayerKind; goal: number; onGoal: (n: number) => void }) {
+  const theme = useTheme();
+  const cfg = GOAL_CONFIG[kind];
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const maxHours = Math.round(cfg.max / 60);
+
+  const start = () => {
+    setText(String(Math.round((goal / 60) * 10) / 10));
+    setOpen(true);
+  };
+  const apply = () => {
+    const hours = parseFloat(text.replace(/,/g, '').trim());
+    if (Number.isFinite(hours) && hours > 0) onGoal(Math.round(hours * 60));
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <Pressable onPress={start} hitSlop={6} style={styles.goalLabelBtn}>
+        <ThemedText type="caption" themeColor="textMuted">
+          목표: <ThemedText type="caption" themeColor="primary" style={styles.goalValue}>{goalLabel(goal)}</ThemedText>
+        </ThemedText>
+        <Ionicons name="pencil" size={11} color={theme.textMuted} style={{ marginLeft: 3 }} />
+      </Pressable>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.goalBackdrop} onPress={() => setOpen(false)}>
+          <Pressable style={[styles.goalSheet, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => {}}>
+            <ThemedText type="smallBold" style={styles.center}>
+              {kind === 'personal' ? '개인' : '공동'} 기도 목표 시간
+            </ThemedText>
+            <ThemedText type="caption" themeColor="textMuted" style={[styles.center, styles.mt4]}>
+              {kind === 'communal'
+                ? '온 성도가 함께 채울 목표예요. 예) 2,000명 × 365일 = 730,000시간'
+                : '나의 주간 기도 목표예요.'}
+            </ThemedText>
+            <View style={[styles.goalInputRow, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <TextInput
+                value={text}
+                onChangeText={setText}
+                keyboardType="numeric"
+                placeholder="0"
+                placeholderTextColor={theme.textMuted}
+                style={[styles.goalInput, { color: theme.text }]}
+                autoFocus
+              />
+              <ThemedText type="small" themeColor="textSecondary">시간</ThemedText>
+            </View>
+            <ThemedText type="caption" themeColor="textMuted" style={[styles.center, styles.mt4]}>
+              1 ~ {maxHours.toLocaleString('ko-KR')}시간 사이로 입력하세요.
+            </ThemedText>
+            <View style={styles.goalBtnRow}>
+              <Button label="취소" variant="ghost" style={styles.flex} onPress={() => setOpen(false)} />
+              <Button label="저장" style={styles.flex} onPress={apply} />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -543,6 +615,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  goalLabelBtn: { flexDirection: 'row', alignItems: 'center' },
+  goalValue: { fontWeight: '700' },
+  mt4: { marginTop: 4 },
+  goalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: Spacing.five },
+  goalSheet: { width: '86%', maxWidth: 340, borderRadius: Radius.large, borderWidth: StyleSheet.hairlineWidth, padding: Spacing.four },
+  goalInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    borderRadius: Radius.medium,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  goalInput: { fontSize: 22, fontWeight: '700', textAlign: 'right', minWidth: 120, paddingVertical: 0 },
+  goalBtnRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.four },
 
   grassHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   streakBadge: {
