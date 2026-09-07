@@ -493,10 +493,11 @@ function PrayerTimer({
   }, [startedAt]);
 
   const stop = async () => {
-    const minutes = Math.max(1, Math.round(elapsed / 60000));
+    // 실제 경과 시간을 가장 가까운 분으로 기록합니다. (30초 미만은 0분 → 기록하지 않음)
+    const minutes = Math.round(elapsed / 60000);
     setStartedAt(null);
     setElapsed(0);
-    await onSave(minutes);
+    if (minutes > 0) await onSave(minutes);
   };
 
   const seconds = Math.floor(elapsed / 1000);
