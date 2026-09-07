@@ -16,10 +16,47 @@ const HANDLE = (Deno.env.get('YT_HANDLE') ?? '@mychmedia').replace(/^@?/, '@');
 const API_KEY = Deno.env.get('YOUTUBE_API_KEY') ?? '';
 const CHANNEL_ID = Deno.env.get('YT_CHANNEL_ID') ?? '';
 
-// 여러 사람이 동시에 열어도 유튜브를 자주 두드리지 않도록 결과를 잠깐 재사용합니다.
-// (공식 API 사용 시 하루 무료 할당량을 넉넉히 지키도록 120초로 둡니다. 방송 시작
-//  후 최대 2분 안에 배지가 켜집니다. 더 빠르게 원하면 값을 줄이세요.)
-const CACHE_TTL_MS = 120_000;
+// 여러 사람이 동시에 열어도 유튜브를 자주 두드리지 않도록 결과를 재사용합니다.
+// 예배 시간대에만 확인하며, 5분마다 한 번씩만 유튜브를 조회해 무료 할당량을 넉넉히 지킵니다.
+// (방송 시작 후 최대 5분 안에 배지가 켜집니다.)
+const CACHE_TTL_MS = 300_000;
+
+// ── 예배 시간대(Asia/Seoul) ──────────────────────────────────────
+// 이 시간대에만 유튜브 라이브를 자동으로 확인합니다(무료 할당량 절약 + 예배만 표시).
+// 기타/불특정 집회는 앱의 관리자 '강제 켜기' 스위치로 표시하세요.
+// day: 0=일 1=월 2=화 3=수 4=목 5=금 6=토
+const SERVICES: { day: number; h: number; m: number }[] = [
+  // 주일 예배
+  { day: 0, h: 7, m: 30 }, { day: 0, h: 9, m: 30 }, { day: 0, h: 11, m: 30 }, { day: 0, h: 14, m: 0 }, { day: 0, h: 17, m: 0 },
+  // 새벽예배 (월~금)
+  { day: 1, h: 5, m: 0 }, { day: 2, h: 5, m: 0 }, { day: 3, h: 5, m: 0 }, { day: 4, h: 5, m: 0 }, { day: 5, h: 5, m: 0 },
+  // 수요예배 / 금요집회
+  { day: 3, h: 19, m: 0 }, { day: 5, h: 20, m: 0 },
+];
+const PRE_MIN = 5; // 예배 시작 5분 전부터 확인
+const POST_MIN = 45; // 시작 후 45분까지 '시작 감지'(방송이 잡히면 끝날 때까지 계속 따라감)
+
+const WD: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+function nowSeoul(): { weekday: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  let h = parseInt(get('hour'), 10);
+  if (h === 24) h = 0;
+  return { weekday: WD[get('weekday')] ?? 0, minutes: h * 60 + parseInt(get('minute'), 10) };
+}
+function inServiceWindow(): boolean {
+  const { weekday, minutes } = nowSeoul();
+  return SERVICES.some((s) => {
+    const start = s.h * 60 + s.m;
+    return s.day === weekday && minutes >= start - PRE_MIN && minutes <= start + POST_MIN;
+  });
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -133,6 +170,24 @@ async function checkViaScrape(): Promise<LiveStatus> {
 
 async function getStatus(): Promise<LiveStatus> {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.data;
+
+  // 예배 시간대가 아니고, 직전에 방송 중이지도 않으면 유튜브를 조회하지 않습니다(할당량 절약).
+  const following = cache?.data.live === true; // 방송 중이면 끝날 때까지 계속 확인
+  if (!inServiceWindow() && !following) {
+    const off: LiveStatus = {
+      live: false,
+      videoId: null,
+      watchUrl: null,
+      title: null,
+      source: API_KEY ? 'api' : 'scrape',
+      checkedAt: new Date().toISOString(),
+      keyed: Boolean(API_KEY),
+      note: '예배 시간대가 아니어서 유튜브를 확인하지 않았습니다. (기타 집회는 관리자 강제 켜기 사용)',
+    };
+    cache = { at: Date.now(), data: off };
+    return off;
+  }
+
   let data: LiveStatus;
   try {
     data = API_KEY ? await checkViaApi() : await checkViaScrape();
