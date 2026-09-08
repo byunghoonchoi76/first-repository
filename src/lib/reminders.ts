@@ -7,6 +7,7 @@ import { hasSupabaseConfig, supabase } from '@/lib/supabase';
 /**
  * 기도 알림(웹 푸시).
  * - 사용자가 요일·시간을 정하면 이 기기의 구독 정보를 Supabase(push_subscriptions)에 저장합니다.
+ * - 한 기기(사람)당 최대 3개의 알림을 서로 다른 요일·시간으로 설정할 수 있습니다(slot 0·1·2).
  * - 서버(send-reminders 함수)가 매분 확인해, 지정한 요일·시간에 이 기기로 푸시를 보냅니다.
  * - 웹에서만 동작합니다. (앱을 홈 화면에 추가하면 더 안정적으로 옵니다.)
  */
@@ -14,23 +15,34 @@ import { hasSupabaseConfig, supabase } from '@/lib/supabase';
 // VAPID 공개키 — 비밀이 아니며 앱에 넣어도 됩니다. (개인키는 Supabase 시크릿에만 둡니다.)
 export const VAPID_PUBLIC_KEY = 'BPKaSQlaWOw4kO6oT5PMbWKeLK2AjYaA25wuA4t1O1asLehbbvvcAMI0auV9jy16VtOCV-31wb3QeUM43x_hRS0';
 
-export interface ReminderState {
-  supported: boolean;
-  reason?: string;
-  permission: NotificationPermission | 'unsupported';
-  enabled: boolean;
+/** 한 사람이 설정할 수 있는 알림 최대 개수 */
+export const MAX_REMINDERS = 3;
+
+/** 알림 한 개의 설정 (요일·시간) */
+export interface ReminderItem {
+  slot: number; // 0·1·2
   days: number[]; // 0(일)~6(토)
   hour: number;
   minute: number;
 }
 
+export interface ReminderState {
+  supported: boolean;
+  reason?: string;
+  permission: NotificationPermission | 'unsupported';
+  /** 알림이 켜져 있는지(이 기기에서) */
+  enabled: boolean;
+  /** 설정된 알림 목록 (최대 3개) */
+  items: ReminderItem[];
+}
+
+const DEFAULT_ITEM: Omit<ReminderItem, 'slot'> = { days: [0, 3], hour: 21, minute: 0 };
+
 const DEFAULT_STATE: ReminderState = {
   supported: false,
   permission: 'unsupported',
   enabled: false,
-  days: [0, 3], // 기본: 일·수
-  hour: 21,
-  minute: 0,
+  items: [{ slot: 0, ...DEFAULT_ITEM }],
 };
 
 function basePath(): string {
@@ -68,6 +80,14 @@ async function getRegistration(): Promise<ServiceWorkerRegistration> {
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
+/** 이미 있는 slot 을 피해 다음 빈 slot(0·1·2)을 고릅니다. */
+function nextSlot(items: ReminderItem[]): number {
+  for (let i = 0; i < MAX_REMINDERS; i += 1) {
+    if (!items.some((it) => it.slot === i)) return i;
+  }
+  return items.length; // 이론상 도달하지 않음
+}
+
 /** 기도 알림 설정 훅 (웹 전용). */
 export function useReminders() {
   const { user } = useAuth();
@@ -76,7 +96,7 @@ export function useReminders() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  // 초기: 지원 여부 + 이 기기의 기존 구독 설정을 불러옵니다.
+  // 초기: 지원 여부 + 이 기기의 기존 구독 설정(여러 slot)을 불러옵니다.
   useEffect(() => {
     let active = true;
     (async () => {
@@ -102,17 +122,20 @@ export function useReminders() {
         if (sub) {
           const { data } = await supabase
             .from('push_subscriptions')
-            .select('days, time_hhmm, enabled')
+            .select('slot, days, time_hhmm, enabled')
             .eq('endpoint', sub.endpoint)
-            .maybeSingle();
-          if (data) {
-            const [h, m] = String(data.time_hhmm ?? '21:00').split(':').map((x) => parseInt(x, 10));
-            loaded = {
-              enabled: Boolean(data.enabled),
-              days: Array.isArray(data.days) ? data.days : DEFAULT_STATE.days,
-              hour: Number.isFinite(h) ? h : 21,
-              minute: Number.isFinite(m) ? m : 0,
-            };
+            .order('slot', { ascending: true });
+          if (data && data.length > 0) {
+            const items: ReminderItem[] = data.slice(0, MAX_REMINDERS).map((row, i) => {
+              const [h, m] = String(row.time_hhmm ?? '21:00').split(':').map((x) => parseInt(x, 10));
+              return {
+                slot: typeof row.slot === 'number' ? row.slot : i,
+                days: Array.isArray(row.days) ? row.days : DEFAULT_ITEM.days,
+                hour: Number.isFinite(h) ? h : 21,
+                minute: Number.isFinite(m) ? m : 0,
+              };
+            });
+            loaded = { items, enabled: data.some((row) => row.enabled) };
           }
         }
       } catch {
@@ -128,11 +151,41 @@ export function useReminders() {
     };
   }, []);
 
-  const setDays = useCallback((days: number[]) => setState((s) => ({ ...s, days })), []);
-  const setTime = useCallback((hour: number, minute: number) => setState((s) => ({ ...s, hour, minute })), []);
+  const addItem = useCallback(() => {
+    setState((s) => {
+      if (s.items.length >= MAX_REMINDERS) return s;
+      return { ...s, items: [...s.items, { slot: nextSlot(s.items), ...DEFAULT_ITEM }] };
+    });
+  }, []);
 
-  /** 알림 켜기: 권한 요청 → 구독 → 서버 저장 */
-  const enable = useCallback(async () => {
+  /** 알림 한 개 삭제 — 저장돼 있던 것이면 서버에서도 지웁니다. */
+  const removeItem = useCallback(async (slot: number) => {
+    setState((s) => ({ ...s, items: s.items.filter((it) => it.slot !== slot) }));
+    try {
+      if (!supabase) return;
+      const reg = await navigator.serviceWorker.getRegistration(`${basePath()}/`);
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      if (sub) {
+        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint).eq('slot', slot);
+      }
+    } catch {
+      /* 다음 저장에서 정리됩니다. */
+    }
+  }, []);
+
+  const setItemDays = useCallback(
+    (slot: number, days: number[]) =>
+      setState((s) => ({ ...s, items: s.items.map((it) => (it.slot === slot ? { ...it, days } : it)) })),
+    [],
+  );
+  const setItemTime = useCallback(
+    (slot: number, hour: number, minute: number) =>
+      setState((s) => ({ ...s, items: s.items.map((it) => (it.slot === slot ? { ...it, hour, minute } : it)) })),
+    [],
+  );
+
+  /** 알림 켜기/저장: 권한 요청 → 구독 → 모든 알림(slot) 저장 */
+  const save = useCallback(async () => {
     if (!isSupported() || !supabase) return;
     setBusy(true);
     setError(undefined);
@@ -152,59 +205,41 @@ export function useReminders() {
         }));
       const json = sub.toJSON();
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const { error: upErr } = await supabase.from('push_subscriptions').upsert(
-        {
-          endpoint: sub.endpoint,
-          p256dh: json.keys?.p256dh,
-          auth: json.keys?.auth,
-          user_id: user?.id ?? null,
-          days: state.days,
-          time_hhmm: `${pad2(state.hour)}:${pad2(state.minute)}`,
-          tz,
-          enabled: true,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'endpoint' },
-      );
+      const now = new Date().toISOString();
+
+      const items = state.items;
+      const rows = items.map((it) => ({
+        endpoint: sub.endpoint,
+        slot: it.slot,
+        p256dh: json.keys?.p256dh,
+        auth: json.keys?.auth,
+        user_id: user?.id ?? null,
+        days: it.days,
+        time_hhmm: `${pad2(it.hour)}:${pad2(it.minute)}`,
+        tz,
+        enabled: true,
+        updated_at: now,
+      }));
+      const { error: upErr } = await supabase.from('push_subscriptions').upsert(rows, { onConflict: 'endpoint,slot' });
       if (upErr) throw new Error(upErr.message);
+
+      // 화면에서 지운 slot 이 서버에 남아 있으면 제거합니다.
+      const keepSlots = items.map((it) => it.slot);
+      if (keepSlots.length > 0) {
+        await supabase
+          .from('push_subscriptions')
+          .delete()
+          .eq('endpoint', sub.endpoint)
+          .not('slot', 'in', `(${keepSlots.join(',')})`);
+      }
+
       setState((s) => ({ ...s, permission, enabled: true }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : '알림을 켜지 못했습니다.');
+      setError(e instanceof Error ? e.message : '알림을 저장하지 못했습니다.');
     } finally {
       setBusy(false);
     }
-  }, [state.days, state.hour, state.minute, user]);
-
-  /** 요일·시간 저장(이미 켜진 상태에서 변경) */
-  const save = useCallback(async () => {
-    if (!isSupported() || !supabase) return;
-    setBusy(true);
-    setError(undefined);
-    try {
-      const reg = await navigator.serviceWorker.getRegistration(`${basePath()}/`);
-      const sub = reg ? await reg.pushManager.getSubscription() : null;
-      if (!sub) {
-        await enable();
-        return;
-      }
-      const { error: upErr } = await supabase
-        .from('push_subscriptions')
-        .update({
-          days: state.days,
-          time_hhmm: `${pad2(state.hour)}:${pad2(state.minute)}`,
-          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          enabled: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('endpoint', sub.endpoint);
-      if (upErr) throw new Error(upErr.message);
-      setState((s) => ({ ...s, enabled: true }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '저장하지 못했습니다.');
-    } finally {
-      setBusy(false);
-    }
-  }, [state.days, state.hour, state.minute, enable]);
+  }, [state.items, user]);
 
   /** 테스트 알림 — 이 기기에서 알림 "표시"가 되는지 즉시 확인(서버를 거치지 않음). */
   const testNotify = useCallback(async () => {
@@ -237,7 +272,7 @@ export function useReminders() {
     }
   }, []);
 
-  /** 알림 끄기 */
+  /** 알림 끄기 — 모든 slot 을 비활성화합니다(설정은 남겨 둡니다). */
   const disable = useCallback(async () => {
     if (!isSupported() || !supabase) return;
     setBusy(true);
@@ -256,5 +291,5 @@ export function useReminders() {
     }
   }, []);
 
-  return { state, loading, busy, error, setDays, setTime, enable, save, disable, testNotify };
+  return { state, loading, busy, error, addItem, removeItem, setItemDays, setItemTime, save, disable, testNotify };
 }

@@ -8,13 +8,14 @@ import { ThemedText } from '@/components/themed-text';
 import { Button, Card, LoadingState, Toggle } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useReminders } from '@/lib/reminders';
+import { MAX_REMINDERS, type ReminderItem, useReminders } from '@/lib/reminders';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function RemindersScreen() {
   const theme = useTheme();
-  const { state, loading, busy, error, setDays, setTime, enable, save, disable, testNotify } = useReminders();
+  const { state, loading, busy, error, addItem, removeItem, setItemDays, setItemTime, save, disable, testNotify } =
+    useReminders();
 
   if (loading) {
     return (
@@ -44,14 +45,6 @@ export default function RemindersScreen() {
     );
   }
 
-  const toggleDay = (d: number) =>
-    setDays(state.days.includes(d) ? state.days.filter((x) => x !== d) : [...state.days, d].sort((a, b) => a - b));
-
-  const meridiem: 'am' | 'pm' = state.hour < 12 ? 'am' : 'pm';
-  const hour12 = ((state.hour + 11) % 12) + 1; // 1~12
-  const setFromParts = (mer: 'am' | 'pm', h12: number, min: number) =>
-    setTime((h12 % 12) + (mer === 'pm' ? 12 : 0), min);
-
   return (
     <Screen>
       <Stack.Screen options={{ title: '기도 알림' }} />
@@ -64,11 +57,7 @@ export default function RemindersScreen() {
               정한 요일·시간에 기도하라는 알림을 보내 드려요.
             </ThemedText>
           </View>
-          <Toggle
-            label=""
-            value={state.enabled}
-            onChange={(v) => (v ? void enable() : void disable())}
-          />
+          <Toggle label="" value={state.enabled} onChange={(v) => (v ? void save() : void disable())} />
         </View>
         {state.permission === 'denied' ? (
           <ThemedText type="caption" themeColor="danger" style={styles.mt}>
@@ -77,68 +66,29 @@ export default function RemindersScreen() {
         ) : null}
       </Card>
 
-      <View>
-        <ThemedText type="smallBold" style={styles.label}>
-          요일
+      <View style={styles.rowBetween}>
+        <ThemedText type="smallBold">
+          내 알림 <ThemedText type="smallBold" themeColor="primary">{state.items.length}</ThemedText>
+          <ThemedText type="caption" themeColor="textMuted"> / {MAX_REMINDERS}개</ThemedText>
         </ThemedText>
-        <View style={styles.dayRow}>
-          {WEEKDAYS.map((w, d) => {
-            const on = state.days.includes(d);
-            return (
-              <Pressable
-                key={w}
-                onPress={() => toggleDay(d)}
-                style={[
-                  styles.dayChip,
-                  { backgroundColor: on ? theme.primary : theme.backgroundElement, borderColor: on ? theme.primary : theme.border },
-                ]}>
-                <ThemedText type="smallBold" style={{ color: on ? theme.onPrimary : theme.textSecondary }}>
-                  {w}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <ThemedText type="caption" themeColor="textMuted">최대 3개까지 설정할 수 있어요</ThemedText>
       </View>
 
-      <View>
-        <ThemedText type="smallBold" style={styles.label}>
-          시간
-        </ThemedText>
-        <Card>
-          <View style={[styles.ampmRow, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-            {(['am', 'pm'] as const).map((m) => {
-              const on = meridiem === m;
-              return (
-                <Pressable
-                  key={m}
-                  onPress={() => setFromParts(m, hour12, state.minute)}
-                  style={[styles.ampmBtn, on && { backgroundColor: theme.primary }]}>
-                  <ThemedText type="smallBold" style={{ color: on ? theme.onPrimary : theme.textSecondary }}>
-                    {m === 'am' ? '오전' : '오후'}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-          <View style={styles.pickerRow}>
-            <NumberPicker
-              suffix="시"
-              value={hour12}
-              options={HOURS}
-              format={(v) => `${v}`}
-              onSelect={(v) => setFromParts(meridiem, v, state.minute)}
-            />
-            <NumberPicker
-              suffix="분"
-              value={state.minute}
-              options={MINUTES}
-              format={(v) => String(v).padStart(2, '0')}
-              onSelect={(v) => setTime(state.hour, v)}
-            />
-          </View>
-        </Card>
-      </View>
+      {state.items.map((item, index) => (
+        <ReminderCard
+          key={item.slot}
+          item={item}
+          index={index}
+          canRemove={state.items.length > 1}
+          onRemove={() => void removeItem(item.slot)}
+          onDays={(days) => setItemDays(item.slot, days)}
+          onTime={(h, m) => setItemTime(item.slot, h, m)}
+        />
+      ))}
+
+      {state.items.length < MAX_REMINDERS ? (
+        <Button label="알림 추가" icon="add-circle-outline" variant="secondary" onPress={addItem} />
+      ) : null}
 
       {error ? (
         <ThemedText type="small" themeColor="danger">
@@ -146,11 +96,7 @@ export default function RemindersScreen() {
         </ThemedText>
       ) : null}
 
-      {state.enabled ? (
-        <Button label="이 설정으로 저장" icon="save-outline" loading={busy} onPress={() => void save()} />
-      ) : (
-        <Button label="알림 켜기" icon="notifications-outline" loading={busy} onPress={() => void enable()} />
-      )}
+      <Button label="이 설정으로 저장" icon="save-outline" loading={busy} onPress={() => void save()} />
 
       <Button
         label="테스트 알림 보내기"
@@ -165,10 +111,116 @@ export default function RemindersScreen() {
 
       <Card style={styles.tip}>
         <ThemedText type="caption" themeColor="textSecondary">
-          · 안드로이드/PC는 브라우저에서 바로 받을 수 있어요.{'\n'}· 아이폰은 사파리에서 <ThemedText type="caption" themeColor="primary">공유 → 홈 화면에 추가</ThemedText> 로 설치한 앱에서 열어야 알림이 옵니다.{'\n'}· 기기마다 따로 설정합니다(각 기기에서 한 번씩 켜 주세요).
+          · 알림을 여러 개 만들어 새벽·저녁 등 원하는 시간마다 받을 수 있어요.{'\n'}· 안드로이드/PC는 브라우저에서 바로 받을 수 있어요.{'\n'}· 아이폰은 사파리에서 <ThemedText type="caption" themeColor="primary">공유 → 홈 화면에 추가</ThemedText> 로 설치한 앱에서 열어야 알림이 옵니다.{'\n'}· 기기마다 따로 설정합니다(각 기기에서 한 번씩 켜 주세요).
         </ThemedText>
       </Card>
     </Screen>
+  );
+}
+
+/** 알림 한 개 카드 — 요일·시간을 정하고, 필요하면 삭제합니다. */
+function ReminderCard({
+  item,
+  index,
+  canRemove,
+  onRemove,
+  onDays,
+  onTime,
+}: {
+  item: ReminderItem;
+  index: number;
+  canRemove: boolean;
+  onRemove: () => void;
+  onDays: (days: number[]) => void;
+  onTime: (hour: number, minute: number) => void;
+}) {
+  const theme = useTheme();
+
+  const toggleDay = (d: number) =>
+    onDays(item.days.includes(d) ? item.days.filter((x) => x !== d) : [...item.days, d].sort((a, b) => a - b));
+
+  const meridiem: 'am' | 'pm' = item.hour < 12 ? 'am' : 'pm';
+  const hour12 = ((item.hour + 11) % 12) + 1; // 1~12
+  const setFromParts = (mer: 'am' | 'pm', h12: number, min: number) =>
+    onTime((h12 % 12) + (mer === 'pm' ? 12 : 0), min);
+
+  return (
+    <Card>
+      <View style={styles.cardHead}>
+        <View style={styles.cardTitleRow}>
+          <View style={[styles.numDot, { backgroundColor: theme.primary }]}>
+            <ThemedText type="caption" style={{ color: theme.onPrimary, fontWeight: '800' }}>
+              {index + 1}
+            </ThemedText>
+          </View>
+          <ThemedText type="smallBold">
+            {meridiem === 'am' ? '오전' : '오후'} {hour12}:{String(item.minute).padStart(2, '0')}
+          </ThemedText>
+        </View>
+        {canRemove ? (
+          <Pressable onPress={onRemove} hitSlop={8} style={styles.removeBtn}>
+            <Ionicons name="trash-outline" size={18} color={theme.textMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      <ThemedText type="caption" themeColor="textMuted" style={styles.label}>
+        요일
+      </ThemedText>
+      <View style={styles.dayRow}>
+        {WEEKDAYS.map((w, d) => {
+          const on = item.days.includes(d);
+          return (
+            <Pressable
+              key={w}
+              onPress={() => toggleDay(d)}
+              style={[
+                styles.dayChip,
+                { backgroundColor: on ? theme.primary : theme.backgroundElement, borderColor: on ? theme.primary : theme.border },
+              ]}>
+              <ThemedText type="smallBold" style={{ color: on ? theme.onPrimary : theme.textSecondary }}>
+                {w}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <ThemedText type="caption" themeColor="textMuted" style={styles.label}>
+        시간
+      </ThemedText>
+      <View style={[styles.ampmRow, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+        {(['am', 'pm'] as const).map((m) => {
+          const on = meridiem === m;
+          return (
+            <Pressable
+              key={m}
+              onPress={() => setFromParts(m, hour12, item.minute)}
+              style={[styles.ampmBtn, on && { backgroundColor: theme.primary }]}>
+              <ThemedText type="smallBold" style={{ color: on ? theme.onPrimary : theme.textSecondary }}>
+                {m === 'am' ? '오전' : '오후'}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.pickerRow}>
+        <NumberPicker
+          suffix="시"
+          value={hour12}
+          options={HOURS}
+          format={(v) => `${v}`}
+          onSelect={(v) => setFromParts(meridiem, v, item.minute)}
+        />
+        <NumberPicker
+          suffix="분"
+          value={item.minute}
+          options={MINUTES}
+          format={(v) => String(v).padStart(2, '0')}
+          onSelect={(v) => onTime(item.hour, v)}
+        />
+      </View>
+    </Card>
   );
 }
 
@@ -238,7 +290,11 @@ const styles = StyleSheet.create({
   centerText: { textAlign: 'center' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   mt: { marginTop: Spacing.two },
-  label: { marginBottom: Spacing.two },
+  label: { marginTop: Spacing.two, marginBottom: Spacing.two },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  numDot: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  removeBtn: { padding: Spacing.one },
   dayRow: { flexDirection: 'row', gap: Spacing.one, justifyContent: 'space-between' },
   dayChip: {
     flex: 1,

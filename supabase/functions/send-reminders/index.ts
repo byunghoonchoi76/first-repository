@@ -17,6 +17,7 @@ webpush.setVapidDetails(CONTACT, Deno.env.get('VAPID_PUBLIC')!, Deno.env.get('VA
 
 interface Row {
   endpoint: string;
+  slot: number | null;
   p256dh: string;
   auth: string;
   days: number[] | null;
@@ -69,6 +70,8 @@ Deno.serve(async () => {
     const dueNow = days.includes(now.weekday) && now.minutes >= target && now.minutes <= target + 59;
     if (!dueNow || row.last_sent_date === now.date) continue;
 
+    const slot = row.slot ?? 0;
+
     const payload = JSON.stringify({
       title: '기도할 시간이에요 🙏',
       body: '잠시 멈추고 기도로 하나님과 만나요.',
@@ -77,7 +80,12 @@ Deno.serve(async () => {
 
     try {
       await webpush.sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, payload);
-      await supabase.from('push_subscriptions').update({ last_sent_date: now.date }).eq('endpoint', row.endpoint);
+      // 이 알림(slot)만 '오늘 보냄' 으로 표시합니다. (같은 기기의 다른 알림은 각자 자기 시간에 발송)
+      await supabase
+        .from('push_subscriptions')
+        .update({ last_sent_date: now.date })
+        .eq('endpoint', row.endpoint)
+        .eq('slot', slot);
       sent += 1;
     } catch (e) {
       const status = (e as { statusCode?: number })?.statusCode;

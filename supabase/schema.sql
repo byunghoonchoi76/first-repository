@@ -381,8 +381,10 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- 기도 알림(웹 푸시) 구독 저장. 기기(endpoint)별로 요일·시간을 둡니다.
+-- 한 기기당 최대 3개(slot 0·1·2)의 알림을 서로 다른 요일·시간으로 둘 수 있습니다.
 create table if not exists public.push_subscriptions (
-  endpoint text primary key,
+  endpoint text not null,
+  slot smallint not null default 0,
   p256dh text not null,
   auth text not null,
   user_id uuid references auth.users(id) on delete set null,
@@ -391,7 +393,8 @@ create table if not exists public.push_subscriptions (
   tz text not null default 'Asia/Seoul',
   enabled boolean not null default true,
   last_sent_date text,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (endpoint, slot)
 );
 alter table public.push_subscriptions enable row level security;
 -- 구독은 불투명한 endpoint 로만 접근하므로 공개 정책으로 둡니다(교회 앱 특성).
