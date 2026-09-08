@@ -28,8 +28,8 @@ const CACHE_TTL_MS = 300_000;
 const SERVICES: { day: number; h: number; m: number }[] = [
   // 주일 예배
   { day: 0, h: 7, m: 30 }, { day: 0, h: 9, m: 30 }, { day: 0, h: 11, m: 30 }, { day: 0, h: 14, m: 0 }, { day: 0, h: 17, m: 0 },
-  // 새벽예배 (월~금)
-  { day: 1, h: 5, m: 0 }, { day: 2, h: 5, m: 0 }, { day: 3, h: 5, m: 0 }, { day: 4, h: 5, m: 0 }, { day: 5, h: 5, m: 0 },
+  // 새벽예배 (월~금) 오전 5:30
+  { day: 1, h: 5, m: 30 }, { day: 2, h: 5, m: 30 }, { day: 3, h: 5, m: 30 }, { day: 4, h: 5, m: 30 }, { day: 5, h: 5, m: 30 },
   // 수요예배 / 금요집회
   { day: 3, h: 19, m: 0 }, { day: 5, h: 20, m: 0 },
 ];
