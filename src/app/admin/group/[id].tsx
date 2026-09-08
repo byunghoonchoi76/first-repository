@@ -1,23 +1,27 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Field, LoadingState } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
-import { repository } from '@/lib/data';
+import { Button, Card, Field, LoadingState } from '@/components/ui';
+import { UserPicker } from '@/components/user-picker';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { repository, type DirectoryUser } from '@/lib/data';
 
 export default function GroupEditorScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = String(id) === 'new';
 
   const [name, setName] = useState('');
-  const [leader, setLeader] = useState('');
+  const [leaderName, setLeaderName] = useState('');
+  const [leaderId, setLeaderId] = useState<string | undefined>();
   const [meetingInfo, setMeetingInfo] = useState('');
   const [description, setDescription] = useState('');
-  const [memberCount, setMemberCount] = useState('');
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -30,10 +34,10 @@ export default function GroupEditorScreen() {
       .then((found) => {
         if (!active || !found) return;
         setName(found.name);
-        setLeader(found.leader);
+        setLeaderName(found.leader);
+        setLeaderId(found.leaderId);
         setMeetingInfo(found.meetingInfo);
         setDescription(found.description);
-        setMemberCount(found.memberCount > 0 ? String(found.memberCount) : '');
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : '불러오지 못했습니다.'))
       .finally(() => active && setLoading(false));
@@ -42,9 +46,14 @@ export default function GroupEditorScreen() {
     };
   }, [id, isNew]);
 
+  const pickLeader = (u: DirectoryUser) => {
+    setLeaderId(u.id);
+    setLeaderName(u.name);
+  };
+
   const save = async () => {
     if (!name.trim()) {
-      setError('소그룹 이름을 입력해 주세요.');
+      setError('소통방 이름을 입력해 주세요.');
       return;
     }
     setSaving(true);
@@ -52,11 +61,10 @@ export default function GroupEditorScreen() {
     try {
       const input = {
         name: name.trim(),
-        leader: leader.trim(),
+        leader: leaderName.trim(),
+        leaderId,
         meetingInfo: meetingInfo.trim(),
         description: description.trim(),
-        // 숫자가 아니면 0 으로 두고, 화면에서는 표시하지 않습니다.
-        memberCount: Number.parseInt(memberCount, 10) || 0,
       };
       if (isNew) {
         await repository.createGroup(input);
@@ -83,13 +91,13 @@ export default function GroupEditorScreen() {
       }
     };
 
-    const message = '이 소그룹과 그 안의 대화가 모두 사라집니다. 삭제할까요?';
+    const message = '이 소통방과 그 안의 대화·멤버가 모두 사라집니다. 삭제할까요?';
     if (Platform.OS === 'web') {
       // eslint-disable-next-line no-alert
       if (window.confirm(message)) void remove();
       return;
     }
-    Alert.alert('소그룹 삭제', message, [
+    Alert.alert('소통방 삭제', message, [
       { text: '취소', style: 'cancel' },
       { text: '삭제', style: 'destructive', onPress: () => void remove() },
     ]);
@@ -105,11 +113,41 @@ export default function GroupEditorScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: isNew ? '소그룹 등록' : '소그룹 수정' }} />
+      <Stack.Screen options={{ title: isNew ? '소통방 등록' : '소통방 수정' }} />
 
       <View style={styles.form}>
-        <Field label="소그룹 이름" value={name} onChangeText={setName} placeholder="예) 청년부 · 반석" />
-        <Field label="리더" value={leader} onChangeText={setLeader} placeholder="예) 한지훈 리더" />
+        <Field label="소통방 이름" value={name} onChangeText={setName} placeholder="예) 청년부 · 반석" />
+
+        <View style={styles.leaderBlock}>
+          <ThemedText type="smallBold">리더</ThemedText>
+          <ThemedText type="caption" themeColor="textMuted">
+            앱에 가입한 성도 중에서 리더를 지정하세요. 리더가 소통방에 멤버를 초대할 수 있어요.
+          </ThemedText>
+          {leaderId ? (
+            <Card style={styles.leaderChip}>
+              <View style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}>
+                <Ionicons name="ribbon" size={15} color={theme.primary} />
+              </View>
+              <View style={styles.flex}>
+                <ThemedText type="smallBold">{leaderName}</ThemedText>
+                <ThemedText type="caption" themeColor="textMuted">
+                  리더로 지정됨
+                </ThemedText>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setLeaderId(undefined);
+                  setLeaderName('');
+                }}
+                hitSlop={8}>
+                <Ionicons name="close-circle" size={20} color={theme.textMuted} />
+              </Pressable>
+            </Card>
+          ) : (
+            <UserPicker placeholder="리더 이름 검색" onPick={pickLeader} />
+          )}
+        </View>
+
         <Field
           label="모임 안내"
           value={meetingInfo}
@@ -122,13 +160,6 @@ export default function GroupEditorScreen() {
           onChangeText={setDescription}
           placeholder="어떤 모임인지 한두 줄로 적어 주세요."
           multiline
-        />
-        <Field
-          label="구성원 수 (선택)"
-          value={memberCount}
-          onChangeText={setMemberCount}
-          placeholder="예) 14"
-          keyboardType="number-pad"
         />
 
         {error ? (
@@ -145,7 +176,7 @@ export default function GroupEditorScreen() {
         />
 
         {!isNew ? (
-          <Button label="소그룹 삭제" icon="trash-outline" variant="danger" onPress={confirmDelete} />
+          <Button label="소통방 삭제" icon="trash-outline" variant="danger" onPress={confirmDelete} />
         ) : null}
       </View>
     </Screen>
@@ -154,4 +185,8 @@ export default function GroupEditorScreen() {
 
 const styles = StyleSheet.create({
   form: { gap: Spacing.three },
+  flex: { flex: 1 },
+  leaderBlock: { gap: Spacing.two },
+  leaderChip: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  avatar: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
 });

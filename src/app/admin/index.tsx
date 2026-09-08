@@ -46,6 +46,14 @@ export default function AdminHomeScreen() {
     );
   }
 
+  const stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+    { label: '주보', value: (bulletins.data ?? []).length, icon: 'book-outline' },
+    { label: '공지', value: (announcements.data ?? []).length, icon: 'document-text-outline' },
+    { label: '소통방', value: (groups.data ?? []).length, icon: 'people-outline' },
+    { label: '섬김', value: (staff.data ?? []).length, icon: 'person-outline' },
+    { label: '설교', value: (sermons.data ?? []).length, icon: 'play-circle-outline' },
+  ];
+
   return (
     <Screen onRefresh={reloadAll}>
       {dataMode === 'sample' ? (
@@ -56,6 +64,8 @@ export default function AdminHomeScreen() {
           </ThemedText>
         </Card>
       ) : null}
+
+      <DashboardHeader stats={stats} />
 
       <LiveOverrideCard />
 
@@ -133,19 +143,22 @@ export default function AdminHomeScreen() {
       </View>
 
       <View>
-        <SectionHeader title="소그룹" actionLabel="새로 등록" onAction={() => router.push('/admin/group/new')} />
+        <SectionHeader title="소통방" actionLabel="새로 등록" onAction={() => router.push('/admin/group/new')} />
+        <ThemedText type="caption" themeColor="textMuted" style={{ marginBottom: 8 }}>
+          소통방을 만들고 리더를 지정하면, 리더가 멤버를 초대해 비공개로 운영합니다.
+        </ThemedText>
         <Card>
           {(groups.data ?? []).map((item) => (
             <ListRow
               key={item.id}
               icon="people-outline"
               title={item.name}
-              subtitle={`${item.leader} · ${item.meetingInfo}`}
+              subtitle={`${item.leader || '리더 미지정'} · 멤버 ${item.memberCount}명`}
               onPress={() => router.push(`/admin/group/${item.id}`)}
             />
           ))}
           {(groups.data ?? []).length === 0 ? (
-            <EmptyState icon="people-outline" message="등록된 소그룹이 없습니다." />
+            <EmptyState icon="people-outline" message="등록된 소통방이 없습니다." />
           ) : null}
         </Card>
       </View>
@@ -168,6 +181,32 @@ export default function AdminHomeScreen() {
         </Card>
       </View>
     </Screen>
+  );
+}
+
+/** 관리 현황 요약 — 한눈에 보는 등록 개수 */
+function DashboardHeader({
+  stats,
+}: {
+  stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name'] }[];
+}) {
+  const theme = useTheme();
+  return (
+    <View>
+      <SectionHeader title="관리 현황" />
+      <Card style={styles.statRow}>
+        {stats.map((s, i) => (
+          <View key={s.label} style={styles.statCell}>
+            {i > 0 ? <View style={[styles.statDivider, { backgroundColor: theme.border }]} /> : null}
+            <Ionicons name={s.icon} size={16} color={theme.primary} />
+            <ThemedText type="heading">{s.value}</ThemedText>
+            <ThemedText type="caption" themeColor="textMuted">
+              {s.label}
+            </ThemedText>
+          </View>
+        ))}
+      </Card>
+    </View>
   );
 }
 
@@ -233,6 +272,9 @@ function LiveOverrideCard() {
 }
 
 const styles = StyleSheet.create({
+  statRow: { flexDirection: 'row', alignItems: 'stretch', paddingVertical: Spacing.three },
+  statCell: { flex: 1, alignItems: 'center', gap: 2, position: 'relative' },
+  statDivider: { position: 'absolute', left: 0, top: '15%', bottom: '15%', width: StyleSheet.hairlineWidth },
   liveRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.three },
   liveChip: {
     flex: 1,

@@ -97,16 +97,18 @@ function RootNavigator() {
       <Stack.Screen name="bulletin/[id]" options={{ title: '주보' }} />
       <Stack.Screen name="news/[id]" options={{ title: '공지사항' }} />
       <Stack.Screen name="sermons/[id]" options={{ title: '설교' }} />
-      <Stack.Screen name="groups/[id]" options={{ title: '소그룹' }} />
+      <Stack.Screen name="groups/[id]" options={{ title: '소통방' }} />
+      <Stack.Screen name="group-members/[id]" options={{ title: '소통방 멤버' }} />
       <Stack.Screen name="prayer/personal" options={{ title: '개인 기도제목' }} />
       <Stack.Screen name="prayer/requests" options={{ title: '기도 요청' }} />
       <Stack.Screen name="prayer/new" options={{ title: '기도제목 나누기', presentation: 'modal' }} />
+      <Stack.Screen name="prayer/edit/[id]" options={{ title: '기도제목 수정', presentation: 'modal' }} />
       <Stack.Screen name="settings" options={{ title: '더보기' }} />
       <Stack.Screen name="reminders" options={{ title: '기도 알림' }} />
       <Stack.Screen name="sign-in" options={{ title: '로그인', presentation: 'modal' }} />
       <Stack.Screen name="admin/index" options={{ title: '관리자' }} />
       <Stack.Screen name="admin/bulletin/[id]" options={{ title: '주보 등록' }} />
-      <Stack.Screen name="admin/group/[id]" options={{ title: '소그룹 등록' }} />
+      <Stack.Screen name="admin/group/[id]" options={{ title: '소통방 등록' }} />
       <Stack.Screen name="admin/staff/[id]" options={{ title: '섬기는 분 등록' }} />
       <Stack.Screen name="admin/communal/[id]" options={{ title: '공동 기도제목' }} />
       <Stack.Screen name="admin/announcement/[id]" options={{ title: '공지 작성' }} />

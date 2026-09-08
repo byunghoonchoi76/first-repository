@@ -9,13 +9,14 @@ import { Button, Card, EmptyState, ErrorState, LoadingState } from '@/components
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, useAsyncData } from '@/lib/data';
+import { dataMode, repository, useAsyncData } from '@/lib/data';
 
 export default function GroupsScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { isAdmin } = useAuth();
-  const groups = useAsyncData(() => repository.listGroups());
+  const { user, isAdmin } = useAuth();
+  const needsSignIn = dataMode === 'supabase' && !user;
+  const groups = useAsyncData(() => (needsSignIn ? Promise.resolve([]) : repository.listGroups()), [needsSignIn]);
   const { reload } = groups;
 
   // 관리자가 소그룹을 등록·수정하고 돌아오면 목록을 새로 불러옵니다.
@@ -24,6 +25,17 @@ export default function GroupsScreen() {
       reload();
     }, [reload]),
   );
+
+  if (needsSignIn) {
+    return (
+      <Screen>
+        <Card>
+          <EmptyState icon="lock-closed-outline" message="로그인하면 내가 속한 소통방을 볼 수 있어요." />
+          <Button label="로그인하기" icon="log-in-outline" onPress={() => router.push('/sign-in')} />
+        </Card>
+      </Screen>
+    );
+  }
 
   if (groups.loading && !groups.data) {
     return (
@@ -46,12 +58,12 @@ export default function GroupsScreen() {
   return (
     <Screen onRefresh={groups.reload}>
       <ThemedText type="small" themeColor="textSecondary">
-        소그룹을 선택하면 소통방으로 들어갑니다.
+        {isAdmin ? '모든 소통방이에요. 선택하면 대화방으로 들어갑니다.' : '내가 초대된 소통방이에요. 선택하면 대화방으로 들어갑니다.'}
       </ThemedText>
 
       {isAdmin ? (
         <Button
-          label="새 소그룹 등록"
+          label="새 소통방 등록"
           icon="add-circle-outline"
           variant="secondary"
           onPress={() => router.push('/admin/group/new')}
@@ -59,7 +71,10 @@ export default function GroupsScreen() {
       ) : null}
 
       {items.length === 0 ? (
-        <EmptyState icon="people-outline" message="등록된 소그룹이 없습니다." />
+        <EmptyState
+          icon="people-outline"
+          message={isAdmin ? "등록된 소통방이 없습니다. '새 소통방 등록'으로 만들어 보세요." : '아직 초대된 소통방이 없어요. 리더가 초대하면 여기에 나타납니다.'}
+        />
       ) : (
         <View style={styles.stack}>
           {items.map((group) => (

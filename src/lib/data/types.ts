@@ -182,18 +182,49 @@ export type CommunalPrayerInput = Pick<CommunalPrayer, 'title' | 'body' | 'sortO
 export interface SmallGroup {
   id: string;
   name: string;
+  /** 리더 이름(표시용) */
   leader: string;
+  /** 리더 계정 id */
+  leaderId?: string;
   meetingInfo: string;
   description: string;
+  /** 소통방 멤버 수 (서버에서 자동 집계) */
   memberCount: number;
 }
 
-export type SmallGroupInput = Omit<SmallGroup, 'id'>;
+/** 소통방 등록·수정 입력 (멤버 수는 자동 집계라 제외) */
+export type SmallGroupInput = Omit<SmallGroup, 'id' | 'memberCount'>;
+
+export type GroupMemberRole = 'leader' | 'member';
+
+/** 소통방 멤버 (이름·역할·개인 알림 여부) */
+export interface GroupMember {
+  userId: string;
+  name: string;
+  role: GroupMemberRole;
+  notify: boolean;
+}
+
+/** 초대용 사용자 검색 결과 (앱에 등록된 성도) */
+export interface DirectoryUser {
+  id: string;
+  name: string;
+}
+
+/** 현재 로그인 성도의 특정 소통방 소속 정보 */
+export interface MyGroupMembership {
+  isMember: boolean;
+  role: GroupMemberRole | null;
+  /** 이 소통방 새 글 푸시 알림 여부(개인 설정) */
+  notify: boolean;
+}
 
 export interface GroupMessage {
   id: string;
   groupId: string;
   author: string;
+  /** 글쓴이 계정 id (본인 메시지 구분용) */
+  authorId?: string;
   body: string;
   createdAt: string;
 }
@@ -290,4 +321,17 @@ export interface ChurchRepository {
   deleteGroup(id: string): Promise<void>;
   listGroupMessages(groupId: string): Promise<GroupMessage[]>;
   sendGroupMessage(groupId: string, author: string, body: string): Promise<GroupMessage>;
+
+  /** 앱에 등록된 성도를 이름으로 검색합니다(초대용, 관리자·리더만). */
+  searchUsers(query: string): Promise<DirectoryUser[]>;
+  /** 소통방 멤버 목록(이름·역할·알림) */
+  listGroupMembers(groupId: string): Promise<GroupMember[]>;
+  /** 소통방에 멤버를 추가(초대)합니다. */
+  addGroupMember(groupId: string, userId: string, role: GroupMemberRole): Promise<void>;
+  /** 소통방에서 멤버를 내보냅니다(본인 탈퇴 포함). */
+  removeGroupMember(groupId: string, userId: string): Promise<void>;
+  /** 이 소통방의 새 글 푸시 알림을 개인별로 켜고 끕니다. */
+  setGroupNotify(groupId: string, notify: boolean): Promise<void>;
+  /** 현재 로그인 성도가 이 소통방에 속했는지·역할·알림 여부 */
+  getMyGroupMembership(groupId: string): Promise<MyGroupMembership>;
 }

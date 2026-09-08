@@ -80,6 +80,52 @@ async function getRegistration(): Promise<ServiceWorkerRegistration> {
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
+/**
+ * 이 기기가 푸시를 받을 수 있도록 구독을 보장합니다(소통방 알림 등에서 사용).
+ * - 권한을 요청하고 구독을 만든 뒤, 없으면 '수신용' 기본 구독 행을 만듭니다(기도 리마인더는 off).
+ * - 이미 구독 행이 있으면 user_id 만 채워 그룹 알림 대상 매칭이 되게 합니다.
+ */
+export async function ensurePushSubscription(userId: string | null): Promise<{ ok: boolean; reason?: string }> {
+  if (!isSupported()) return { ok: false, reason: '이 브라우저·기기에서는 알림을 지원하지 않습니다.' };
+  if (!hasSupabaseConfig || !supabase) return { ok: false, reason: '알림을 저장할 서버가 연결되어 있지 않습니다.' };
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return { ok: false, reason: '알림 권한이 허용되지 않았습니다. 브라우저 설정에서 알림을 허용해 주세요.' };
+  try {
+    const reg = await getRegistration();
+    const sub =
+      (await reg.pushManager.getSubscription()) ??
+      (await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
+      }));
+    const json = sub.toJSON();
+    const { data } = await supabase.from('push_subscriptions').select('slot').eq('endpoint', sub.endpoint).limit(1);
+    if (!data || data.length === 0) {
+      await supabase.from('push_subscriptions').upsert(
+        {
+          endpoint: sub.endpoint,
+          slot: 0,
+          p256dh: json.keys?.p256dh,
+          auth: json.keys?.auth,
+          user_id: userId,
+          days: [],
+          time_hhmm: '21:00',
+          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          enabled: false, // 리마인더는 끈 상태 — 소통방 등 대상 알림에만 사용
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'endpoint,slot' },
+      );
+    } else if (userId) {
+      // 로그아웃 상태에서 만든 구독이면 user_id 를 채워 둡니다.
+      await supabase.from('push_subscriptions').update({ user_id: userId }).eq('endpoint', sub.endpoint).is('user_id', null);
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : '알림 구독을 만들지 못했습니다.' };
+  }
+}
+
 /** 이미 있는 slot 을 피해 다음 빈 slot(0·1·2)을 고릅니다. */
 function nextSlot(items: ReminderItem[]): number {
   for (let i = 0; i < MAX_REMINDERS; i += 1) {

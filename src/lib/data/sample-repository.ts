@@ -19,7 +19,11 @@ import type {
   ChurchRepository,
   CommunalPrayer,
   CommunalPrayerInput,
+  DirectoryUser,
+  GroupMember,
+  GroupMemberRole,
   GroupMessage,
+  MyGroupMembership,
   PrayerRequest,
   PrayerRequestInput,
   PrayerRequestUpdate,
@@ -46,7 +50,11 @@ const STORAGE_KEY = 'church-app/sample-db';
  * 기기에 저장된 값이 이 버전과 다르면 새 샘플 데이터로 다시 시작합니다.
  * (그렇지 않으면 앱을 한 번 실행한 기기에는 예전 내용이 계속 남습니다.)
  */
-const SAMPLE_VERSION = '2026-09-04-c';
+const SAMPLE_VERSION = '2026-09-08-groups';
+
+interface SampleMember extends GroupMember {
+  groupId: string;
+}
 
 interface SampleDb {
   announcements: Announcement[];
@@ -59,7 +67,28 @@ interface SampleDb {
   newFamilies: NewFamily[];
   groups: SmallGroup[];
   messages: GroupMessage[];
+  groupMembers: SampleMember[];
 }
+
+/** 샘플 모드의 '나'(로그인 대신) · 초대 검색에 쓰는 가상의 성도 명단 */
+const SAMPLE_ME: DirectoryUser = { id: 'sample-me', name: '나 (샘플)' };
+const SAMPLE_DIRECTORY: DirectoryUser[] = [
+  SAMPLE_ME,
+  { id: 'u-1', name: '김다인' },
+  { id: 'u-2', name: '이서준' },
+  { id: 'u-3', name: '박은혜' },
+  { id: 'u-4', name: '최민수' },
+  { id: 'u-5', name: '정하윤' },
+  { id: 'u-6', name: '한지훈' },
+];
+
+// 샘플 모드에서는 '나'를 모든 소통방의 리더로 두어 모든 기능을 미리 볼 수 있게 합니다.
+const sampleGroupMembers = (): SampleMember[] =>
+  sampleGroups.flatMap((g) => [
+    { groupId: g.id, userId: SAMPLE_ME.id, name: SAMPLE_ME.name, role: 'leader' as GroupMemberRole, notify: true },
+    { groupId: g.id, userId: 'u-1', name: '김다인', role: 'member' as GroupMemberRole, notify: true },
+    { groupId: g.id, userId: 'u-2', name: '이서준', role: 'member' as GroupMemberRole, notify: true },
+  ]);
 
 const initialDb = (): SampleDb => ({
   announcements: [...sampleAnnouncements],
@@ -72,6 +101,7 @@ const initialDb = (): SampleDb => ({
   newFamilies: [],
   groups: [...sampleGroups],
   messages: [...sampleGroupMessages],
+  groupMembers: sampleGroupMembers(),
 });
 
 let db: SampleDb = initialDb();
@@ -488,41 +518,59 @@ export const sampleRepository: ChurchRepository = {
   async listGroups() {
     await ready();
     await delay();
-    return clone(db.groups);
+    return clone(db.groups.map(withMemberCount));
   },
 
   async getGroup(id) {
     await ready();
     await delay(80);
-    return clone(db.groups.find((g) => g.id === id) ?? null);
+    const found = db.groups.find((g) => g.id === id);
+    return clone(found ? withMemberCount(found) : null);
   },
 
   async createGroup(input: SmallGroupInput) {
     await ready();
     await delay();
-    const created: SmallGroup = { ...input, id: newId('group') };
+    const created: SmallGroup = { ...input, id: newId('group'), memberCount: 0 };
     db.groups = [...db.groups, created];
+    if (input.leaderId) {
+      const name = SAMPLE_DIRECTORY.find((u) => u.id === input.leaderId)?.name ?? input.leader;
+      db.groupMembers.push({ groupId: created.id, userId: input.leaderId, name, role: 'leader', notify: true });
+    }
     await persist();
-    return clone(created);
+    return clone(withMemberCount(created));
   },
 
   async updateGroup(id, input) {
     await ready();
     await delay();
     const index = db.groups.findIndex((g) => g.id === id);
-    if (index < 0) throw new Error('소그룹을 찾을 수 없습니다.');
-    const updated: SmallGroup = { ...input, id };
+    if (index < 0) throw new Error('소통방을 찾을 수 없습니다.');
+    const prev = db.groups[index];
+    const updated: SmallGroup = { ...input, id, memberCount: prev.memberCount };
     db.groups[index] = updated;
+    if (input.leaderId && input.leaderId !== prev.leaderId) {
+      db.groupMembers.forEach((m) => {
+        if (m.groupId === id && m.role === 'leader') m.role = 'member';
+      });
+      const existing = db.groupMembers.find((m) => m.groupId === id && m.userId === input.leaderId);
+      if (existing) existing.role = 'leader';
+      else {
+        const name = SAMPLE_DIRECTORY.find((u) => u.id === input.leaderId)?.name ?? input.leader;
+        db.groupMembers.push({ groupId: id, userId: input.leaderId, name, role: 'leader', notify: true });
+      }
+    }
     await persist();
-    return clone(updated);
+    return clone(withMemberCount(updated));
   },
 
   async deleteGroup(id) {
     await ready();
     await delay();
     db.groups = db.groups.filter((g) => g.id !== id);
-    // 소그룹을 지우면 그 방의 대화도 함께 지웁니다.
+    // 소통방을 지우면 그 방의 대화·멤버도 함께 지웁니다.
     db.messages = db.messages.filter((m) => m.groupId !== id);
+    db.groupMembers = db.groupMembers.filter((m) => m.groupId !== id);
     await persist();
   },
 
@@ -541,6 +589,7 @@ export const sampleRepository: ChurchRepository = {
       id: newId('msg'),
       groupId,
       author,
+      authorId: SAMPLE_ME.id,
       body,
       createdAt: new Date().toISOString(),
     };
@@ -548,7 +597,61 @@ export const sampleRepository: ChurchRepository = {
     await persist();
     return clone(created);
   },
+
+  async searchUsers(query: string) {
+    await ready();
+    await delay(120);
+    const q = query.trim();
+    if (!q) return [];
+    return SAMPLE_DIRECTORY.filter((u) => u.name.includes(q)).map((u) => ({ ...u }));
+  },
+
+  async listGroupMembers(groupId: string) {
+    await ready();
+    await delay(80);
+    return db.groupMembers
+      .filter((m) => m.groupId === groupId)
+      .map(({ userId, name, role, notify }) => ({ userId, name, role, notify }))
+      .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'leader' ? -1 : 1));
+  },
+
+  async addGroupMember(groupId: string, userId: string, role: GroupMemberRole) {
+    await ready();
+    await delay();
+    if (db.groupMembers.some((m) => m.groupId === groupId && m.userId === userId)) return;
+    const name = SAMPLE_DIRECTORY.find((u) => u.id === userId)?.name ?? '성도';
+    db.groupMembers.push({ groupId, userId, name, role, notify: true });
+    await persist();
+  },
+
+  async removeGroupMember(groupId: string, userId: string) {
+    await ready();
+    await delay();
+    db.groupMembers = db.groupMembers.filter((m) => !(m.groupId === groupId && m.userId === userId));
+    await persist();
+  },
+
+  async setGroupNotify(groupId: string, notify: boolean) {
+    await ready();
+    await delay(60);
+    const mine = db.groupMembers.find((m) => m.groupId === groupId && m.userId === SAMPLE_ME.id);
+    if (mine) mine.notify = notify;
+    await persist();
+  },
+
+  async getMyGroupMembership(groupId: string): Promise<MyGroupMembership> {
+    await ready();
+    await delay(60);
+    const mine = db.groupMembers.find((m) => m.groupId === groupId && m.userId === SAMPLE_ME.id);
+    if (!mine) return { isMember: false, role: null, notify: true };
+    return { isMember: true, role: mine.role, notify: mine.notify };
+  },
 };
+
+/** 소통방의 멤버 수를 멤버 목록에서 계산해 채웁니다. */
+function withMemberCount(group: SmallGroup): SmallGroup {
+  return { ...group, memberCount: db.groupMembers.filter((m) => m.groupId === group.id).length };
+}
 
 
 /** 샘플 모드에서 기기에 저장된 내용을 지우고 처음 상태로 되돌립니다. */

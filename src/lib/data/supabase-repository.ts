@@ -9,6 +9,7 @@ import type {
   ChurchRepository,
   CommunalPrayer,
   CommunalPrayerInput,
+  GroupMemberRole,
   GroupMessage,
   PrayerRequest,
   PrayerRequestInput,
@@ -147,6 +148,7 @@ const toGroup = (row: Row): SmallGroup => ({
   id: row.id,
   name: row.name,
   leader: row.leader,
+  leaderId: row.leader_id ?? undefined,
   meetingInfo: row.meeting_info,
   description: row.description ?? '',
   memberCount: row.member_count ?? 0,
@@ -191,15 +193,16 @@ const fromStaff = (input: StaffInput) => ({
 const fromGroup = (input: SmallGroupInput) => ({
   name: input.name,
   leader: input.leader,
+  leader_id: input.leaderId ?? null,
   meeting_info: input.meetingInfo,
   description: input.description,
-  member_count: input.memberCount,
 });
 
 const toMessage = (row: Row): GroupMessage => ({
   id: row.id,
   groupId: row.group_id,
   author: row.author,
+  authorId: row.author_id ?? undefined,
   body: row.body,
   createdAt: row.created_at,
 });
@@ -601,18 +604,38 @@ export const supabaseRepository: ChurchRepository = {
   async createGroup(input) {
     const sb = requireSupabase();
     const res = await sb.from('small_groups').insert(fromGroup(input)).select().single();
-    return toGroup(unwrap(res));
+    const group = toGroup(unwrap(res));
+    // 리더를 지정했으면 소통방 멤버(리더)로 등록합니다.
+    if (input.leaderId) {
+      await sb.from('group_members').upsert(
+        { group_id: group.id, user_id: input.leaderId, role: 'leader' },
+        { onConflict: 'group_id,user_id' },
+      );
+    }
+    return group;
   },
 
   async updateGroup(id, input) {
     const sb = requireSupabase();
+    const prev = await this.getGroup(id);
     const res = await sb.from('small_groups').update(fromGroup(input)).eq('id', id).select().single();
-    return toGroup(unwrap(res));
+    const group = toGroup(unwrap(res));
+    // 리더가 바뀌었으면: 이전 리더는 일반 멤버로, 새 리더는 리더 멤버로.
+    if (input.leaderId && input.leaderId !== prev?.leaderId) {
+      if (prev?.leaderId) {
+        await sb.from('group_members').update({ role: 'member' }).eq('group_id', id).eq('user_id', prev.leaderId);
+      }
+      await sb.from('group_members').upsert(
+        { group_id: id, user_id: input.leaderId, role: 'leader' },
+        { onConflict: 'group_id,user_id' },
+      );
+    }
+    return group;
   },
 
   async deleteGroup(id) {
     const sb = requireSupabase();
-    // group_messages 는 on delete cascade 로 함께 지워집니다.
+    // group_messages · group_members 는 on delete cascade 로 함께 지워집니다.
     const { error } = await sb.from('small_groups').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
@@ -635,6 +658,69 @@ export const supabaseRepository: ChurchRepository = {
       .insert({ group_id: groupId, author, body, author_id: await currentUserId() })
       .select()
       .single();
-    return toMessage(unwrap(res));
+    const message = toMessage(unwrap(res));
+    // 같은 방의 다른 멤버에게 푸시 알림(앱을 나가 있어도 옴). 실패해도 전송은 성공 처리.
+    try {
+      await sb.functions.invoke('notify-group', { body: { messageId: message.id } });
+    } catch {
+      /* 알림 실패는 무시 */
+    }
+    return message;
+  },
+
+  async searchUsers(query) {
+    const sb = requireSupabase();
+    const q = query.trim();
+    if (!q) return [];
+    const res = await sb.rpc('search_app_users', { q });
+    if (res.error) throw new Error(res.error.message);
+    return ((res.data ?? []) as { id: string; name: string }[]).map((r) => ({ id: r.id, name: r.name }));
+  },
+
+  async listGroupMembers(groupId) {
+    const sb = requireSupabase();
+    const res = await sb.rpc('list_group_members', { gid: groupId });
+    if (res.error) throw new Error(res.error.message);
+    return ((res.data ?? []) as { user_id: string; name: string; role: GroupMemberRole; notify: boolean }[]).map((r) => ({
+      userId: r.user_id,
+      name: r.name,
+      role: r.role,
+      notify: r.notify,
+    }));
+  },
+
+  async addGroupMember(groupId, userId, role) {
+    const sb = requireSupabase();
+    const { error } = await sb
+      .from('group_members')
+      .upsert({ group_id: groupId, user_id: userId, role }, { onConflict: 'group_id,user_id' });
+    if (error) throw new Error(error.message);
+  },
+
+  async removeGroupMember(groupId, userId) {
+    const sb = requireSupabase();
+    const { error } = await sb.from('group_members').delete().eq('group_id', groupId).eq('user_id', userId);
+    if (error) throw new Error(error.message);
+  },
+
+  async setGroupNotify(groupId, notify) {
+    const sb = requireSupabase();
+    const { error } = await sb.rpc('set_group_notify', { gid: groupId, want: notify });
+    if (error) throw new Error(error.message);
+  },
+
+  async getMyGroupMembership(groupId) {
+    const sb = requireSupabase();
+    const uid = await currentUserId();
+    if (!uid) return { isMember: false, role: null, notify: true };
+    const res = await sb
+      .from('group_members')
+      .select('role, notify')
+      .eq('group_id', groupId)
+      .eq('user_id', uid)
+      .maybeSingle();
+    if (res.error) throw new Error(res.error.message);
+    if (!res.data) return { isMember: false, role: null, notify: true };
+    return { isMember: true, role: res.data.role as GroupMemberRole, notify: Boolean(res.data.notify) };
   },
 };
