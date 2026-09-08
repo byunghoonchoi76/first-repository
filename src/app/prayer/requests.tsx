@@ -64,7 +64,12 @@ export default function PrayerRequestsScreen() {
         <EmptyState icon="hand-right-outline" message="아직 올라온 기도 요청이 없습니다." />
       ) : (
         <View style={styles.stack}>
-          <StatusCounter praying={prayingCount} answered={answeredCount} together={togetherCount} />
+          <StatusCounter
+            total={sharedItems.length}
+            praying={prayingCount}
+            answered={answeredCount}
+            together={togetherCount}
+          />
           {sharedItems.map((item) => (
             <Card key={item.id}>
               <View style={styles.rowBetween}>
@@ -110,28 +115,56 @@ export default function PrayerRequestsScreen() {
   );
 }
 
-/** 기도 요청 현황 카운터 — 기도 중 / 응답됨 / 함께 기도 총합을 한눈에 보여 줍니다. */
-function StatusCounter({ praying, answered, together }: { praying: number; answered: number; together: number }) {
+/**
+ * 우리의 기도노트 — 조지 뮬러의 '기도 응답 기록' 개념을 담은 현황판.
+ * 성도들이 올린 기도제목 총량과, 기도 중 / 응답됨 / 함께 기도 현황을 다 함께 확인합니다.
+ */
+function StatusCounter({
+  total,
+  praying,
+  answered,
+  together,
+}: {
+  total: number;
+  praying: number;
+  answered: number;
+  together: number;
+}) {
   const theme = useTheme();
   const stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name']; color: string }[] = [
+    { label: '기도제목', value: total, icon: 'book', color: theme.text },
     { label: '기도 중', value: praying, icon: 'hand-right', color: theme.primary },
     { label: '응답됨', value: answered, icon: 'checkmark-circle', color: theme.success },
     { label: '함께 기도', value: together, icon: 'people', color: theme.accent },
   ];
   return (
-    <Card style={styles.counterCard}>
-      {stats.map((s, i) => (
-        <View key={s.label} style={styles.counterCell}>
-          {i > 0 ? <View style={[styles.counterDivider, { backgroundColor: theme.border }]} /> : null}
-          <Ionicons name={s.icon} size={18} color={s.color} />
-          <ThemedText type="title" style={{ color: s.color }}>
-            {s.value.toLocaleString('ko-KR')}
-          </ThemedText>
-          <ThemedText type="caption" themeColor="textMuted">
-            {s.label}
-          </ThemedText>
-        </View>
-      ))}
+    <Card style={styles.noteCard}>
+      <View style={styles.noteHead}>
+        <Ionicons name="journal-outline" size={16} color={theme.primary} />
+        <ThemedText type="smallBold" themeColor="primary">
+          우리의 기도노트
+        </ThemedText>
+      </View>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.noteVerse}>
+        “하나님께서 우리 삶에서 일하고 계십니다.”
+      </ThemedText>
+
+      <View style={[styles.noteDivider, { backgroundColor: theme.border }]} />
+
+      <View style={styles.counterRow}>
+        {stats.map((s, i) => (
+          <View key={s.label} style={styles.counterCell}>
+            {i > 0 ? <View style={[styles.counterDivider, { backgroundColor: theme.border }]} /> : null}
+            <Ionicons name={s.icon} size={17} color={s.color} />
+            <ThemedText type="heading" style={{ color: s.color }}>
+              {s.value.toLocaleString('ko-KR')}
+            </ThemedText>
+            <ThemedText type="caption" themeColor="textMuted" numberOfLines={1}>
+              {s.label}
+            </ThemedText>
+          </View>
+        ))}
+      </View>
     </Card>
   );
 }
@@ -139,7 +172,11 @@ function StatusCounter({ praying, answered, together }: { praying: number; answe
 const styles = StyleSheet.create({
   stack: { gap: Spacing.two },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  counterCard: { flexDirection: 'row', alignItems: 'stretch', paddingVertical: Spacing.three },
+  noteCard: { gap: Spacing.two },
+  noteHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  noteVerse: { fontStyle: 'italic' },
+  noteDivider: { height: StyleSheet.hairlineWidth, marginTop: Spacing.one },
+  counterRow: { flexDirection: 'row', alignItems: 'stretch' },
   counterCell: { flex: 1, alignItems: 'center', gap: 2, position: 'relative' },
   counterDivider: { position: 'absolute', left: 0, top: '15%', bottom: '15%', width: StyleSheet.hairlineWidth },
   prayButton: {
