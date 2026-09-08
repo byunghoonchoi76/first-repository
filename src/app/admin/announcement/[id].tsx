@@ -120,7 +120,7 @@ export default function AnnouncementEditorScreen() {
         <Field label="제목" value={title} onChangeText={setTitle} placeholder="공지 제목" />
         <Field label="내용" value={body} onChangeText={setBody} placeholder="공지 내용" multiline />
         <Field label="작성 부서" value={author} onChangeText={setAuthor} placeholder="예) 교육부" />
-        <Toggle label="상단에 고정하기" value={pinned} onChange={setPinned} />
+        <Toggle label="중요 소식으로 표시 (제목 옆에 표시가 붙습니다)" value={pinned} onChange={setPinned} />
 
         {error ? (
           <ThemedText type="small" themeColor="danger">

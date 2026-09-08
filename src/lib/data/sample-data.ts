@@ -1,12 +1,18 @@
+/**
+ * 화면 확인용 예시 데이터입니다. 실제 주보·공지·설교 내용으로 교체해 주세요.
+ * (Supabase 를 연결하면 이 파일 대신 DB 의 내용이 표시됩니다.)
+ */
 import { ChurchInfo } from '@/constants/church';
 import type {
   Announcement,
   Bulletin,
   ChurchProfile,
+  CommunalPrayer,
   GroupMessage,
   PrayerRequest,
   Sermon,
   SmallGroup,
+  StaffMember,
 } from '@/lib/data/types';
 
 /** 오늘 기준 상대 날짜를 만들어 샘플 데이터가 항상 '최근' 으로 보이게 합니다. */
@@ -31,67 +37,117 @@ const lastSunday = daysSinceLastSunday();
 export const sampleChurchProfile: ChurchProfile = {
   ...ChurchInfo,
   serviceTimes: [
-    { id: 'st-1', name: '주일 1부 예배', schedule: '주일 오전 9:00', place: '본당' },
+    { id: 'st-dawn', name: '새벽예배', schedule: '월~금 오전 5:30', place: '본당(3층)', category: '예배' },
+    { id: 'st-sun-1', name: '주일예배 1부', schedule: '주일 오전 7:30', place: '본당(3층)', category: '예배' },
+    { id: 'st-sun-2', name: '주일예배 2부', schedule: '주일 오전 9:30', place: '본당(3층)', category: '예배' },
+    { id: 'st-sun-3', name: '주일예배 3부', schedule: '주일 오전 11:30', place: '본당(3층)', category: '예배' },
+    { id: 'st-sun-4', name: '주일예배 4부', schedule: '주일 오후 2:00', place: '본당(3층)', category: '예배' },
     {
-      id: 'st-2',
-      name: '주일 2부 예배',
-      schedule: '주일 오전 11:00',
-      place: '본당',
-      note: '영유아부 운영',
+      id: 'st-evening',
+      name: '저녁 찬양예배',
+      schedule: '주일 오후 5:00',
+      place: '본당(3층)',
+      note: '첫째 주는 가정예배',
+      category: '예배',
     },
-    { id: 'st-3', name: '주일 오후 찬양예배', schedule: '주일 오후 2:00', place: '비전홀' },
-    { id: 'st-4', name: '수요 기도회', schedule: '수요일 오후 7:30', place: '본당' },
-    { id: 'st-5', name: '금요 철야기도', schedule: '금요일 오후 9:00', place: '기도실' },
-    { id: 'st-6', name: '새벽 기도회', schedule: '화~토 오전 5:30', place: '본당' },
+    {
+      id: 'st-mba',
+      name: '목양바이블아카데미(MBA)',
+      schedule: '수요일 오전 10:30',
+      place: '본당(3층)',
+      category: '예배',
+    },
+    { id: 'st-wed', name: '수요부흥예배', schedule: '수요일 오후 7:30', place: '본당(3층)', category: '예배' },
+    { id: 'st-fri', name: '금요성령집회', schedule: '금요일 오후 8:00', place: '본당(3층)', category: '예배' },
+
+    {
+      id: 'st-baby',
+      name: '영유아부 (0~4세)',
+      schedule: '주일 오전 11:30',
+      place: '다윗홀(4층)',
+      category: '교육부서',
+    },
+    {
+      id: 'st-kinder',
+      name: '유치부 (5~7세)',
+      schedule: '주일 오전 9:30',
+      place: '샬롬홀(2층)',
+      category: '교육부서',
+    },
+    {
+      id: 'st-elem-low',
+      name: '초등부 (초등 1~3학년)',
+      schedule: '주일 오전 9:30',
+      place: '드림홀(지하1층)',
+      category: '교육부서',
+    },
+    {
+      id: 'st-elem-high',
+      name: '소년부 (초등 4~6학년)',
+      schedule: '주일 오전 11:30',
+      place: '비전홀(2층)',
+      category: '교육부서',
+    },
+    {
+      id: 'st-awana',
+      name: '어와나 (초등 1~6학년)',
+      schedule: '주일 오후 2:00',
+      place: '비전홀(2층)',
+      category: '교육부서',
+    },
+    {
+      id: 'st-middle',
+      name: '중등부',
+      schedule: '주일 오전 11:30',
+      place: '여호수아홀(지하1층)',
+      category: '교육부서',
+    },
+    {
+      id: 'st-high',
+      name: '고등부',
+      schedule: '주일 오전 9:30',
+      place: '여호수아홀(지하1층)',
+      category: '교육부서',
+    },
+    { id: 'st-youth', name: '청년부', schedule: '주일 오후 2:00', place: '본당(3층)', category: '교육부서' },
   ],
 };
 
 export const sampleBulletins: Bulletin[] = [
   {
-    id: 'bulletin-1',
-    serviceDate: dateOnly(lastSunday),
-    title: '주일 예배 주보',
-    sermonTitle: '흔들리지 않는 기초',
-    preacher: '김은혜 담임목사',
-    scripture: '마태복음 7:24-27',
-    weeklyVerse:
-      '그러므로 누구든지 나의 이 말을 듣고 행하는 자는 그 집을 반석 위에 지은 지혜로운 사람 같으리니 (마 7:24)',
+    id: 'bulletin-2026-08-30',
+    serviceDate: '2026-08-30',
+    title: '주일 예배 주보 (제43권 35호)',
+    sermonTitle: '예수님을 사랑한다는 증거',
+    preacher: '공진수 목사',
+    scripture: '요한복음 14:20-21 (신약 172쪽)',
+    weeklyVerse: '두려워하지 말라, 강하고 담대하라 (신 31:6, 수 1:9)',
+    // 홈페이지에 올리는 주보 이미지(앞면·뒷면) 주소를 넣으면 앱에서 원본을 볼 수 있습니다.
+    imageUrls: [],
     order: [
-      { title: '예배의 부름', detail: '시편 100:1-5 / 인도자' },
-      { title: '찬송', detail: '찬송가 43장 «즐겁게 안식할 날»' },
+      { title: '예배의 부름', detail: '인도자' },
       { title: '신앙고백', detail: '사도신경 / 다같이' },
-      { title: '기도', detail: '박성실 장로' },
-      { title: '성경봉독', detail: '마태복음 7:24-27' },
-      { title: '찬양', detail: '시온찬양대 «주는 나의 반석»' },
-      { title: '말씀', detail: '«흔들리지 않는 기초» / 김은혜 담임목사' },
-      { title: '봉헌 · 광고', detail: '봉헌송 / 다같이' },
-      { title: '축도', detail: '김은혜 담임목사' },
+      { title: '경배와 찬양', detail: '«임재» 찬 370장(통 455장) / 다같이' },
+      { title: '기도', detail: '1부 이경재 장로 · 2부 최희병 안수집사 · 3부 최환준 장로' },
+      { title: '성도의 교제', detail: '«평화 하나님의 평강이»' },
+      { title: '성경봉독', detail: '요한복음 14:20-21 (신약 172쪽)' },
+      {
+        title: '찬양대 찬양',
+        detail: '2부 «임하소서(주님의 성령)» 그레이스 2부 찬양대 · 3부 «거룩한 성» 그레이스 3부 찬양대',
+      },
+      { title: '말씀', detail: '«예수님을 사랑한다는 증거» / 공진수 목사' },
+      { title: '봉헌 찬양', detail: '«약할 때 강함 되시네» / 다같이' },
+      { title: '봉헌 및 봉헌기도', detail: '공진수 목사' },
+      { title: '축도', detail: '공진수 목사' },
     ],
     notices: [
-      '다음 주일은 성찬식이 있습니다. 마음을 준비해 주세요.',
-      '새가족 환영회가 예배 후 2층 카페에서 있습니다.',
-      '여름 성경학교 교사 지원을 받습니다. 교육부로 문의해 주세요.',
+      '오늘은 8월 다섯 번째 주일입니다. 무더운 8월 한 달 동안 믿음의 경주를 달려오신 모든 성도님들을 예수님의 이름으로 축복하며 환영합니다.',
+      '오늘 오후 찬양예배는 청년부 및 교회학교 여름행사 보고 예배로 드립니다. 2026년 여름 수련회와 캠프, 성경학교에 참여하고 봉사해 주신 모든 분들께 감사드립니다.',
+      '금요성령집회는 이번 주까지 자율기도회로 드리며, 다음 주부터 현장 예배가 시작됩니다. 말씀은 여호수아 강해로 진행됩니다.',
+      '이번 주 8월 31일부터 9월 5일까지 베트남 호치민에서 현지 목회자 60쌍(120명)을 대상으로 목회자 부부 세미나(강사 공진수 목사)가 진행됩니다. 아웃리치 팀과 참석하는 목회자 부부들을 위해 기도해 주세요.',
+      '정기당회가 오늘 오후 1시 당회실에서 있습니다.',
+      '새가족 등록 4주 과정이 매주 주일 오전 10:45~11:15 이레홀(2층)에서 진행됩니다.',
     ],
-  },
-  {
-    id: 'bulletin-2',
-    serviceDate: dateOnly(lastSunday + 7),
-    title: '주일 예배 주보',
-    sermonTitle: '함께 걷는 길',
-    preacher: '이소망 부목사',
-    scripture: '전도서 4:9-12',
-    weeklyVerse: '두 사람이 한 사람보다 나음은 그들이 수고함으로 좋은 상을 얻을 것임이라 (전 4:9)',
-    order: [
-      { title: '예배의 부름', detail: '시편 133:1-3 / 인도자' },
-      { title: '찬송', detail: '찬송가 221장 «주 믿는 형제들»' },
-      { title: '신앙고백', detail: '사도신경 / 다같이' },
-      { title: '기도', detail: '최믿음 권사' },
-      { title: '성경봉독', detail: '전도서 4:9-12' },
-      { title: '말씀', detail: '«함께 걷는 길» / 이소망 부목사' },
-      { title: '봉헌 · 광고', detail: '봉헌송 / 다같이' },
-      { title: '축도', detail: '이소망 부목사' },
-    ],
-    notices: ['소그룹 개편 신청을 받고 있습니다.', '주차장 공사로 이번 주 지하주차장 이용이 어렵습니다.'],
   },
 ];
 
@@ -102,7 +158,7 @@ export const sampleAnnouncements: Announcement[] = [
     body: `올해 여름 수련회를 강원도 평창 수양관에서 진행합니다.
 
 · 일정: 7월 18일(금) ~ 20일(주일) 2박 3일
-· 장소: 평창 새생명수양관
+· 장소: 강원도 평창 수양관
 · 회비: 성인 9만원 / 청소년 6만원 / 초등 이하 4만원
 · 신청: 교회 사무실 또는 각 소그룹 리더에게
 
@@ -115,7 +171,7 @@ export const sampleAnnouncements: Announcement[] = [
   {
     id: 'ann-2',
     title: '새가족 환영회 안내',
-    body: '이번 주일 2부 예배 후 2층 카페에서 새가족 환영회가 있습니다. 등록하신 지 3개월 이내의 새가족은 모두 참석해 주시기 바랍니다. 간단한 다과가 준비되어 있습니다.',
+    body: '이번 주일 2부 예배 후 2층 사랑방에서 새가족 환영회가 있습니다. 등록하신 지 3개월 이내의 새가족은 모두 참석해 주시기 바랍니다. 간단한 다과가 준비되어 있습니다.',
     category: '공지',
     author: '새가족부',
     pinned: true,
@@ -132,8 +188,8 @@ export const sampleAnnouncements: Announcement[] = [
   },
   {
     id: 'ann-4',
-    title: '한 달 동안 이웃과 나눈 사랑의 김치 300박스',
-    body: '지난 한 달 동안 성도님들과 함께 담근 김치 300박스를 지역 독거 어르신 가정에 전달했습니다. 수고해 주신 봉사자 여러분께 감사드립니다. 다음 나눔은 가을에 진행될 예정입니다.',
+    title: '이웃과 함께 나눈 사랑의 김치 300박스',
+    body: '지난 한 달 동안 성도님들과 함께 담근 김치 300박스를 구리 지역 독거 어르신 가정에 전달했습니다. 수고해 주신 봉사자 여러분께 감사드립니다. 다음 나눔은 가을에 진행될 예정입니다.',
     category: '소식',
     author: '선교부',
     pinned: false,
@@ -142,7 +198,7 @@ export const sampleAnnouncements: Announcement[] = [
   {
     id: 'ann-5',
     title: '성가대원 모집',
-    body: '시온찬양대에서 함께 찬양할 새 대원을 모집합니다. 매주 주일 오전 8시 연습, 2부 예배 찬양으로 섬깁니다. 관심 있는 분은 지휘자 정찬양 집사에게 문의해 주세요.',
+    body: '목양찬양대에서 함께 찬양할 새 대원을 모집합니다. 매주 주일 오전 8시 연습, 2부 예배 찬양으로 섬깁니다. 관심 있는 분은 찬양대 지휘자에게 문의해 주세요.',
     category: '공지',
     author: '찬양부',
     pinned: false,
@@ -152,49 +208,72 @@ export const sampleAnnouncements: Announcement[] = [
 
 export const sampleSermons: Sermon[] = [
   {
-    id: 'sermon-1',
-    title: '흔들리지 않는 기초',
-    preacher: '김은혜 담임목사',
-    scripture: '마태복음 7:24-27',
-    date: dateOnly(lastSunday),
-    series: '산상수훈',
+    id: 'sermon-2026-08-30-main',
+    title: '예수님을 사랑한다는 증거',
+    preacher: '공진수 목사',
+    scripture: '요한복음 14:20-21',
+    date: '2026-08-30',
+    series: '주일예배',
     mediaType: 'video',
-    mediaUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    mediaUrl: 'https://www.youtube.com/watch?v=kvwuN6-2PAk',
     summary:
-      '비바람은 반석 위에 지은 집과 모래 위에 지은 집에 똑같이 몰아칩니다. 차이를 만드는 것은 환경이 아니라 무엇 위에 서 있느냐입니다.',
+      '성령이 임하실 때 우리가 예수님 안에, 예수님이 우리 안에 거하십니다. 예수님을 사랑하는 증거는 그 말씀과 계명을 지키는 것이며, 말씀을 가까이 곁에 두는 것입니다.',
   },
   {
-    id: 'sermon-2',
-    title: '함께 걷는 길',
-    preacher: '이소망 부목사',
-    scripture: '전도서 4:9-12',
-    date: dateOnly(lastSunday + 7),
-    series: '공동체',
+    // 제목을 비워 두면 앱이 유튜브에서 실제 제목을 가져와 보여 줍니다.
+    id: 'sermon-shorts-1',
+    title: '',
+    preacher: '공진수 목사',
+    scripture: '',
+    date: '2026-08-30',
     mediaType: 'video',
-    mediaUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
-    summary: '혼자 빨리 가는 길보다 함께 멀리 가는 길을 택하라고 성경은 말합니다.',
+    mediaUrl: 'https://www.youtube.com/shorts/AC6BLtHogV0',
+    summary: '',
   },
   {
-    id: 'sermon-3',
-    title: '새벽을 깨우는 기도',
-    preacher: '김은혜 담임목사',
-    scripture: '마가복음 1:35',
-    date: dateOnly(lastSunday + 11),
-    series: '기도학교',
-    mediaType: 'audio',
-    mediaUrl: 'https://download.samplelib.com/mp3/sample-15s.mp3',
-    summary: '예수님도 새벽 미명에 한적한 곳으로 나가 기도하셨습니다. 기도는 하루의 방향을 정하는 일입니다.',
-  },
-  {
-    id: 'sermon-4',
-    title: '광야에서 부르시는 하나님',
-    preacher: '이소망 부목사',
-    scripture: '호세아 2:14-15',
-    date: dateOnly(lastSunday + 14),
-    series: '기도학교',
+    id: 'sermon-2026-08-30-fourth',
+    title: '여호와께서 영원무궁 하도록 다스리도다',
+    preacher: '엄동식 목사',
+    scripture: '출애굽기 15:13-21',
+    date: '2026-08-30',
+    series: '주일 4부예배',
     mediaType: 'video',
-    mediaUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
-    summary: '광야는 버려진 자리가 아니라 하나님이 다시 말을 거시는 자리입니다.',
+    mediaUrl: ChurchInfo.youtubeUrl,
+    summary: '',
+  },
+  {
+    id: 'sermon-2026-08-30-evening',
+    title: '어린아이들이 내게 오는 것을 용납하고 금하지 말라',
+    preacher: '노준성 목사',
+    scripture: '마가복음 10:13-16',
+    date: '2026-08-30',
+    series: '주일 찬양예배',
+    mediaType: 'video',
+    mediaUrl: ChurchInfo.youtubeUrl,
+    summary: '',
+  },
+  {
+    id: 'sermon-2026-08-26-wed',
+    title: '사랑하는 아들을 보내셨다',
+    preacher: '김호진 목사',
+    scripture: '누가복음 20:9-18',
+    date: '2026-08-26',
+    series: '수요부흥예배',
+    mediaType: 'video',
+    mediaUrl: ChurchInfo.youtubeUrl,
+    summary: '',
+  },
+  {
+    // 제목은 비워 두면 앱이 유튜브에서 실제 제목을 가져옵니다.
+    id: 'sermon-2026-08-28-fri',
+    title: '',
+    preacher: '공진수 목사',
+    scripture: '',
+    date: '2026-08-28',
+    series: '금요성령집회',
+    mediaType: 'video',
+    mediaUrl: 'https://www.youtube.com/watch?v=-cNkZs0UXK8',
+    summary: '',
   },
 ];
 
@@ -206,6 +285,7 @@ export const samplePrayerRequests: PrayerRequest[] = [
     author: '박소영',
     anonymous: false,
     answered: false,
+    shared: true,
     prayCount: 24,
     createdAt: dateTime(1),
   },
@@ -216,6 +296,7 @@ export const samplePrayerRequests: PrayerRequest[] = [
     author: '익명',
     anonymous: true,
     answered: false,
+    shared: true,
     prayCount: 12,
     createdAt: dateTime(3),
   },
@@ -226,6 +307,7 @@ export const samplePrayerRequests: PrayerRequest[] = [
     author: '정한결',
     anonymous: false,
     answered: true,
+    shared: true,
     prayCount: 41,
     createdAt: dateTime(6),
   },
@@ -236,15 +318,48 @@ export const samplePrayerRequests: PrayerRequest[] = [
     author: '익명',
     anonymous: true,
     answered: false,
+    shared: true,
     prayCount: 18,
     createdAt: dateTime(8),
   },
 ];
 
+export const sampleCommunalPrayers: CommunalPrayer[] = [
+  {
+    id: 'communal-1',
+    title: '민족 복음화와 나라를 위하여',
+    body: '이 땅의 회복과 위정자들의 지혜, 다음 세대의 신앙 계승을 위해 함께 기도합니다.',
+    totalMinutes: 1840,
+    sortOrder: 1,
+    createdAt: dateTime(30),
+  },
+  {
+    id: 'communal-2',
+    title: '교회 부흥과 성도의 하나됨',
+    body: '예배의 회복과 전도의 열정, 성도 간의 사랑과 섬김을 위해 함께 기도합니다.',
+    totalMinutes: 1260,
+    sortOrder: 2,
+    createdAt: dateTime(30),
+  },
+  {
+    id: 'communal-3',
+    title: '선교사와 열방을 위하여',
+    body: '파송 선교사님들의 건강과 사역, 복음이 열방 가운데 전해지도록 함께 기도합니다.',
+    totalMinutes: 720,
+    sortOrder: 3,
+    createdAt: dateTime(30),
+  },
+];
+
+export const sampleStaff: StaffMember[] = [
+  { id: 'staff-1', name: '공진수', category: '목사', role: '담임목사', detail: '', sortOrder: 1 },
+  // 실제 교역자·장로·관리 직원은 관리자 화면에서 추가·수정할 수 있습니다.
+];
+
 export const sampleGroups: SmallGroup[] = [
   {
     id: 'group-1',
-    name: '청년 1부 · 반석',
+    name: '청년부 · 반석',
     leader: '한지훈 리더',
     meetingInfo: '매주 금요일 오후 8시 · 교육관 2층',
     description: '20~30대 청년들이 말씀을 나누고 삶을 나누는 모임입니다.',
@@ -254,7 +369,7 @@ export const sampleGroups: SmallGroup[] = [
     id: 'group-2',
     name: '주부 목장 · 뜰안',
     leader: '오정민 권사',
-    meetingInfo: '매주 화요일 오전 10시 · 카페 뜰안',
+    meetingInfo: '매주 화요일 오전 10시 · 2층 사랑방',
     description: '자녀 양육과 일상의 고민을 말씀 안에서 함께 나눕니다.',
     memberCount: 9,
   },
@@ -294,7 +409,7 @@ export const sampleGroupMessages: GroupMessage[] = [
     id: 'msg-4',
     groupId: 'group-2',
     author: '오정민 권사',
-    body: '화요일 모임 장소가 카페 뜰안으로 변경되었습니다. 참고해 주세요.',
+    body: '화요일 모임 장소가 2층 사랑방으로 변경되었습니다. 참고해 주세요.',
     createdAt: dateTime(3),
   },
   {

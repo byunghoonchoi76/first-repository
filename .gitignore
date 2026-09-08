@@ -45,3 +45,5 @@ example
 # 로컬 환경변수
 .env
 .env.local
+dist-pages/
+dist-rem/

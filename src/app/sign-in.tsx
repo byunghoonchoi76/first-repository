@@ -1,7 +1,8 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { ChurchLogo } from '@/components/church-logo';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Field } from '@/components/ui';
@@ -12,14 +13,16 @@ import type { Role } from '@/lib/data/types';
 
 export default function SignInScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const { signIn, signUp } = useAuth();
   const isSupabase = dataMode === 'supabase';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+  const [mode, setMode] = useState<'signIn' | 'signUp'>(params.mode === 'signUp' ? 'signUp' : 'signIn');
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
 
   const submitLocal = async (role: Role) => {
@@ -40,7 +43,14 @@ export default function SignInScreen() {
     setError(undefined);
     try {
       if (mode === 'signUp') {
-        await signUp({ name, email, password });
+        const result = await signUp({ name, email, password });
+        if (result.needsEmailConfirmation) {
+          // 확인 메일을 켜 둔 경우: 화면을 닫지 않고 안내를 남깁니다.
+          setNotice(`${email} 로 확인 메일을 보냈습니다. 메일의 링크를 누른 뒤 로그인해 주세요.`);
+          setMode('signIn');
+          setPassword('');
+          return;
+        }
       } else {
         await signIn({ email, password });
       }
@@ -54,6 +64,9 @@ export default function SignInScreen() {
 
   return (
     <Screen>
+      <View style={styles.logoRow}>
+        <ChurchLogo size={40} />
+      </View>
       {isSupabase ? (
         <Card>
           <ThemedText type="heading">{mode === 'signUp' ? '회원가입' : '로그인'}</ThemedText>
@@ -67,6 +80,11 @@ export default function SignInScreen() {
             keyboardType="email-address"
           />
           <Field label="비밀번호" value={password} onChangeText={setPassword} secureTextEntry />
+          {notice ? (
+            <ThemedText type="small" themeColor="success">
+              {notice}
+            </ThemedText>
+          ) : null}
           {error ? (
             <ThemedText type="small" themeColor="danger">
               {error}
@@ -118,5 +136,6 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  logoRow: { alignItems: 'center', paddingVertical: Spacing.three },
   buttonRow: { flexDirection: 'row', gap: Spacing.two },
 });

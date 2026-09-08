@@ -15,6 +15,18 @@ export const repository: ChurchRepository = hasSupabaseConfig
 
 export const dataMode = repository.mode;
 
+/** 인터넷·서버 문제로 실패했을 때 사람이 읽을 수 있는 말로 바꿔 줍니다. */
+function toFriendlyMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  if (/abort|network|failed to fetch|timeout|timed out/i.test(raw)) {
+    return '서버에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.';
+  }
+  if (/relation .* does not exist|schema cache/i.test(raw)) {
+    return '데이터베이스 준비가 아직 끝나지 않았습니다. supabase/schema.sql 을 실행했는지 확인해 주세요.';
+  }
+  return raw || '알 수 없는 오류가 발생했습니다.';
+}
+
 export interface AsyncState<T> {
   data: T | undefined;
   loading: boolean;
@@ -45,26 +57,37 @@ export function useAsyncData<T>(loader: () => Promise<T>, deps: unknown[] = []):
 
   useEffect(() => {
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
     setError(undefined);
 
-    loaderRef
-      .current()
+    // 응답이 너무 오래 걸리면(네트워크 지연 등) 무한 로딩 대신 오류로 알려 줍니다.
+    const withTimeout = new Promise<T>((resolve, reject) => {
+      timer = setTimeout(
+        () => reject(new Error('서버 응답이 늦어지고 있습니다. 잠시 후 다시 시도해 주세요.')),
+        20000,
+      );
+      loaderRef.current().then(resolve, reject);
+    });
+
+    withTimeout
       .then((result) => {
         if (cancelled || !mounted.current) return;
         setDataState(result);
       })
       .catch((e: unknown) => {
         if (cancelled || !mounted.current) return;
-        setError(e instanceof Error ? e.message : '알 수 없는 오류가 발생했습니다.');
+        setError(toFriendlyMessage(e));
       })
       .finally(() => {
+        if (timer) clearTimeout(timer);
         if (cancelled || !mounted.current) return;
         setLoading(false);
       });
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, nonce]);

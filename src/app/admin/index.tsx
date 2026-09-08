@@ -1,25 +1,34 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ListRow, SectionHeader } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
 import { formatDate, formatRelative } from '@/lib/format';
+import { useLiveOverride, type LiveOverride } from '@/lib/live-status';
 
 export default function AdminHomeScreen() {
   const router = useRouter();
   const { isAdmin } = useAuth();
+  const bulletins = useAsyncData(() => repository.listBulletins());
+  const groups = useAsyncData(() => repository.listGroups());
+  const staff = useAsyncData(() => repository.listStaff());
   const announcements = useAsyncData(() => repository.listAnnouncements());
   const sermons = useAsyncData(() => repository.listSermons());
 
   const reloadAll = useCallback(() => {
+    bulletins.reload();
+    groups.reload();
+    staff.reload();
     announcements.reload();
     sermons.reload();
-  }, [announcements, sermons]);
+  }, [bulletins, groups, staff, announcements, sermons]);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,6 +46,14 @@ export default function AdminHomeScreen() {
     );
   }
 
+  const stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+    { label: '주보', value: (bulletins.data ?? []).length, icon: 'book-outline' },
+    { label: '공지', value: (announcements.data ?? []).length, icon: 'document-text-outline' },
+    { label: '소통방', value: (groups.data ?? []).length, icon: 'people-outline' },
+    { label: '섬김', value: (staff.data ?? []).length, icon: 'person-outline' },
+    { label: '설교', value: (sermons.data ?? []).length, icon: 'play-circle-outline' },
+  ];
+
   return (
     <Screen onRefresh={reloadAll}>
       {dataMode === 'sample' ? (
@@ -47,6 +64,31 @@ export default function AdminHomeScreen() {
           </ThemedText>
         </Card>
       ) : null}
+
+      <DashboardHeader stats={stats} />
+
+      <LiveOverrideCard />
+
+      <View>
+        <SectionHeader title="주보" actionLabel="새로 등록" onAction={() => router.push('/admin/bulletin/new')} />
+        <ThemedText type="caption" themeColor="textMuted" style={{ marginBottom: 8 }}>
+          지난 주보를 모두 보려면 홈 화면의 주보 메뉴를 눌러 주세요.
+        </ThemedText>
+        <Card>
+          {(bulletins.data ?? []).slice(0, 6).map((item) => (
+            <ListRow
+              key={item.id}
+              icon="book-outline"
+              title={`${formatDate(item.serviceDate)} · ${item.sermonTitle}`}
+              subtitle={`${item.scripture} · ${item.preacher}`}
+              onPress={() => router.push(`/admin/bulletin/${item.id}`)}
+            />
+          ))}
+          {(bulletins.data ?? []).length === 0 ? (
+            <EmptyState icon="book-outline" message="등록된 주보가 없습니다." />
+          ) : null}
+        </Card>
+      </View>
 
       <View>
         <SectionHeader
@@ -66,6 +108,57 @@ export default function AdminHomeScreen() {
           ))}
           {(announcements.data ?? []).length === 0 ? (
             <EmptyState icon="document-text-outline" message="등록된 공지가 없습니다." />
+          ) : null}
+        </Card>
+      </View>
+
+      <View>
+        <SectionHeader title="새가족 등록 명단" actionLabel="전체 보기" onAction={() => router.push('/admin/new-families')} />
+        <Card>
+          <ListRow
+            icon="person-add-outline"
+            title="새가족 등록 신청 보기"
+            subtitle="방문하신 분들이 남긴 등록 신청을 확인합니다"
+            onPress={() => router.push('/admin/new-families')}
+          />
+        </Card>
+      </View>
+
+      <View>
+        <SectionHeader title="섬기는 사람들" actionLabel="새로 등록" onAction={() => router.push('/admin/staff/new')} />
+        <Card>
+          {(staff.data ?? []).map((item) => (
+            <ListRow
+              key={item.id}
+              icon="person-outline"
+              title={`${item.name} · ${item.role}`}
+              subtitle={item.detail || undefined}
+              onPress={() => router.push(`/admin/staff/${item.id}`)}
+            />
+          ))}
+          {(staff.data ?? []).length === 0 ? (
+            <EmptyState icon="people-outline" message="등록된 정보가 없습니다." />
+          ) : null}
+        </Card>
+      </View>
+
+      <View>
+        <SectionHeader title="소통방" actionLabel="새로 등록" onAction={() => router.push('/admin/group/new')} />
+        <ThemedText type="caption" themeColor="textMuted" style={{ marginBottom: 8 }}>
+          소통방을 만들고 리더를 지정하면, 리더가 멤버를 초대해 비공개로 운영합니다.
+        </ThemedText>
+        <Card>
+          {(groups.data ?? []).map((item) => (
+            <ListRow
+              key={item.id}
+              icon="people-outline"
+              title={item.name}
+              subtitle={`${item.leader || '리더 미지정'} · 멤버 ${item.memberCount}명`}
+              onPress={() => router.push(`/admin/group/${item.id}`)}
+            />
+          ))}
+          {(groups.data ?? []).length === 0 ? (
+            <EmptyState icon="people-outline" message="등록된 소통방이 없습니다." />
           ) : null}
         </Card>
       </View>
@@ -91,4 +184,105 @@ export default function AdminHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({});
+/** 관리 현황 요약 — 한눈에 보는 등록 개수 */
+function DashboardHeader({
+  stats,
+}: {
+  stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name'] }[];
+}) {
+  const theme = useTheme();
+  return (
+    <View>
+      <SectionHeader title="관리 현황" />
+      <Card style={styles.statRow}>
+        {stats.map((s, i) => (
+          <View key={s.label} style={styles.statCell}>
+            {i > 0 ? <View style={[styles.statDivider, { backgroundColor: theme.border }]} /> : null}
+            <Ionicons name={s.icon} size={16} color={theme.primary} />
+            <ThemedText type="heading">{s.value}</ThemedText>
+            <ThemedText type="caption" themeColor="textMuted">
+              {s.label}
+            </ThemedText>
+          </View>
+        ))}
+      </Card>
+    </View>
+  );
+}
+
+/** 실시간 방송 표시 강제 스위치 (자동 / 강제 켜기 / 강제 끄기) */
+const LIVE_OPTIONS: { mode: LiveOverride; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+  { mode: 'auto', label: '자동', icon: 'sync-outline' },
+  { mode: 'on', label: '강제 켜기', icon: 'radio-outline' },
+  { mode: 'off', label: '강제 끄기', icon: 'close-circle-outline' },
+];
+
+const LIVE_HINTS: Record<LiveOverride, string> = {
+  auto: '유튜브 방송을 자동으로 감지해, 실제 방송 중일 때만 LIVE 배지를 켭니다.',
+  on: '지금 모든 성도 화면에 LIVE 배지가 켜집니다. 예배가 끝나면 다시 꺼 주세요.',
+  off: 'LIVE 배지를 항상 숨깁니다.',
+};
+
+function LiveOverrideCard() {
+  const theme = useTheme();
+  const { mode, setMode, loading, saving, error } = useLiveOverride();
+
+  return (
+    <View>
+      <SectionHeader title="실시간 방송 표시" />
+      <Card>
+        <ThemedText type="small" themeColor="textSecondary">
+          홈 화면 ‘실시간 예배’의 LIVE 배지를 어떻게 표시할지 정합니다.
+        </ThemedText>
+        <View style={styles.liveRow}>
+          {LIVE_OPTIONS.map((option) => {
+            const active = mode === option.mode;
+            return (
+              <Pressable
+                key={option.mode}
+                disabled={loading || saving}
+                onPress={() => void setMode(option.mode)}
+                style={[
+                  styles.liveChip,
+                  {
+                    backgroundColor: active ? theme.primary : theme.backgroundElement,
+                    borderColor: active ? theme.primary : theme.border,
+                    opacity: loading || saving ? 0.6 : 1,
+                  },
+                ]}>
+                <Ionicons name={option.icon} size={18} color={active ? theme.onPrimary : theme.textSecondary} />
+                <ThemedText type="smallBold" style={{ color: active ? theme.onPrimary : theme.text }}>
+                  {option.label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
+        <ThemedText type="caption" themeColor="textMuted" style={styles.liveHint}>
+          {LIVE_HINTS[mode]}
+        </ThemedText>
+        {error ? (
+          <ThemedText type="caption" themeColor="danger" style={styles.liveHint}>
+            {error}
+          </ThemedText>
+        ) : null}
+      </Card>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  statRow: { flexDirection: 'row', alignItems: 'stretch', paddingVertical: Spacing.three },
+  statCell: { flex: 1, alignItems: 'center', gap: 2, position: 'relative' },
+  statDivider: { position: 'absolute', left: 0, top: '15%', bottom: '15%', width: StyleSheet.hairlineWidth },
+  liveRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.three },
+  liveChip: {
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.medium,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  liveHint: { marginTop: Spacing.two, lineHeight: 17 },
+});

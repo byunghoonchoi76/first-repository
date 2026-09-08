@@ -1,17 +1,14 @@
 import { useRouter } from 'expo-router';
-import { Linking, Platform, StyleSheet, View } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, ListRow, SectionHeader } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
 import { resetSampleData } from '@/lib/data/sample-repository';
 
 export default function SettingsScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const { user, isAdmin, signOut } = useAuth();
   const profile = useAsyncData(() => repository.getChurchProfile());
@@ -41,6 +38,18 @@ export default function SettingsScreen() {
         )}
       </Card>
 
+      <View>
+        <SectionHeader title="알림" />
+        <Card>
+          <ListRow
+            icon="notifications-outline"
+            title="기도 알림"
+            subtitle="정한 요일·시간에 기도 알림을 받아요"
+            onPress={() => router.push('/reminders')}
+          />
+        </Card>
+      </View>
+
       {isAdmin ? (
         <Card>
           <ThemedText type="heading">관리자</ThemedText>
@@ -54,12 +63,9 @@ export default function SettingsScreen() {
       <View>
         <SectionHeader title="교회 정보" />
         <Card>
-          <ThemedText type="heading">{church?.name ?? ''}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {church?.slogan ?? ''}
-          </ThemedText>
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <ListRow icon="person-outline" title="담임목사" subtitle={church?.pastor} />
+          {church?.pastor ? (
+            <ListRow icon="person-outline" title="담임목사" subtitle={church.pastor} />
+          ) : null}
           <ListRow
             icon="location-outline"
             title="주소"
@@ -76,19 +82,62 @@ export default function SettingsScreen() {
                 : undefined
             }
           />
+          {church?.phone ? (
+            <ListRow
+              icon="call-outline"
+              title="전화"
+              subtitle={church.phone}
+              onPress={() => void Linking.openURL(`tel:${church.phone}`)}
+            />
+          ) : null}
+          {church?.email ? (
+            <ListRow
+              icon="mail-outline"
+              title="이메일"
+              subtitle={church.email}
+              onPress={() => void Linking.openURL(`mailto:${church.email}`)}
+            />
+          ) : null}
+          {church?.offeringAccount ? (
+            <ListRow
+              icon="card-outline"
+              title="헌금 안내"
+              subtitle={church.offeringAccount}
+              onPress={() => router.push('/giving')}
+            />
+          ) : null}
+          {church?.youtubeUrl ? (
+            <ListRow
+              icon="logo-youtube"
+              title="유튜브 채널"
+              subtitle="예배와 설교 영상 보기"
+              onPress={() => void Linking.openURL(church.youtubeUrl)}
+            />
+          ) : null}
           <ListRow
-            icon="call-outline"
-            title="전화"
-            subtitle={church?.phone}
-            onPress={church?.phone ? () => void Linking.openURL(`tel:${church.phone}`) : undefined}
+            icon="time-outline"
+            title="예배 안내"
+            subtitle="주일예배 · 새벽예배 · 교육부서"
+            onPress={() => router.push('/services')}
           />
           <ListRow
-            icon="mail-outline"
-            title="이메일"
-            subtitle={church?.email}
-            onPress={church?.email ? () => void Linking.openURL(`mailto:${church.email}`) : undefined}
+            icon="people-outline"
+            title="섬기는 사람들"
+            subtitle="교역자와 직분자 소개"
+            onPress={() => router.push('/staff')}
           />
-          <ListRow icon="card-outline" title="헌금 계좌" subtitle={church?.offeringAccount} />
+          <ListRow
+            icon="location-outline"
+            title="교회 주소"
+            subtitle="지도 · 내비게이션"
+            onPress={() => router.push('/location')}
+          />
+          <ListRow
+            icon="person-add-outline"
+            title="새가족 등록"
+            subtitle="처음 오신 분을 환영합니다"
+            onPress={() => router.push('/new-family')}
+          />
         </Card>
       </View>
 
@@ -121,7 +170,3 @@ export default function SettingsScreen() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
-});

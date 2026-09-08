@@ -9,24 +9,75 @@ export interface AppUser {
   role: Role;
 }
 
+/** 예배 안내 화면에서 묶어 보여 주는 분류 */
+export type ServiceCategory = '예배' | '교육부서';
+
+/** 섬기는 사람들을 묶어 보여 주는 큰 분류 */
+export type StaffCategory = '목사' | '전도사' | '장로' | '관리';
+
+/** 화면에 표시하는 순서 */
+export const STAFF_CATEGORIES: StaffCategory[] = ['목사', '전도사', '장로', '관리'];
+
+/** 섬기는 사람들 (교역자·직분자) */
+export interface StaffMember {
+  id: string;
+  /** 이름 */
+  name: string;
+  /** 큰 분류 (목사 · 장로 · 관리) */
+  category: StaffCategory;
+  /** 직분·직책 (예: 담임목사, 부목사, 전도사, 장로, 사무장) */
+  role: string;
+  /** 담당·부서 등 부가 설명 (선택) */
+  detail: string;
+  sortOrder: number;
+}
+
+export type StaffInput = Omit<StaffMember, 'id'>;
+
+/** 새가족 등록 신청 (방문하신 분이 직접 남기는 정보) */
+export interface NewFamily {
+  id: string;
+  name: string;
+  phone: string;
+  /** 선택 항목들 */
+  gender: string;
+  address: string;
+  /** 소개자·방문 경로 */
+  referrer: string;
+  note: string;
+  createdAt: string;
+}
+
+export type NewFamilyInput = Omit<NewFamily, 'id' | 'createdAt'>;
+
 export interface ServiceTime {
   id: string;
-  /** 예) 주일 1부 예배 */
+  /** 예) 주일예배 1부 */
   name: string;
-  /** 예) 주일 오전 9:00 */
+  /** 예) 주일 오전 07:30 */
   schedule: string;
   place: string;
   note?: string;
+  category: ServiceCategory;
 }
 
 export interface ChurchProfile {
   name: string;
+  /** 교회 표어 */
   slogan: string;
+  /** 표어의 성구 출처 (예: 신 31:6, 수 1:9) */
+  sloganVerse: string;
   pastor: string;
   address: string;
   phone: string;
   email: string;
   offeringAccount: string;
+  /** 설교 영상 채널 (비어 있으면 화면에 표시하지 않습니다) */
+  youtubeUrl: string;
+  /** 온라인 헌금 주소 (체리 페이지·카카오페이 송금 링크 등). 있으면 헌금 화면에 버튼이 생깁니다. */
+  givingUrl: string;
+  /** 지도 정확 위치 링크 (네이버 플레이스 등). 있으면 교회 주소 화면에서 바로 연결합니다. */
+  mapUrl: string;
   serviceTimes: ServiceTime[];
 }
 
@@ -47,7 +98,15 @@ export interface Bulletin {
   order: BulletinOrderItem[];
   notices: string[];
   weeklyVerse: string;
+  /**
+   * 주보 원본 이미지 주소 (앞면·뒷면 등 여러 장).
+   * 홈페이지에 올린 JPG/PNG 주소를 넣으면 앱에서 그대로 볼 수 있고,
+   * PDF 주소를 넣으면 파일을 여는 버튼으로 표시됩니다.
+   */
+  imageUrls: string[];
 }
+
+export type BulletinInput = Omit<Bulletin, 'id'>;
 
 export type AnnouncementCategory = '공지' | '행사' | '소식';
 
@@ -90,37 +149,103 @@ export interface PrayerRequest {
   body: string;
   /** 익명이면 '익명' 으로 저장됩니다. */
   author: string;
+  /** 올린 사람의 계정 id. 본인만 '응답됨' 으로 바꿀 수 있게 하는 데 씁니다. */
+  authorId?: string;
   anonymous: boolean;
   answered: boolean;
+  /** true 면 '기도 요청'으로 성도들에게 공개되어 함께 기도할 수 있습니다. false 면 나만 보는 개인 기도제목입니다. */
+  shared: boolean;
   prayCount: number;
   createdAt: string;
 }
 
-export type PrayerRequestInput = Pick<PrayerRequest, 'title' | 'body' | 'author' | 'anonymous'>;
+export type PrayerRequestInput = Pick<PrayerRequest, 'title' | 'body' | 'author' | 'anonymous' | 'shared'> & {
+  authorId?: string;
+};
+
+/** 개인 기도제목 수정 — 본인이 올린 제목·내용·익명 여부를 바꿉니다. (author 는 익명 해제 시 표시할 실제 이름) */
+export type PrayerRequestUpdate = Pick<PrayerRequest, 'title' | 'body' | 'anonymous'> & { author: string };
+
+/** 공동 기도제목 — 온 성도가 함께 기도하며 시간을 쌓아 가는 교회 공통 제목 */
+export interface CommunalPrayer {
+  id: string;
+  title: string;
+  body: string;
+  /** 온 성도가 이 제목으로 기도한 시간의 합계(분). 모두가 함께 쌓아 갑니다. */
+  totalMinutes: number;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export type CommunalPrayerInput = Pick<CommunalPrayer, 'title' | 'body' | 'sortOrder'>;
 
 export interface SmallGroup {
   id: string;
   name: string;
+  /** 리더 이름(표시용) */
   leader: string;
+  /** 리더 계정 id */
+  leaderId?: string;
   meetingInfo: string;
   description: string;
+  /** 소통방 멤버 수 (서버에서 자동 집계) */
   memberCount: number;
+}
+
+/** 소통방 등록·수정 입력 (멤버 수는 자동 집계라 제외) */
+export type SmallGroupInput = Omit<SmallGroup, 'id' | 'memberCount'>;
+
+export type GroupMemberRole = 'leader' | 'member';
+
+/** 소통방 멤버 (이름·역할·개인 알림 여부) */
+export interface GroupMember {
+  userId: string;
+  name: string;
+  role: GroupMemberRole;
+  notify: boolean;
+}
+
+/** 초대용 사용자 검색 결과 (앱에 등록된 성도) */
+export interface DirectoryUser {
+  id: string;
+  name: string;
+}
+
+/** 현재 로그인 성도의 특정 소통방 소속 정보 */
+export interface MyGroupMembership {
+  isMember: boolean;
+  role: GroupMemberRole | null;
+  /** 이 소통방 새 글 푸시 알림 여부(개인 설정) */
+  notify: boolean;
 }
 
 export interface GroupMessage {
   id: string;
   groupId: string;
   author: string;
+  /** 글쓴이 계정 id (본인 메시지 구분용) */
+  authorId?: string;
   body: string;
   createdAt: string;
 }
 
-/** 개인 기도시간 기록 (기기 로컬에 저장) */
+/** 기도시간 기록 (기기 로컬에 저장) */
 export interface PrayerLogEntry {
   /** YYYY-MM-DD */
   date: string;
   minutes: number;
   note?: string;
+}
+
+/** 기도시간 종류 — 공동 기도 / 개인 기도 */
+export type PrayerKind = 'communal' | 'personal';
+
+/** 로그인 계정별로 서버에 저장하는 기도시간 기록 */
+export interface PrayerTimeEntry {
+  /** YYYY-MM-DD */
+  date: string;
+  kind: PrayerKind;
+  minutes: number;
 }
 
 export type DataMode = 'sample' | 'supabase';
@@ -134,6 +259,9 @@ export interface ChurchRepository {
   listBulletins(): Promise<Bulletin[]>;
   getBulletin(id: string): Promise<Bulletin | null>;
   getLatestBulletin(): Promise<Bulletin | null>;
+  createBulletin(input: BulletinInput): Promise<Bulletin>;
+  updateBulletin(id: string, input: BulletinInput): Promise<Bulletin>;
+  deleteBulletin(id: string): Promise<void>;
 
   listAnnouncements(): Promise<Announcement[]>;
   getAnnouncement(id: string): Promise<Announcement | null>;
@@ -147,13 +275,63 @@ export interface ChurchRepository {
   updateSermon(id: string, input: SermonInput): Promise<Sermon>;
   deleteSermon(id: string): Promise<void>;
 
-  listPrayerRequests(): Promise<PrayerRequest[]>;
+  /** 성도들에게 공개된 '기도 요청' 목록 (shared = true) */
+  listSharedPrayerRequests(): Promise<PrayerRequest[]>;
+  /** 로그인한 본인이 올린 개인 기도제목 목록 (공개 여부 무관) */
+  listMyPrayerRequests(): Promise<PrayerRequest[]>;
+  /** 기도제목 하나를 id 로 불러옵니다 (수정 화면용). */
+  getPrayerRequest(id: string): Promise<PrayerRequest | null>;
   createPrayerRequest(input: PrayerRequestInput): Promise<PrayerRequest>;
+  /** 본인이 올린 개인 기도제목의 제목·내용·익명 여부를 수정합니다. */
+  updatePrayerRequest(id: string, input: PrayerRequestUpdate): Promise<PrayerRequest>;
+  /** 본인이 올린 기도제목을 삭제합니다. */
+  deletePrayerRequest(id: string): Promise<void>;
   prayForRequest(id: string): Promise<PrayerRequest>;
   markPrayerAnswered(id: string, answered: boolean): Promise<PrayerRequest>;
+  /** 개인 기도제목을 '기도 요청'으로 공개하거나 다시 비공개로 되돌립니다. */
+  setPrayerShared(id: string, shared: boolean): Promise<PrayerRequest>;
+
+  listCommunalPrayers(): Promise<CommunalPrayer[]>;
+  getCommunalPrayer(id: string): Promise<CommunalPrayer | null>;
+  createCommunalPrayer(input: CommunalPrayerInput): Promise<CommunalPrayer>;
+  updateCommunalPrayer(id: string, input: CommunalPrayerInput): Promise<CommunalPrayer>;
+  deleteCommunalPrayer(id: string): Promise<void>;
+  /** 이 제목으로 minutes 만큼 기도한 시간을 전체 누적에 더합니다. */
+  prayCommunal(id: string, minutes: number): Promise<CommunalPrayer>;
+
+  /** 로그인한 성도 본인의 기도시간 기록 (계정별, 기기 간 공유) */
+  listMyPrayerTime(): Promise<PrayerTimeEntry[]>;
+  addMyPrayerTime(kind: PrayerKind, date: string, minutes: number): Promise<void>;
+  clearMyPrayerTime(kind: PrayerKind, date: string): Promise<void>;
+
+  createNewFamily(input: NewFamilyInput): Promise<NewFamily>;
+  listNewFamilies(): Promise<NewFamily[]>;
+  deleteNewFamily(id: string): Promise<void>;
+
+  listStaff(): Promise<StaffMember[]>;
+  getStaff(id: string): Promise<StaffMember | null>;
+  createStaff(input: StaffInput): Promise<StaffMember>;
+  updateStaff(id: string, input: StaffInput): Promise<StaffMember>;
+  deleteStaff(id: string): Promise<void>;
 
   listGroups(): Promise<SmallGroup[]>;
   getGroup(id: string): Promise<SmallGroup | null>;
+  createGroup(input: SmallGroupInput): Promise<SmallGroup>;
+  updateGroup(id: string, input: SmallGroupInput): Promise<SmallGroup>;
+  deleteGroup(id: string): Promise<void>;
   listGroupMessages(groupId: string): Promise<GroupMessage[]>;
   sendGroupMessage(groupId: string, author: string, body: string): Promise<GroupMessage>;
+
+  /** 앱에 등록된 성도를 이름으로 검색합니다(초대용, 관리자·리더만). */
+  searchUsers(query: string): Promise<DirectoryUser[]>;
+  /** 소통방 멤버 목록(이름·역할·알림) */
+  listGroupMembers(groupId: string): Promise<GroupMember[]>;
+  /** 소통방에 멤버를 추가(초대)합니다. */
+  addGroupMember(groupId: string, userId: string, role: GroupMemberRole): Promise<void>;
+  /** 소통방에서 멤버를 내보냅니다(본인 탈퇴 포함). */
+  removeGroupMember(groupId: string, userId: string): Promise<void>;
+  /** 이 소통방의 새 글 푸시 알림을 개인별로 켜고 끕니다. */
+  setGroupNotify(groupId: string, notify: boolean): Promise<void>;
+  /** 현재 로그인 성도가 이 소통방에 속했는지·역할·알림 여부 */
+  getMyGroupMembership(groupId: string): Promise<MyGroupMembership>;
 }

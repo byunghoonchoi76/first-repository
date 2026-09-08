@@ -9,6 +9,17 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { repository, type SermonMedia } from '@/lib/data';
 import { toDateKey } from '@/lib/format';
+import { fetchYouTubeTitle, parseYouTubeUrl } from '@/lib/youtube';
+
+/** 자주 쓰는 설교 시리즈. 탭 한 번으로 채워지고, 직접 입력도 됩니다. */
+const SERIES_PRESETS = [
+  '주일예배',
+  '주일 4부예배',
+  '주일 찬양예배',
+  '수요부흥예배',
+  '금요성령집회',
+  '새벽예배',
+];
 
 const MEDIA_OPTIONS: { value: SermonMedia; label: string }[] = [
   { value: 'video', label: '영상' },
@@ -31,6 +42,8 @@ export default function SermonEditorScreen() {
   const [summary, setSummary] = useState('');
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [fetchingTitle, setFetchingTitle] = useState(false);
+  const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
 
   useEffect(() => {
@@ -56,9 +69,29 @@ export default function SermonEditorScreen() {
     };
   }, [id, isNew]);
 
+  const loadTitleFromYouTube = async () => {
+    setFetchingTitle(true);
+    setNotice(undefined);
+    try {
+      const fetched = await fetchYouTubeTitle(mediaUrl);
+      if (fetched) {
+        setTitle(fetched);
+        setNotice('유튜브 제목을 가져왔습니다.');
+      } else {
+        setNotice('제목을 가져오지 못했습니다. 직접 입력해 주세요.');
+      }
+    } finally {
+      setFetchingTitle(false);
+    }
+  };
+
   const save = async () => {
-    if (!title.trim() || !mediaUrl.trim()) {
-      setError('제목과 재생 주소는 반드시 입력해야 합니다.');
+    if (!mediaUrl.trim()) {
+      setError('재생 주소를 입력해 주세요.');
+      return;
+    }
+    if (!title.trim() && !parseYouTubeUrl(mediaUrl)) {
+      setError('제목을 입력해 주세요. (유튜브 주소면 제목을 자동으로 가져옵니다)');
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -69,6 +102,7 @@ export default function SermonEditorScreen() {
     setError(undefined);
     try {
       const input = {
+        // 비워 두면 앱이 유튜브에서 실제 제목을 가져옵니다.
         title: title.trim(),
         preacher: preacher.trim() || '담임목사',
         scripture: scripture.trim(),
@@ -132,19 +166,69 @@ export default function SermonEditorScreen() {
           </View>
         </View>
 
-        <Field label="설교 제목" value={title} onChangeText={setTitle} placeholder="예) 흔들리지 않는 기초" />
-        <Field label="설교자" value={preacher} onChangeText={setPreacher} placeholder="예) 김은혜 담임목사" />
+        <Field
+          label="설교 제목"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="비워 두면 유튜브 제목을 그대로 사용합니다"
+        />
+        <Field label="설교자" value={preacher} onChangeText={setPreacher} placeholder="예) 담임목사" />
         <Field label="본문" value={scripture} onChangeText={setScripture} placeholder="예) 마태복음 7:24-27" />
         <Field label="설교 날짜" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" hint="예) 2026-08-30" />
-        <Field label="시리즈 (선택)" value={series} onChangeText={setSeries} placeholder="예) 산상수훈" />
+        <View style={styles.field}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            시리즈 (선택)
+          </ThemedText>
+          <View style={styles.chipWrap}>
+            {SERIES_PRESETS.map((preset) => {
+              const active = preset === series.trim();
+              return (
+                <Pressable
+                  key={preset}
+                  onPress={() => setSeries(active ? '' : preset)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: active ? theme.primary : theme.backgroundElement,
+                      borderColor: active ? theme.primary : theme.border,
+                    },
+                  ]}>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: active ? theme.onPrimary : theme.textSecondary, fontWeight: '700' }}>
+                    {preset}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Field label="" value={series} onChangeText={setSeries} placeholder="직접 입력도 됩니다 (예) 산상수훈" />
+        </View>
         <Field
           label="재생 주소"
           value={mediaUrl}
-          onChangeText={setMediaUrl}
-          placeholder="유튜브 링크 또는 오디오 파일 주소"
+          onChangeText={(text) => {
+            setMediaUrl(text);
+            setNotice(undefined);
+          }}
+          placeholder="예) https://www.youtube.com/watch?v=..."
           autoCapitalize="none"
-          hint="유튜브 주소를 넣으면 앱에서 바로 열립니다."
+          hint="유튜브 영상·쇼츠·라이브 주소를 넣으면 앱 화면 안에서 바로 재생됩니다. 오디오 파일 주소도 됩니다."
         />
+        {parseYouTubeUrl(mediaUrl) ? (
+          <Button
+            label="유튜브에서 제목 가져오기"
+            icon="download-outline"
+            variant="ghost"
+            loading={fetchingTitle}
+            onPress={() => void loadTitleFromYouTube()}
+          />
+        ) : null}
+        {notice ? (
+          <ThemedText type="caption" themeColor="textSecondary">
+            {notice}
+          </ThemedText>
+        ) : null}
         <Field label="요약 (선택)" value={summary} onChangeText={setSummary} multiline placeholder="설교 요약" />
 
         {error ? (
@@ -163,6 +247,7 @@ const styles = StyleSheet.create({
   form: { gap: Spacing.three },
   field: { gap: Spacing.one },
   chipRow: { flexDirection: 'row', gap: Spacing.two },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one + 2,

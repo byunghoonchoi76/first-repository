@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -9,7 +10,10 @@ import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '@/com
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, useAsyncData } from '@/lib/data';
+import { ChurchInfo } from '@/constants/church';
+import { repository, useAsyncData, type Sermon } from '@/lib/data';
+import { useYouTubeTitle } from '@/lib/use-youtube-title';
+import { parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 import { formatDate } from '@/lib/format';
 
 export default function SermonsScreen() {
@@ -29,8 +33,12 @@ export default function SermonsScreen() {
 
   const seriesOptions = useMemo(() => {
     const names = new Set<string>();
-    (sermons.data ?? []).forEach((s) => s.series && names.add(s.series));
-    return ['전체', ...Array.from(names)];
+    let hasShorts = false;
+    (sermons.data ?? []).forEach((s) => {
+      if (s.series) names.add(s.series);
+      if (parseYouTubeUrl(s.mediaUrl)?.kind === 'shorts') hasShorts = true;
+    });
+    return ['전체', ...(hasShorts ? ['쇼츠'] : []), ...Array.from(names)];
   }, [sermons.data]);
 
   if (sermons.loading && !sermons.data) {
@@ -49,7 +57,11 @@ export default function SermonsScreen() {
     );
   }
 
-  const items = (sermons.data ?? []).filter((s) => series === '전체' || s.series === series);
+  const items = (sermons.data ?? []).filter((s) => {
+    if (series === '전체') return true;
+    if (series === '쇼츠') return parseYouTubeUrl(s.mediaUrl)?.kind === 'shorts';
+    return s.series === series;
+  });
 
   return (
     <Screen onRefresh={sermons.reload}>
@@ -79,6 +91,21 @@ export default function SermonsScreen() {
         </View>
       ) : null}
 
+      {ChurchInfo.youtubeUrl ? (
+        <Button
+          label="교회 유튜브 채널"
+          icon="logo-youtube"
+          variant="ghost"
+          onPress={() => {
+            if (Platform.OS === 'web') {
+              void Linking.openURL(ChurchInfo.youtubeUrl);
+            } else {
+              void WebBrowser.openBrowserAsync(ChurchInfo.youtubeUrl);
+            }
+          }}
+        />
+      ) : null}
+
       {isAdmin ? (
         <Button
           label="새 설교 등록"
@@ -93,38 +120,67 @@ export default function SermonsScreen() {
       ) : (
         <View style={styles.stack}>
           {items.map((sermon) => (
-            <Card key={sermon.id} onPress={() => router.push(`/sermons/${sermon.id}`)}>
-              <View style={styles.row}>
-                <View style={[styles.thumb, { backgroundColor: theme.backgroundSelected }]}>
-                  <Ionicons
-                    name={sermon.mediaType === 'video' ? 'videocam-outline' : 'headset-outline'}
-                    size={22}
-                    color={theme.primary}
-                  />
-                </View>
-                <View style={styles.flex}>
-                  <View style={styles.metaRow}>
-                    <Badge
-                      label={sermon.mediaType === 'video' ? '영상' : '음성'}
-                      tone={sermon.mediaType === 'video' ? 'primary' : 'success'}
-                    />
-                    <ThemedText type="caption" themeColor="textMuted">
-                      {formatDate(sermon.date)}
-                    </ThemedText>
-                  </View>
-                  <ThemedText type="smallBold" numberOfLines={1}>
-                    {sermon.title}
-                  </ThemedText>
-                  <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-                    {sermon.scripture} · {sermon.preacher}
-                  </ThemedText>
-                </View>
-              </View>
-            </Card>
+            <SermonRow key={sermon.id} sermon={sermon} onPress={() => router.push(`/sermons/${sermon.id}`)} />
           ))}
         </View>
       )}
     </Screen>
+  );
+}
+
+/** 설교 목록 한 줄. 제목이 비어 있으면 유튜브에서 실제 제목을 가져옵니다. */
+function SermonRow({ sermon, onPress }: { sermon: Sermon; onPress: () => void }) {
+  const theme = useTheme();
+  const video = parseYouTubeUrl(sermon.mediaUrl);
+  const title = useYouTubeTitle(sermon.mediaUrl, sermon.title, video?.kind === 'shorts' ? '쇼츠 영상' : '설교 영상');
+  const thumbnail = sermon.thumbnailUrl ?? (video ? youtubeThumbnail(video.videoId) : undefined);
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const showThumb = Boolean(thumbnail) && !thumbFailed;
+
+  return (
+    <Card onPress={onPress}>
+      <View style={styles.row}>
+        <View style={[styles.thumb, { backgroundColor: theme.backgroundSelected }]}>
+          {showThumb ? (
+            <Image
+              source={{ uri: thumbnail! }}
+              style={styles.thumbImage}
+              resizeMode="cover"
+              onError={() => setThumbFailed(true)}
+            />
+          ) : (
+            <Ionicons
+              name={
+                video?.kind === 'shorts'
+                  ? 'phone-portrait-outline'
+                  : sermon.mediaType === 'video'
+                    ? 'videocam-outline'
+                    : 'headset-outline'
+              }
+              size={22}
+              color={theme.primary}
+            />
+          )}
+        </View>
+        <View style={styles.flex}>
+          <View style={styles.metaRow}>
+            <Badge
+              label={video?.kind === 'shorts' ? '쇼츠' : sermon.mediaType === 'video' ? '영상' : '음성'}
+              tone={sermon.mediaType === 'video' ? 'primary' : 'success'}
+            />
+            <ThemedText type="caption" themeColor="textMuted">
+              {formatDate(sermon.date)}
+            </ThemedText>
+          </View>
+          <ThemedText type="smallBold" numberOfLines={2}>
+            {title}
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+            {[sermon.scripture, sermon.preacher].filter(Boolean).join(' · ')}
+          </ThemedText>
+        </View>
+      </View>
+    </Card>
   );
 }
 
@@ -139,6 +195,14 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'center' },
-  thumb: { width: 52, height: 52, borderRadius: Radius.small, alignItems: 'center', justifyContent: 'center' },
+  thumb: {
+    width: 68,
+    height: 52,
+    borderRadius: Radius.small,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  thumbImage: { width: '100%', height: '100%' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: 2 },
 });

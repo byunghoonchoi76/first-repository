@@ -4,16 +4,17 @@ import { StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Field, Toggle } from '@/components/ui';
+import { Button, Card, EmptyState, Field, Toggle } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { repository } from '@/lib/data';
+import { dataMode, repository } from '@/lib/data';
 
 export default function NewPrayerRequestScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [shared, setShared] = useState(false);
   const [anonymous, setAnonymous] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -30,7 +31,9 @@ export default function NewPrayerRequestScreen() {
         title: title.trim(),
         body: body.trim(),
         author: user?.name ?? '성도',
+        authorId: user?.id,
         anonymous,
+        shared,
       });
       router.back();
     } catch (e) {
@@ -39,6 +42,18 @@ export default function NewPrayerRequestScreen() {
       setSaving(false);
     }
   };
+
+  // Supabase 를 쓰는 경우 로그인한 성도만 기도제목을 올릴 수 있습니다.
+  if (dataMode === 'supabase' && !user) {
+    return (
+      <Screen>
+        <Card>
+          <EmptyState icon="lock-closed-outline" message="로그인하면 기도제목을 나눌 수 있습니다." />
+          <Button label="로그인하기" icon="log-in-outline" onPress={() => router.replace('/sign-in')} />
+        </Card>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -57,7 +72,13 @@ export default function NewPrayerRequestScreen() {
           onChangeText={setBody}
           multiline
         />
+        <Toggle label="함께 기도해주세요" value={shared} onChange={setShared} />
         <Toggle label="익명으로 올리기" value={anonymous} onChange={setAnonymous} />
+        {anonymous ? (
+          <ThemedText type="caption" themeColor="textMuted">
+            기도 요청으로 공개할 때 이름 대신 &lsquo;익명&rsquo;으로 표시됩니다.
+          </ThemedText>
+        ) : null}
         {error ? (
           <ThemedText type="small" themeColor="danger">
             {error}
