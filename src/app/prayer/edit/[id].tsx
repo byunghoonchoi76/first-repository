@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -66,6 +66,27 @@ export default function EditPrayerRequestScreen() {
     }
   };
 
+  const confirmDelete = () => {
+    const remove = async () => {
+      try {
+        await repository.deletePrayerRequest(String(id));
+        router.back();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '삭제하지 못했습니다.');
+      }
+    };
+    const message = '이 기도제목을 삭제할까요? 되돌릴 수 없습니다.';
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line no-alert
+      if (window.confirm(message)) void remove();
+      return;
+    }
+    Alert.alert('삭제', message, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => void remove() },
+    ]);
+  };
+
   if (dataMode === 'supabase' && !user) {
     return (
       <Screen>
@@ -128,6 +149,7 @@ export default function EditPrayerRequestScreen() {
           </ThemedText>
         ) : null}
         <Button label="수정 완료" icon="save-outline" loading={saving} onPress={() => void save()} />
+        <Button label="삭제" icon="trash-outline" variant="danger" onPress={confirmDelete} />
       </View>
     </Screen>
   );

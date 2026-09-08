@@ -253,6 +253,8 @@ export interface ChurchRepository {
   createPrayerRequest(input: PrayerRequestInput): Promise<PrayerRequest>;
   /** 본인이 올린 개인 기도제목의 제목·내용·익명 여부를 수정합니다. */
   updatePrayerRequest(id: string, input: PrayerRequestUpdate): Promise<PrayerRequest>;
+  /** 본인이 올린 기도제목을 삭제합니다. */
+  deletePrayerRequest(id: string): Promise<void>;
   prayForRequest(id: string): Promise<PrayerRequest>;
   markPrayerAnswered(id: string, answered: boolean): Promise<PrayerRequest>;
   /** 개인 기도제목을 '기도 요청'으로 공개하거나 다시 비공개로 되돌립니다. */

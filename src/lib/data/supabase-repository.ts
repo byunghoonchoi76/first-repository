@@ -417,6 +417,12 @@ export const supabaseRepository: ChurchRepository = {
     return toPrayer(unwrap(res));
   },
 
+  async deletePrayerRequest(id) {
+    const sb = requireSupabase();
+    const res = await sb.from('prayer_requests').delete().eq('id', id);
+    if (res.error) throw new Error(res.error.message);
+  },
+
   async prayForRequest(id) {
     const sb = requireSupabase();
     // 동시 클릭에도 카운트가 어긋나지 않도록 DB 함수로 증가시킵니다.

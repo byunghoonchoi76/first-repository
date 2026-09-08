@@ -306,6 +306,13 @@ export const sampleRepository: ChurchRepository = {
     return clone(created);
   },
 
+  async deletePrayerRequest(id) {
+    await ready();
+    await delay();
+    db.prayers = db.prayers.filter((p) => p.id !== id);
+    await persist();
+  },
+
   async prayForRequest(id) {
     await ready();
     await delay(60);
