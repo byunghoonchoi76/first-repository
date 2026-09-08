@@ -22,6 +22,7 @@ import type {
   GroupMessage,
   PrayerRequest,
   PrayerRequestInput,
+  PrayerRequestUpdate,
   PrayerTimeEntry,
   Sermon,
   SermonInput,
@@ -264,6 +265,25 @@ export const sampleRepository: ChurchRepository = {
     await delay();
     // 샘플 모드에서는 계정 개념이 없어 이 기기에 올린 개인 기도제목을 모두 보여 줍니다.
     return clone(db.prayers).sort((a, b) => byDateDesc(a.createdAt, b.createdAt));
+  },
+
+  async getPrayerRequest(id) {
+    await ready();
+    await delay(60);
+    return clone(db.prayers.find((p) => p.id === id) ?? null);
+  },
+
+  async updatePrayerRequest(id: string, input: PrayerRequestUpdate) {
+    await ready();
+    await delay();
+    const target = db.prayers.find((p) => p.id === id);
+    if (!target) throw new Error('기도제목을 찾을 수 없습니다.');
+    target.title = input.title;
+    target.body = input.body;
+    target.anonymous = input.anonymous;
+    target.author = input.anonymous ? '익명' : input.author;
+    await persist();
+    return clone(target);
   },
 
   async createPrayerRequest(input: PrayerRequestInput) {

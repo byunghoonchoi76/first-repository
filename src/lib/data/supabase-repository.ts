@@ -12,6 +12,7 @@ import type {
   GroupMessage,
   PrayerRequest,
   PrayerRequestInput,
+  PrayerRequestUpdate,
   PrayerKind,
   PrayerTimeEntry,
   Sermon,
@@ -373,6 +374,29 @@ export const supabaseRepository: ChurchRepository = {
       .eq('author_id', uid)
       .order('created_at', { ascending: false });
     return unwrap(res).map(toPrayer);
+  },
+
+  async getPrayerRequest(id) {
+    const sb = requireSupabase();
+    const res = await sb.from('prayer_requests').select('*').eq('id', id).maybeSingle();
+    if (res.error) throw new Error(res.error.message);
+    return res.data ? toPrayer(res.data as Row) : null;
+  },
+
+  async updatePrayerRequest(id: string, input: PrayerRequestUpdate) {
+    const sb = requireSupabase();
+    const res = await sb
+      .from('prayer_requests')
+      .update({
+        title: input.title,
+        body: input.body,
+        anonymous: input.anonymous,
+        author: input.anonymous ? '익명' : input.author,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return toPrayer(unwrap(res));
   },
 
   async createPrayerRequest(input: PrayerRequestInput) {

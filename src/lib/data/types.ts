@@ -163,6 +163,9 @@ export type PrayerRequestInput = Pick<PrayerRequest, 'title' | 'body' | 'author'
   authorId?: string;
 };
 
+/** 개인 기도제목 수정 — 본인이 올린 제목·내용·익명 여부를 바꿉니다. (author 는 익명 해제 시 표시할 실제 이름) */
+export type PrayerRequestUpdate = Pick<PrayerRequest, 'title' | 'body' | 'anonymous'> & { author: string };
+
 /** 공동 기도제목 — 온 성도가 함께 기도하며 시간을 쌓아 가는 교회 공통 제목 */
 export interface CommunalPrayer {
   id: string;
@@ -245,7 +248,11 @@ export interface ChurchRepository {
   listSharedPrayerRequests(): Promise<PrayerRequest[]>;
   /** 로그인한 본인이 올린 개인 기도제목 목록 (공개 여부 무관) */
   listMyPrayerRequests(): Promise<PrayerRequest[]>;
+  /** 기도제목 하나를 id 로 불러옵니다 (수정 화면용). */
+  getPrayerRequest(id: string): Promise<PrayerRequest | null>;
   createPrayerRequest(input: PrayerRequestInput): Promise<PrayerRequest>;
+  /** 본인이 올린 개인 기도제목의 제목·내용·익명 여부를 수정합니다. */
+  updatePrayerRequest(id: string, input: PrayerRequestUpdate): Promise<PrayerRequest>;
   prayForRequest(id: string): Promise<PrayerRequest>;
   markPrayerAnswered(id: string, answered: boolean): Promise<PrayerRequest>;
   /** 개인 기도제목을 '기도 요청'으로 공개하거나 다시 비공개로 되돌립니다. */

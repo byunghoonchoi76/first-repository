@@ -1,11 +1,12 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
 import type { PrayerRequest } from '@/lib/data/types';
@@ -71,6 +72,7 @@ export default function PersonalPrayerScreen() {
                 <MyPrayerCard
                   key={item.id}
                   item={item}
+                  onEdit={() => router.push(`/prayer/edit/${item.id}`)}
                   onToggleAnswered={() => toggleAnswered(item.id, !item.answered)}
                   onShare={() => setShared(item.id, true)}
                   onUnshare={() => setShared(item.id, false)}
@@ -87,15 +89,18 @@ export default function PersonalPrayerScreen() {
 /** 개인 기도제목 카드 — 나만 보이며, 원하면 '기도 요청'으로 공개할 수 있습니다. */
 function MyPrayerCard({
   item,
+  onEdit,
   onToggleAnswered,
   onShare,
   onUnshare,
 }: {
   item: PrayerRequest;
+  onEdit: () => void;
   onToggleAnswered: () => void;
   onShare: () => void;
   onUnshare: () => void;
 }) {
+  const theme = useTheme();
   return (
     <Card>
       <View style={styles.rowBetween}>
@@ -104,9 +109,14 @@ function MyPrayerCard({
         ) : (
           <Badge label="나만 보기" tone="textSecondary" />
         )}
-        <ThemedText type="caption" themeColor="textMuted">
-          {formatRelative(item.createdAt)}
-        </ThemedText>
+        <View style={styles.headRight}>
+          <ThemedText type="caption" themeColor="textMuted">
+            {formatRelative(item.createdAt)}
+          </ThemedText>
+          <Pressable onPress={onEdit} hitSlop={8} accessibilityLabel="기도제목 수정">
+            <Ionicons name="create-outline" size={18} color={theme.textMuted} />
+          </Pressable>
+        </View>
       </View>
       <ThemedText type="smallBold">{item.title}</ThemedText>
       {item.body ? (
@@ -137,4 +147,5 @@ function MyPrayerCard({
 const styles = StyleSheet.create({
   stack: { gap: Spacing.two },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
 });
