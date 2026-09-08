@@ -46,3 +46,4 @@ example
 .env
 .env.local
 dist-pages/
+dist-rem/
