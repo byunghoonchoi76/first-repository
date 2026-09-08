@@ -92,6 +92,9 @@ async function shot(page, base, route, name, opts = {}) {
       await p.waitForTimeout(1600);
     }});
     await shot(page, base, '/groups', 'groups');
+    // 소통방 방(대화) + 멤버·초대 화면 (샘플 모드에서는 '나'가 리더로 보입니다)
+    await shot(page, base, '/groups/group-1', 'group_room', { wait: 3000 });
+    await shot(page, base, '/group-members/group-1', 'group_members', { wait: 2800 });
     await shot(page, base, '/services', 'services');
     await shot(page, base, '/staff', 'staff');
     await shot(page, base, '/location', 'location');
@@ -114,7 +117,7 @@ async function shot(page, base, route, name, opts = {}) {
     await ctx.close();
   }
 
-  // ── Reminders pass (dist-rem, guest click flow) ──
+  // ── Reminders pass (dist-rem, Supabase 모드라 알림 UI 가 보입니다) — 3개까지 설정 ──
   {
     const ctx = await newCtx(browser, null);
     const page = await ctx.newPage();
@@ -122,14 +125,28 @@ async function shot(page, base, route, name, opts = {}) {
       await page.goto(rbase + '/', { waitUntil: 'networkidle', timeout: 20000 });
     } catch (e) { console.log('rem goto', e.message); }
     await page.waitForTimeout(2500);
+    // 표어 화면 → 손님으로 입장 (앱 내부 이동으로 상태를 유지합니다)
     try { await page.getByText('손님으로 둘러보기', { exact: true }).click({ timeout: 6000 }); } catch (e) { console.log('guest click', e.message); }
     await page.waitForTimeout(2500);
     // 기도 탭 (하단 4번째)
     try { await page.mouse.click(280, 838); } catch (e) {}
     await page.waitForTimeout(2500);
-    // 기도 알림 카드로 이동 시도
+    // 기도 알림 카드 → 알림 설정 화면 (앱 내부 이동)
     try { await page.getByText('기도 알림', { exact: false }).first().click({ timeout: 5000 }); } catch (e) { console.log('reminder card', e.message); }
     await page.waitForTimeout(2600);
+    // '알림 추가'를 두 번 눌러 3개 설정 화면을 보여 줍니다.
+    for (let k = 0; k < 2; k++) {
+      try { await page.getByText('알림 추가', { exact: true }).click({ timeout: 4000 }); } catch (e) { console.log('add reminder', e.message); }
+      await page.waitForTimeout(700);
+    }
+    // 맨 위(마스터 토글 + 1번 알림)부터 보이도록 스크롤을 올립니다.
+    try {
+      await page.evaluate(() => {
+        document.querySelectorAll('*').forEach((el) => { if (el.scrollHeight > el.clientHeight) el.scrollTop = 0; });
+        window.scrollTo(0, 0);
+      });
+    } catch (e) {}
+    await page.waitForTimeout(800);
     await page.screenshot({ path: path.join(OUT, 'reminders.png') });
     console.log('shot reminders');
     await ctx.close();
