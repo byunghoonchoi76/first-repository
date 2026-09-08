@@ -1,15 +1,16 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Field, LoadingState } from '@/components/ui';
+import { Button, Card, Field, LoadingState } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { repository, type SermonMedia } from '@/lib/data';
+import { repository, type ChannelVideo, type SermonMedia } from '@/lib/data';
 import { toDateKey } from '@/lib/format';
-import { fetchYouTubeTitle, parseYouTubeUrl } from '@/lib/youtube';
+import { fetchYouTubeTitle, parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 
 /** 자주 쓰는 설교 시리즈. 탭 한 번으로 채워지고, 직접 입력도 됩니다. */
 const SERIES_PRESETS = [
@@ -29,8 +30,12 @@ const MEDIA_OPTIONS: { value: SermonMedia; label: string }[] = [
 export default function SermonEditorScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, videoId } = useLocalSearchParams<{ id: string; videoId?: string }>();
   const isNew = String(id) === 'new';
+
+  const [picker, setPicker] = useState(false);
+  const [channelVideos, setChannelVideos] = useState<ChannelVideo[] | null>(null);
+  const [loadingVideos, setLoadingVideos] = useState(false);
 
   const [title, setTitle] = useState('');
   const [preacher, setPreacher] = useState('');
@@ -68,6 +73,43 @@ export default function SermonEditorScreen() {
       active = false;
     };
   }, [id, isNew]);
+
+  // 설교 탭 등에서 videoId 를 넘겨주면 그 영상으로 미리 채웁니다.
+  useEffect(() => {
+    if (!isNew || !videoId) return;
+    const url = `https://www.youtube.com/watch?v=${String(videoId)}`;
+    setMediaUrl(url);
+    setMediaType('video');
+    (async () => {
+      const fetched = await fetchYouTubeTitle(url);
+      if (fetched) setTitle(fetched);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId, isNew]);
+
+  /** 유튜브 목록에서 고른 영상으로 폼을 채웁니다. */
+  const fillFromVideo = (v: ChannelVideo) => {
+    setMediaUrl(`https://www.youtube.com/watch?v=${v.videoId}`);
+    setMediaType('video');
+    if (v.title) setTitle(v.title);
+    if (v.publishedAt) setDate(v.publishedAt.slice(0, 10));
+    if (v.description) setSummary(v.description.slice(0, 300));
+    setPicker(false);
+    setNotice('유튜브 영상 정보를 가져왔습니다. 설교자·본문·분류를 확인해 주세요.');
+  };
+
+  const openPicker = async () => {
+    setPicker(true);
+    if (channelVideos || loadingVideos) return;
+    setLoadingVideos(true);
+    try {
+      setChannelVideos(await repository.listChannelVideos());
+    } catch {
+      setChannelVideos([]);
+    } finally {
+      setLoadingVideos(false);
+    }
+  };
 
   const loadTitleFromYouTube = async () => {
     setFetchingTitle(true);
@@ -137,6 +179,16 @@ export default function SermonEditorScreen() {
     <Screen>
       <Stack.Screen options={{ title: isNew ? '설교 등록' : '설교 수정' }} />
       <View style={styles.form}>
+        <Button
+          label="유튜브에서 불러오기"
+          icon="logo-youtube"
+          variant="secondary"
+          onPress={() => void openPicker()}
+        />
+        <ThemedText type="caption" themeColor="textMuted">
+          교회 유튜브 채널 최신 영상을 골라 제목·날짜·주소를 자동으로 채웁니다. (URL 복사 없이)
+        </ThemedText>
+
         <View style={styles.field}>
           <ThemedText type="smallBold" themeColor="textSecondary">
             형식
@@ -239,13 +291,58 @@ export default function SermonEditorScreen() {
 
         <Button label={isNew ? '등록하기' : '수정 완료'} icon="save-outline" loading={saving} onPress={() => void save()} />
       </View>
+
+      <Modal visible={picker} transparent animationType="slide" onRequestClose={() => setPicker(false)}>
+        <View style={styles.backdrop}>
+          <View style={[styles.sheet, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.sheetHead}>
+              <ThemedText type="smallBold">유튜브 최신 영상</ThemedText>
+              <Pressable onPress={() => setPicker(false)} hitSlop={8}>
+                <Ionicons name="close" size={22} color={theme.textMuted} />
+              </Pressable>
+            </View>
+            {loadingVideos ? (
+              <LoadingState />
+            ) : (channelVideos ?? []).length === 0 ? (
+              <ThemedText type="small" themeColor="textMuted" style={styles.sheetEmpty}>
+                가져올 영상이 없습니다. 유튜브 API 설정을 확인하거나 아래에 주소를 직접 붙여넣어 주세요.
+              </ThemedText>
+            ) : (
+              <ScrollView style={styles.sheetList}>
+                {(channelVideos ?? []).map((v) => (
+                  <Pressable key={v.videoId} onPress={() => fillFromVideo(v)} style={({ pressed }) => [styles.videoRow, pressed && { backgroundColor: theme.backgroundSelected }]}>
+                    <Image source={{ uri: v.thumbnail || youtubeThumbnail(v.videoId) }} style={styles.videoThumb} resizeMode="cover" />
+                    <View style={styles.flex}>
+                      <ThemedText type="small" numberOfLines={2}>
+                        {v.title}
+                      </ThemedText>
+                      <ThemedText type="caption" themeColor="textMuted">
+                        {v.publishedAt ? v.publishedAt.slice(0, 10) : ''}
+                      </ThemedText>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   form: { gap: Spacing.three },
   field: { gap: Spacing.one },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet: { maxHeight: '80%', borderTopLeftRadius: Radius.large, borderTopRightRadius: Radius.large, borderWidth: StyleSheet.hairlineWidth, padding: Spacing.four, gap: Spacing.two },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sheetEmpty: { textAlign: 'center', paddingVertical: Spacing.five },
+  sheetList: { marginTop: Spacing.one },
+  videoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two },
+  videoThumb: { width: 72, height: 54, borderRadius: Radius.small, backgroundColor: '#eee' },
   chipRow: { flexDirection: 'row', gap: Spacing.two },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: {

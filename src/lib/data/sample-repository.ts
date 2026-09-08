@@ -521,6 +521,22 @@ export const sampleRepository: ChurchRepository = {
     return clone(db.groups.map(withMemberCount));
   },
 
+  async listChannelVideos() {
+    await ready();
+    await delay(150);
+    // 샘플 모드에서는 예시 영상을 몇 개 보여 줍니다. (실제 앱은 교회 유튜브 채널에서 가져옵니다)
+    const iso = (daysAgo: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return d.toISOString();
+    };
+    return [
+      { videoId: 'dQw4w9WgXcQ', title: '주일예배 | 늘 함께하시는 하나님', publishedAt: iso(1), thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg', description: '' },
+      { videoId: 'M7lc1UVf-VE', title: '수요부흥예배 | 기도의 능력', publishedAt: iso(4), thumbnail: 'https://i.ytimg.com/vi/M7lc1UVf-VE/mqdefault.jpg', description: '' },
+      { videoId: 'ScMzIvxBSi4', title: '새벽예배 | 말씀 앞에 서다', publishedAt: iso(6), thumbnail: 'https://i.ytimg.com/vi/ScMzIvxBSi4/mqdefault.jpg', description: '' },
+    ];
+  },
+
   async getGroup(id) {
     await ready();
     await delay(80);

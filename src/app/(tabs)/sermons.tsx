@@ -11,7 +11,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { ChurchInfo } from '@/constants/church';
-import { repository, useAsyncData, type Sermon } from '@/lib/data';
+import { repository, useAsyncData, type ChannelVideo, type Sermon } from '@/lib/data';
 import { useYouTubeTitle } from '@/lib/use-youtube-title';
 import { parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 import { formatDate } from '@/lib/format';
@@ -23,12 +23,15 @@ export default function SermonsScreen() {
   const [series, setSeries] = useState<string>('전체');
 
   const sermons = useAsyncData(() => repository.listSermons());
+  const channel = useAsyncData(() => repository.listChannelVideos());
   const { reload } = sermons;
+  const reloadChannel = channel.reload;
 
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload]),
+      reloadChannel();
+    }, [reload, reloadChannel]),
   );
 
   const seriesOptions = useMemo(() => {
@@ -57,14 +60,28 @@ export default function SermonsScreen() {
     );
   }
 
-  const items = (sermons.data ?? []).filter((s) => {
+  const allSermons = sermons.data ?? [];
+  const items = allSermons.filter((s) => {
     if (series === '전체') return true;
     if (series === '쇼츠') return parseYouTubeUrl(s.mediaUrl)?.kind === 'shorts';
     return s.series === series;
   });
 
+  // 이미 설교로 등록된 유튜브 영상은 자동 목록에서 빼서 중복을 막습니다.
+  const registeredIds = new Set(
+    allSermons.map((s) => parseYouTubeUrl(s.mediaUrl)?.videoId).filter(Boolean) as string[],
+  );
+  const channelVideos = (channel.data ?? []).filter((v) => !registeredIds.has(v.videoId));
+  // 자동 '유튜브 최신 영상'은 전체 보기에서만 표시합니다.
+  const showChannel = series === '전체' && channelVideos.length > 0;
+
+  const reloadAll = () => {
+    sermons.reload();
+    channel.reload();
+  };
+
   return (
-    <Screen onRefresh={sermons.reload}>
+    <Screen onRefresh={reloadAll}>
       {seriesOptions.length > 1 ? (
         <View style={styles.filterRow}>
           {seriesOptions.map((option) => {
@@ -115,7 +132,7 @@ export default function SermonsScreen() {
         />
       ) : null}
 
-      {items.length === 0 ? (
+      {items.length === 0 && !showChannel ? (
         <EmptyState icon="play-circle-outline" message="등록된 설교가 없습니다." />
       ) : (
         <View style={styles.stack}>
@@ -124,7 +141,80 @@ export default function SermonsScreen() {
           ))}
         </View>
       )}
+
+      {showChannel ? (
+        <View style={styles.channelSection}>
+          <View style={styles.channelHead}>
+            <Ionicons name="logo-youtube" size={18} color="#c4302b" />
+            <ThemedText type="smallBold">유튜브 최신 영상</ThemedText>
+          </View>
+          <ThemedText type="caption" themeColor="textMuted">
+            교회 유튜브 채널에 올라온 최근 영상이에요. 눌러서 바로 볼 수 있어요.
+          </ThemedText>
+          <View style={styles.stack}>
+            {channelVideos.map((v) => (
+              <ChannelVideoRow
+                key={v.videoId}
+                video={v}
+                isAdmin={isAdmin}
+                onPress={() => router.push(`/watch/${v.videoId}`)}
+                onRegister={() => router.push(`/admin/sermon/new?videoId=${v.videoId}`)}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
     </Screen>
+  );
+}
+
+/** 유튜브 채널 최신 영상 한 줄 (설교로 아직 등록되지 않은 영상). */
+function ChannelVideoRow({
+  video,
+  isAdmin,
+  onPress,
+  onRegister,
+}: {
+  video: ChannelVideo;
+  isAdmin: boolean;
+  onPress: () => void;
+  onRegister: () => void;
+}) {
+  const theme = useTheme();
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const thumbnail = video.thumbnail || youtubeThumbnail(video.videoId);
+  const showThumb = Boolean(thumbnail) && !thumbFailed;
+  return (
+    <Card onPress={onPress}>
+      <View style={styles.row}>
+        <View style={[styles.thumb, { backgroundColor: theme.backgroundSelected }]}>
+          {showThumb ? (
+            <Image source={{ uri: thumbnail }} style={styles.thumbImage} resizeMode="cover" onError={() => setThumbFailed(true)} />
+          ) : (
+            <Ionicons name="logo-youtube" size={22} color="#c4302b" />
+          )}
+        </View>
+        <View style={styles.flex}>
+          <View style={styles.metaRow}>
+            <Badge label="유튜브" tone="accent" />
+            <ThemedText type="caption" themeColor="textMuted">
+              {video.publishedAt ? formatDate(video.publishedAt.slice(0, 10)) : ''}
+            </ThemedText>
+          </View>
+          <ThemedText type="smallBold" numberOfLines={2}>
+            {video.title}
+          </ThemedText>
+          {isAdmin ? (
+            <Pressable onPress={onRegister} hitSlop={6} style={styles.registerLink}>
+              <Ionicons name="add-circle-outline" size={14} color={theme.primary} />
+              <ThemedText type="caption" style={{ color: theme.primary, fontWeight: '700' }}>
+                설교로 등록
+              </ThemedText>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+    </Card>
   );
 }
 
@@ -194,6 +284,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  channelSection: { gap: Spacing.two },
+  channelHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  registerLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'center' },
   thumb: {
     width: 68,

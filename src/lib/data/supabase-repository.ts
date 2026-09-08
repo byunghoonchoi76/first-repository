@@ -5,6 +5,7 @@ import type {
   AnnouncementInput,
   Bulletin,
   BulletinInput,
+  ChannelVideo,
   ChurchProfile,
   ChurchRepository,
   CommunalPrayer,
@@ -337,6 +338,18 @@ export const supabaseRepository: ChurchRepository = {
     const res = await sb.from('sermons').select('*').eq('id', id).maybeSingle();
     if (res.error) throw new Error(res.error.message);
     return res.data ? toSermon(res.data) : null;
+  },
+
+  async listChannelVideos() {
+    const sb = requireSupabase();
+    try {
+      const { data, error } = await sb.functions.invoke('youtube-videos');
+      if (error) return [];
+      const videos = (data as { videos?: ChannelVideo[] })?.videos ?? [];
+      return videos.filter((v) => v.videoId);
+    } catch {
+      return [];
+    }
   },
 
   async createSermon(input) {

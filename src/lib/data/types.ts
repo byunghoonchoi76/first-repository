@@ -143,6 +143,16 @@ export interface Sermon {
 
 export type SermonInput = Omit<Sermon, 'id'>;
 
+/** 교회 유튜브 채널의 최신 업로드 영상 (설교 자동 노출·가져오기용) */
+export interface ChannelVideo {
+  videoId: string;
+  title: string;
+  /** ISO 날짜시각 */
+  publishedAt: string;
+  thumbnail: string;
+  description: string;
+}
+
 export interface PrayerRequest {
   id: string;
   title: string;
@@ -271,6 +281,8 @@ export interface ChurchRepository {
 
   listSermons(): Promise<Sermon[]>;
   getSermon(id: string): Promise<Sermon | null>;
+  /** 교회 유튜브 채널의 최신 영상 목록 (설교 자동 노출·가져오기). 키가 없거나 실패하면 빈 배열. */
+  listChannelVideos(): Promise<ChannelVideo[]>;
   createSermon(input: SermonInput): Promise<Sermon>;
   updateSermon(id: string, input: SermonInput): Promise<Sermon>;
   deleteSermon(id: string): Promise<void>;

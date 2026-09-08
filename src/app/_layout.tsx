@@ -97,6 +97,7 @@ function RootNavigator() {
       <Stack.Screen name="bulletin/[id]" options={{ title: '주보' }} />
       <Stack.Screen name="news/[id]" options={{ title: '공지사항' }} />
       <Stack.Screen name="sermons/[id]" options={{ title: '설교' }} />
+      <Stack.Screen name="watch/[videoId]" options={{ title: '설교 영상' }} />
       <Stack.Screen name="groups/[id]" options={{ title: '소통방' }} />
       <Stack.Screen name="group-members/[id]" options={{ title: '소통방 멤버' }} />
       <Stack.Screen name="prayer/personal" options={{ title: '개인 기도제목' }} />
