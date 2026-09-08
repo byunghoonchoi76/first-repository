@@ -21,7 +21,7 @@ self.addEventListener('push', (event) => {
     body: data.body || '오늘도 기도로 하나님과 만나요.',
     icon: data.icon || './app-icon.png',
     badge: './app-icon.png',
-    tag: 'prayer-reminder',
+    tag: data.tag || 'prayer-reminder',
     renotify: true,
     requireInteraction: true, // 사용자가 확인할 때까지 알림 유지
     vibrate: [300, 150, 300, 150, 300], // 진동 패턴
