@@ -66,6 +66,35 @@ export function youtubeThumbnail(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
 
+/** 설교 카테고리 — 화면 필터·배지에 쓰는 표준 분류 */
+export type SermonCategory = '주일예배' | '새벽예배' | '수요예배' | '금요집회' | '찬양' | '쇼츠' | '기타';
+
+/** 카테고리 표시 순서 (필터 칩 정렬용) */
+export const SERMON_CATEGORY_ORDER: SermonCategory[] = [
+  '주일예배',
+  '새벽예배',
+  '수요예배',
+  '금요집회',
+  '찬양',
+  '쇼츠',
+  '기타',
+];
+
+/**
+ * 유튜브 영상 제목(+쇼츠 여부)으로 예배 카테고리를 자동 분류합니다.
+ * 교회 채널 제목 규칙(주일예배·새벽예배·수요부흥예배·금요성령집회·찬양대 등)에 맞춰 판별합니다.
+ */
+export function classifyChurchVideo(title: string, isShorts = false): SermonCategory {
+  const t = (title ?? '').replace(/\s/g, '');
+  if (isShorts || /#?shorts|쇼츠/i.test(title ?? '')) return '쇼츠';
+  if (/새벽/.test(t)) return '새벽예배';
+  if (/수요/.test(t)) return '수요예배';
+  if (/금요/.test(t)) return '금요집회';
+  if (/(찬양대|찬양예배|특송|성가|워십)/.test(t)) return '찬양';
+  if (/주일|주보|1부|2부|3부|4부|오전예배|오후예배/.test(t)) return '주일예배';
+  return '기타';
+}
+
 // 같은 영상을 여러 화면에서 열어도 한 번만 불러오도록 기억해 둡니다.
 const titleCache = new Map<string, string>();
 
