@@ -48,11 +48,11 @@ export default function AdminHomeScreen() {
     );
   }
 
-  const stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+  const stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name']; onPress?: () => void }[] = [
     { label: '주보', value: (bulletins.data ?? []).length, icon: 'book-outline' },
     { label: '공지', value: (announcements.data ?? []).length, icon: 'document-text-outline' },
     { label: '소통방', value: (groups.data ?? []).length, icon: 'people-outline' },
-    { label: '가입자', value: memberCount.data ?? 0, icon: 'person-add-outline' },
+    { label: '가입자', value: memberCount.data ?? 0, icon: 'person-add-outline', onPress: () => router.push('/admin/members') },
     { label: '설교', value: (sermons.data ?? []).length, icon: 'play-circle-outline' },
   ];
 
@@ -190,7 +190,7 @@ export default function AdminHomeScreen() {
 function DashboardHeader({
   stats,
 }: {
-  stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name'] }[];
+  stats: { label: string; value: number; icon: React.ComponentProps<typeof Ionicons>['name']; onPress?: () => void }[];
 }) {
   const theme = useTheme();
   return (
@@ -198,14 +198,21 @@ function DashboardHeader({
       <SectionHeader title="관리 현황" />
       <Card style={styles.statRow}>
         {stats.map((s, i) => (
-          <View key={s.label} style={styles.statCell}>
+          <Pressable
+            key={s.label}
+            onPress={s.onPress}
+            disabled={!s.onPress}
+            style={({ pressed }) => [styles.statCell, pressed && s.onPress ? { opacity: 0.6 } : null]}>
             {i > 0 ? <View style={[styles.statDivider, { backgroundColor: theme.border }]} /> : null}
             <Ionicons name={s.icon} size={16} color={theme.primary} />
             <ThemedText type="heading">{s.value}</ThemedText>
-            <ThemedText type="caption" themeColor="textMuted">
-              {s.label}
-            </ThemedText>
-          </View>
+            <View style={styles.statLabelRow}>
+              <ThemedText type="caption" themeColor="textMuted">
+                {s.label}
+              </ThemedText>
+              {s.onPress ? <Ionicons name="chevron-forward" size={11} color={theme.textMuted} /> : null}
+            </View>
+          </Pressable>
         ))}
       </Card>
     </View>
@@ -276,6 +283,7 @@ function LiveOverrideCard() {
 const styles = StyleSheet.create({
   statRow: { flexDirection: 'row', alignItems: 'stretch', paddingVertical: Spacing.three },
   statCell: { flex: 1, alignItems: 'center', gap: 2, position: 'relative' },
+  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 1 },
   statDivider: { position: 'absolute', left: 0, top: '15%', bottom: '15%', width: StyleSheet.hairlineWidth },
   liveRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.three },
   liveChip: {

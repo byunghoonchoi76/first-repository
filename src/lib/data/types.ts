@@ -221,6 +221,15 @@ export interface DirectoryUser {
   name: string;
 }
 
+/** 관리자 가입자 명단 항목 */
+export interface AppMember {
+  id: string;
+  name: string;
+  role: Role;
+  /** 가입일 (ISO) */
+  createdAt: string;
+}
+
 /** 현재 로그인 성도의 특정 소통방 소속 정보 */
 export interface MyGroupMembership {
   isMember: boolean;
@@ -336,6 +345,10 @@ export interface ChurchRepository {
 
   /** 앱에 가입한 성도(계정) 수. 관리자 대시보드용. */
   countMembers(): Promise<number>;
+  /** 가입자 명단 (관리자 전용). 최근 가입 순. */
+  listMembers(): Promise<AppMember[]>;
+  /** 가입자(계정)를 삭제합니다 (관리자 전용, 서버에서 권한 확인). */
+  deleteMember(userId: string): Promise<void>;
   /** 앱에 등록된 성도를 이름으로 검색합니다(초대용, 관리자·리더만). */
   searchUsers(query: string): Promise<DirectoryUser[]>;
   /** 소통방 멤버 목록(이름·역할·알림) */

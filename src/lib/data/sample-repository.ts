@@ -14,6 +14,7 @@ import {
 import type {
   Announcement,
   AnnouncementInput,
+  AppMember,
   Bulletin,
   BulletinInput,
   ChurchRepository,
@@ -81,6 +82,14 @@ const SAMPLE_DIRECTORY: DirectoryUser[] = [
   { id: 'u-5', name: '정하윤' },
   { id: 'u-6', name: '한지훈' },
 ];
+
+// 샘플 모드 가입자 명단 (삭제 데모용으로 수정 가능)
+let sampleMembers: AppMember[] = SAMPLE_DIRECTORY.map((u, i) => ({
+  id: u.id,
+  name: u.name,
+  role: i === 0 ? 'admin' : 'member',
+  createdAt: new Date(Date.now() - i * 3 * 86400000).toISOString(),
+}));
 
 // 샘플 모드에서는 '나'를 모든 소통방의 리더로 두어 모든 기능을 미리 볼 수 있게 합니다.
 const sampleGroupMembers = (): SampleMember[] =>
@@ -617,8 +626,20 @@ export const sampleRepository: ChurchRepository = {
   async countMembers() {
     await ready();
     await delay(80);
-    // 샘플 모드에서는 예시 가입자 수를 보여 줍니다.
-    return SAMPLE_DIRECTORY.length;
+    return sampleMembers.length;
+  },
+
+  async listMembers() {
+    await ready();
+    await delay(120);
+    return [...sampleMembers].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  },
+
+  async deleteMember(userId: string) {
+    await ready();
+    await delay();
+    if (userId === SAMPLE_ME.id) throw new Error('본인 계정은 삭제할 수 없습니다.');
+    sampleMembers = sampleMembers.filter((m) => m.id !== userId);
   },
 
   async searchUsers(query: string) {

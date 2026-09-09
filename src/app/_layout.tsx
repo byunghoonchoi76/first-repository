@@ -108,6 +108,7 @@ function RootNavigator() {
       <Stack.Screen name="reminders" options={{ title: '기도 알림' }} />
       <Stack.Screen name="sign-in" options={{ title: '로그인', presentation: 'modal' }} />
       <Stack.Screen name="admin/index" options={{ title: '관리자' }} />
+      <Stack.Screen name="admin/members" options={{ title: '가입자 현황' }} />
       <Stack.Screen name="admin/bulletin/[id]" options={{ title: '주보 등록' }} />
       <Stack.Screen name="admin/group/[id]" options={{ title: '소통방 등록' }} />
       <Stack.Screen name="admin/staff/[id]" options={{ title: '섬기는 분 등록' }} />

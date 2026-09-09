@@ -688,6 +688,26 @@ export const supabaseRepository: ChurchRepository = {
     return res.count ?? 0;
   },
 
+  async listMembers() {
+    const sb = requireSupabase();
+    const res = await sb.from('profiles').select('id, name, role, created_at').order('created_at', { ascending: false });
+    if (res.error) throw new Error(res.error.message);
+    return ((res.data ?? []) as { id: string; name: string; role: string; created_at: string }[]).map((r) => ({
+      id: r.id,
+      name: r.name,
+      role: (r.role === 'admin' ? 'admin' : 'member') as 'admin' | 'member',
+      createdAt: r.created_at,
+    }));
+  },
+
+  async deleteMember(userId: string) {
+    const sb = requireSupabase();
+    const { data, error } = await sb.functions.invoke('admin-delete-user', { body: { userId } });
+    if (error) throw new Error(error.message);
+    const res = data as { ok?: boolean; error?: string };
+    if (!res?.ok) throw new Error(res?.error ?? '삭제하지 못했습니다.');
+  },
+
   async searchUsers(query) {
     const sb = requireSupabase();
     const q = query.trim();
