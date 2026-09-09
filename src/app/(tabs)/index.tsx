@@ -40,6 +40,7 @@ export default function HomeScreen() {
   const profile = useAsyncData(() => repository.getChurchProfile());
   const bulletin = useAsyncData(() => repository.getLatestBulletin());
   const sermons = useAsyncData(() => repository.listSermons());
+  const channel = useAsyncData(() => repository.listChannelVideos());
   const announcements = useAsyncData(() => repository.listAnnouncements());
 
   const loading = profile.loading || bulletin.loading || announcements.loading;
@@ -49,6 +50,7 @@ export default function HomeScreen() {
     profile.reload();
     bulletin.reload();
     sermons.reload();
+    channel.reload();
     announcements.reload();
   };
 
@@ -71,6 +73,43 @@ export default function HomeScreen() {
   const topAnnouncements = (announcements.data ?? []).slice(0, 5);
   const latestSermon = sermons.data?.[0];
   const dailyVerse = todaysVerse();
+
+  // '이번 주 말씀' = 교회 유튜브 채널의 가장 최신 영상(쇼츠 포함). 채널을 못 불러오면 최신 등록 설교로 대체.
+  const newestVideo = [...(channel.data ?? [])].sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))[0];
+  let featured: {
+    mediaUrl: string;
+    fallbackTitle: string;
+    thumbnail?: string;
+    subtitle: string;
+    onPress: () => void;
+  } | null = null;
+  if (newestVideo) {
+    // 이미 설교로 등록된 영상이면 그 설교 상세로, 아니면 인앱 재생 화면으로 연결합니다.
+    const registered = (sermons.data ?? []).find(
+      (s) => parseYouTubeUrl(s.mediaUrl)?.videoId === newestVideo.videoId,
+    );
+    featured = {
+      mediaUrl: `https://www.youtube.com/watch?v=${newestVideo.videoId}`,
+      fallbackTitle: registered?.title || newestVideo.title,
+      thumbnail: newestVideo.thumbnail || youtubeThumbnail(newestVideo.videoId),
+      subtitle: registered
+        ? [registered.scripture, registered.preacher].filter(Boolean).join(' · ')
+        : newestVideo.publishedAt
+          ? formatDate(newestVideo.publishedAt.slice(0, 10))
+          : '',
+      onPress: () =>
+        registered ? router.push(`/sermons/${registered.id}`) : router.push(`/watch/${newestVideo.videoId}`),
+    };
+  } else if (latestSermon) {
+    const video = parseYouTubeUrl(latestSermon.mediaUrl);
+    featured = {
+      mediaUrl: latestSermon.mediaUrl,
+      fallbackTitle: latestSermon.title,
+      thumbnail: latestSermon.thumbnailUrl ?? (video ? youtubeThumbnail(video.videoId) : undefined),
+      subtitle: [latestSermon.scripture, latestSermon.preacher].filter(Boolean).join(' · '),
+      onPress: () => router.push(`/sermons/${latestSermon.id}`),
+    };
+  }
 
   const openLive = () => {
     // 방송 중이면 그 라이브 영상으로 바로, 아니면 채널의 실시간/다시보기 목록으로.
@@ -102,8 +141,8 @@ export default function HomeScreen() {
         </ThemedText>
       </HeroBanner>
 
-      {/* 이번 주 말씀 (최신 설교) */}
-      {latestSermon ? <WeeklyMessage sermon={latestSermon} onPress={() => router.push(`/sermons/${latestSermon.id}`)} /> : null}
+      {/* 이번 주 말씀 — 교회 유튜브 채널 최신 영상 */}
+      {featured ? <WeeklyMessage {...featured} /> : null}
 
       {/* 빠른 메뉴 */}
       <View style={styles.quickRow}>
@@ -232,18 +271,28 @@ export default function HomeScreen() {
   );
 }
 
-/** 이번 주 말씀 — 설교 썸네일 + 재생 */
-function WeeklyMessage({ sermon, onPress }: { sermon: Sermon; onPress: () => void }) {
+/** 이번 주 말씀 — 최신 영상 썸네일 + 재생 */
+function WeeklyMessage({
+  mediaUrl,
+  fallbackTitle,
+  thumbnail,
+  subtitle,
+  onPress,
+}: {
+  mediaUrl: string;
+  fallbackTitle: string;
+  thumbnail?: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
   const theme = useTheme();
-  const video = parseYouTubeUrl(sermon.mediaUrl);
-  const title = useYouTubeTitle(sermon.mediaUrl, sermon.title, '이번 주 말씀');
-  const thumb = sermon.thumbnailUrl ?? (video ? youtubeThumbnail(video.videoId) : undefined);
+  const title = useYouTubeTitle(mediaUrl, fallbackTitle, '이번 주 말씀');
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
       <Card style={styles.weekly}>
         <View style={[styles.weeklyThumb, { backgroundColor: theme.backgroundSelected }]}>
-          {thumb ? <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+          {thumbnail ? <Image source={{ uri: thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
           <View style={styles.playDot}>
             <Ionicons name="play" size={16} color="#fff" />
           </View>
@@ -258,9 +307,11 @@ function WeeklyMessage({ sermon, onPress }: { sermon: Sermon; onPress: () => voi
           <ThemedText type="smallBold" numberOfLines={2}>
             {title}
           </ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-            {[sermon.scripture, sermon.preacher].filter(Boolean).join(' · ')}
-          </ThemedText>
+          {subtitle ? (
+            <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+              {subtitle}
+            </ThemedText>
+          ) : null}
         </View>
       </Card>
     </Pressable>
