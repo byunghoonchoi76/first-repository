@@ -49,10 +49,13 @@ export default function SermonsScreen() {
   const sermons = useAsyncData(() => repository.listSermons());
   const channel = useAsyncData(() => repository.listChannelVideos());
 
+  // reload 함수는 useAsyncData 안에서 안정적(useCallback)이라 의존성으로 안전합니다.
+  const reloadSermons = sermons.reload;
+  const reloadChannel = channel.reload;
   const reloadAll = useCallback(() => {
-    sermons.reload();
-    channel.reload();
-  }, [sermons, channel]);
+    reloadSermons();
+    reloadChannel();
+  }, [reloadSermons, reloadChannel]);
 
   useFocusEffect(
     useCallback(() => {

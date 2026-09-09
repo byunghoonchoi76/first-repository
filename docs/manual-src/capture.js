@@ -78,7 +78,7 @@ async function shot(page, base, route, name, opts = {}) {
     const page = await ctx.newPage();
     await shot(page, base, '/', 'home');
     await shot(page, base, '/news', 'news');
-    await shot(page, base, '/sermons', 'sermons');
+    await shot(page, base, '/sermons', 'sermons', { wait: 4200 });
     await shot(page, base, '/prayer', 'prayer_personal', { wait: 3200 });
     // 기도 화면 아래쪽 (10일 평균 + 기도 시작 + 기도 알림 카드)
     await shot(page, base, '/prayer', 'prayer_bottom', { wait: 3000, before: async (p) => {
@@ -112,6 +112,7 @@ async function shot(page, base, route, name, opts = {}) {
     const ctx = await newCtx(browser, ADMIN);
     const page = await ctx.newPage();
     await shot(page, base, '/admin', 'admin_home');
+    await shot(page, base, '/admin/members', 'admin_members');
     await shot(page, base, '/admin/announcement/new', 'admin_announcement');
     await shot(page, base, '/admin/new-families', 'admin_newfamilies');
     await ctx.close();

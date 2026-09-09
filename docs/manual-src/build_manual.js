@@ -68,13 +68,15 @@ sections.push(section({ badge: '📣', color: TEAL, kicker: '아래 탭 · 소�
     { t: '**공지 · 행사 · 소식**으로 분류되고, 맨 위가 가장 최근입니다.' },
   ]) }));
 
-// 4. 설교
-sections.push(section({ badge: '▶', color: TEAL, kicker: '아래 탭 · 설교', title: '설교',
-  body: phone('sermons.png', '설교') + desc([
-    { t: '설교 영상을 모아 보는 곳입니다.' },
-    { t: '설교를 누르면 **영상과 본문·설교자** 정보를 볼 수 있어요.' },
-    { t: '재생 버튼으로 **유튜브 영상을 앱 안에서 바로** 시청합니다. (쇼츠는 세로 화면)' },
-  ]) }));
+// 4. 설교 (유튜브 자동 연동)
+sections.push(section({ badge: '▶', color: TEAL, kicker: '아래 탭 · 설교', title: '설교 (유튜브 자동 연동)',
+  body: phone('sermons.png', '설교 — 카테고리 자동 분류') + desc([
+    { t: '교회 유튜브 채널 영상이 **자동으로** 나타납니다. (URL 복사·붙여넣기 불필요)' },
+    { t: '제목을 읽어 **카테고리로 자동 분류**해요: [[주일예배]] [[새벽예배]] [[수요예배]] [[금요집회]] [[찬양]] [[쇼츠]]' },
+    { t: '위쪽 **카테고리 칩**으로 원하는 종류만 골라 보고, 항상 **최신순**으로 정렬됩니다.' },
+    { t: '누르면 **유튜브 영상을 앱 안에서 바로** 시청합니다. (쇼츠는 세로 화면)' },
+    { t: '홈 화면 **‘이번 주 말씀’**에도 채널의 **가장 최신 영상**이 자동으로 표시됩니다.' },
+  ]) + tip('🛠 관리자는 설교 등록 화면의 **‘유튜브에서 불러오기’** 로 영상을 골라 제목·날짜·주소를 자동으로 채우고, 설교자·본문만 더하면 됩니다.') }));
 
 // 5. 기도 (개편)
 sections.push(section({ badge: '🙏', color: NAVY, kicker: '아래 탭 · 기도', title: '기도',
@@ -167,11 +169,14 @@ sections.push(section({ badge: '⋯', color: BROWN, kicker: '오른쪽 위 · �
 // 12. 관리자
 sections.push(section({ badge: '🛠', color: NAVY, kicker: '관리자 전용', title: '관리자 기능',
   body: phones([
-    { src: 'admin_home.png', cap: '관리자 홈 · 전체 관리' }, { src: 'admin_announcement.png', cap: '공지 작성 화면' }, { src: 'admin_newfamilies.png', cap: '새가족 명단' },
+    { src: 'admin_home.png', cap: '관리자 홈 · 관리 현황' }, { src: 'admin_members.png', cap: '가입자 현황 · 삭제' }, { src: 'admin_announcement.png', cap: '공지 작성 화면' }, { src: 'admin_newfamilies.png', cap: '새가족 명단' },
   ]) + desc([
     { t: '**관리자 계정**으로 로그인하면, 각 화면에서 내용을 직접 등록·수정할 수 있어요.' },
-    { t: '**더보기 → 관리자 화면 열기**에서 전체 관리로 들어갑니다. 맨 위 **관리 현황**에서 주보·공지·소통방·섬김·설교 개수를 한눈에 봅니다.' },
+    { t: '**더보기 → 관리자 화면 열기**에서 전체 관리로 들어갑니다. 맨 위 **관리 현황**에서 주보·공지·소통방·가입자·설교 개수를 한눈에 봅니다.' },
     { t: '주보·공지(소식)·설교·섬기는 사람들·공동 기도제목을 **추가·수정·삭제**.' },
+    { h: '가입자 현황·삭제' },
+    { t: '관리 현황의 **가입자** 숫자를 누르면 **가입자 명단**(이름·역할·가입일)이 열립니다.' },
+    { t: '각 성도의 **휴지통**으로 계정을 **삭제**할 수 있어요. (계정·개인 기록이 함께 삭제, 본인 계정은 삭제 불가)' },
     { h: '소통방 만들기' },
     { t: '**소통방 → 새로 등록**에서 방을 만들고, 성도를 검색해 **리더를 지정**합니다. 이후 초대·대화는 리더와 멤버가 진행합니다.' },
     { t: '새가족 등록 명단은 **관리자만** 볼 수 있어요.' },
@@ -207,7 +212,7 @@ const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>
   .tip .chip { background:#eee2c9; border-color:#e4d5b4; color:#6a5836; }
   .foot { text-align:center; color:#8a97a1; font-size: 9.5pt; margin-top: 8px; line-height:1.7; }
 </style></head><body>
-  <div class="cover"><div class="logo">⛪</div><h1>구리 목양교회 앱 사용설명서</h1><div class="sub">화면별 사용 안내 · 2026-09-08</div></div>
+  <div class="cover"><div class="logo">⛪</div><h1>구리 목양교회 앱 사용설명서</h1><div class="sub">화면별 사용 안내 · 2026-09-09</div></div>
   <div class="intro">화면별로 어떻게 쓰는지 하나씩 안내해 드립니다.</div>
   ${sections.join('\n')}
   <div class="foot">구리 목양교회 · 031-551-1004<br>사용 중 궁금한 점은 교회 사무실로 문의해 주세요.</div>
