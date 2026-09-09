@@ -614,6 +614,13 @@ export const sampleRepository: ChurchRepository = {
     return clone(created);
   },
 
+  async countMembers() {
+    await ready();
+    await delay(80);
+    // 샘플 모드에서는 예시 가입자 수를 보여 줍니다.
+    return SAMPLE_DIRECTORY.length;
+  },
+
   async searchUsers(query: string) {
     await ready();
     await delay(120);

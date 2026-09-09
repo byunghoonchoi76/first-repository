@@ -334,6 +334,8 @@ export interface ChurchRepository {
   listGroupMessages(groupId: string): Promise<GroupMessage[]>;
   sendGroupMessage(groupId: string, author: string, body: string): Promise<GroupMessage>;
 
+  /** 앱에 가입한 성도(계정) 수. 관리자 대시보드용. */
+  countMembers(): Promise<number>;
   /** 앱에 등록된 성도를 이름으로 검색합니다(초대용, 관리자·리더만). */
   searchUsers(query: string): Promise<DirectoryUser[]>;
   /** 소통방 멤버 목록(이름·역할·알림) */

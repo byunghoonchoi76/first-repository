@@ -21,6 +21,7 @@ export default function AdminHomeScreen() {
   const staff = useAsyncData(() => repository.listStaff());
   const announcements = useAsyncData(() => repository.listAnnouncements());
   const sermons = useAsyncData(() => repository.listSermons());
+  const memberCount = useAsyncData(() => repository.countMembers());
 
   const reloadAll = useCallback(() => {
     bulletins.reload();
@@ -28,7 +29,8 @@ export default function AdminHomeScreen() {
     staff.reload();
     announcements.reload();
     sermons.reload();
-  }, [bulletins, groups, staff, announcements, sermons]);
+    memberCount.reload();
+  }, [bulletins, groups, staff, announcements, sermons, memberCount]);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,7 +52,7 @@ export default function AdminHomeScreen() {
     { label: '주보', value: (bulletins.data ?? []).length, icon: 'book-outline' },
     { label: '공지', value: (announcements.data ?? []).length, icon: 'document-text-outline' },
     { label: '소통방', value: (groups.data ?? []).length, icon: 'people-outline' },
-    { label: '섬김', value: (staff.data ?? []).length, icon: 'person-outline' },
+    { label: '가입자', value: memberCount.data ?? 0, icon: 'person-add-outline' },
     { label: '설교', value: (sermons.data ?? []).length, icon: 'play-circle-outline' },
   ];
 

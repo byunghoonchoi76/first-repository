@@ -681,6 +681,13 @@ export const supabaseRepository: ChurchRepository = {
     return message;
   },
 
+  async countMembers() {
+    const sb = requireSupabase();
+    const res = await sb.from('profiles').select('id', { count: 'exact', head: true });
+    if (res.error) return 0;
+    return res.count ?? 0;
+  },
+
   async searchUsers(query) {
     const sb = requireSupabase();
     const q = query.trim();
