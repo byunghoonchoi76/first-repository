@@ -73,9 +73,9 @@ export type SermonCategory =
   | '새벽예배'
   | '수요예배'
   | '금요집회'
+  | '청년예배'
   | '찬양'
-  | '쇼츠'
-  | '기타';
+  | '쇼츠';
 
 /** 카테고리 표시 순서 (필터 칩 정렬용) */
 export const SERMON_CATEGORY_ORDER: SermonCategory[] = [
@@ -84,9 +84,9 @@ export const SERMON_CATEGORY_ORDER: SermonCategory[] = [
   '새벽예배',
   '수요예배',
   '금요집회',
+  '청년예배',
   '찬양',
   '쇼츠',
-  '기타',
 ];
 
 /**
@@ -103,8 +103,10 @@ export function classifyChurchVideo(title: string, isShorts = false): SermonCate
   if (/(찬양대|성가대|특송|성가곡|워십팀)/.test(t)) return '찬양';
   // 주일 저녁(오후) 예배 · 찬양예배는 '주일 저녁예배'로 묶습니다.
   if (/(저녁예배|찬양예배|오후예배)/.test(t)) return '주일 저녁예배';
-  if (/주일|주보|1부|2부|3부|4부|오전예배/.test(t)) return '주일예배';
-  return '기타';
+  // 4부예배·청년 관련은 청년예배로 (주일 판별보다 먼저).
+  if (/(4부|사부|청년|only ?one|온리원)/i.test(t)) return '청년예배';
+  if (/주일|주보|1부|2부|3부|오전예배/.test(t)) return '주일예배';
+  return '청년예배';
 }
 
 // 같은 영상을 여러 화면에서 열어도 한 번만 불러오도록 기억해 둡니다.
