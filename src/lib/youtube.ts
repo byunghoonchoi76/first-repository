@@ -67,11 +67,20 @@ export function youtubeThumbnail(videoId: string): string {
 }
 
 /** 설교 카테고리 — 화면 필터·배지에 쓰는 표준 분류 */
-export type SermonCategory = '주일예배' | '새벽예배' | '수요예배' | '금요집회' | '찬양' | '쇼츠' | '기타';
+export type SermonCategory =
+  | '주일예배'
+  | '주일 저녁예배'
+  | '새벽예배'
+  | '수요예배'
+  | '금요집회'
+  | '찬양'
+  | '쇼츠'
+  | '기타';
 
 /** 카테고리 표시 순서 (필터 칩 정렬용) */
 export const SERMON_CATEGORY_ORDER: SermonCategory[] = [
   '주일예배',
+  '주일 저녁예배',
   '새벽예배',
   '수요예배',
   '금요집회',
@@ -92,7 +101,9 @@ export function classifyChurchVideo(title: string, isShorts = false): SermonCate
   if (/금요/.test(t)) return '금요집회';
   // 찬양대·성가대·특송 등 '찬양 순서'만 찬양으로 분류합니다. ('찬양예배'는 예배이므로 제외)
   if (/(찬양대|성가대|특송|성가곡|워십팀)/.test(t)) return '찬양';
-  if (/주일|주보|1부|2부|3부|4부|오전예배|오후예배|찬양예배/.test(t)) return '주일예배';
+  // 주일 저녁(오후) 예배 · 찬양예배는 '주일 저녁예배'로 묶습니다.
+  if (/(저녁예배|찬양예배|오후예배)/.test(t)) return '주일 저녁예배';
+  if (/주일|주보|1부|2부|3부|4부|오전예배/.test(t)) return '주일예배';
   return '기타';
 }
 

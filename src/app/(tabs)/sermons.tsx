@@ -105,7 +105,10 @@ export default function SermonsScreen() {
         onRegister: () => router.push(`/admin/sermon/new?videoId=${v.videoId}`),
       }));
 
-    return [...fromSermons, ...fromChannel].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    // 찬양대·성가대 특송 영상은 설교 목록에 넣지 않습니다.
+    return [...fromSermons, ...fromChannel]
+      .filter((e) => e.category !== '찬양')
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   }, [sermons.data, channel.data, router]);
 
   const categories = useMemo(() => {
