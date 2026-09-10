@@ -20,7 +20,7 @@ import { formatDate, formatFullDate, minutesLabel } from '@/lib/format';
 import { useLiveStatus } from '@/lib/live-status';
 import { usePrayerTime } from '@/lib/prayer-log';
 import { useYouTubeTitle } from '@/lib/use-youtube-title';
-import { parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
+import { classifyChurchVideo, parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -74,8 +74,11 @@ export default function HomeScreen() {
   const latestSermon = sermons.data?.[0];
   const dailyVerse = todaysVerse();
 
-  // '이번 주 말씀' = 교회 유튜브 채널의 가장 최신 영상(쇼츠 포함). 채널을 못 불러오면 최신 등록 설교로 대체.
-  const newestVideo = [...(channel.data ?? [])].sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))[0];
+  // '이번 주 말씀' = 교회 유튜브 채널의 가장 최신 예배 영상. 찬양대(찬양) 영상은 제외합니다.
+  // 채널을 못 불러오면 최신 등록 설교로 대체.
+  const newestVideo = [...(channel.data ?? [])]
+    .filter((v) => classifyChurchVideo(v.title) !== '찬양')
+    .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))[0];
   let featured: {
     mediaUrl: string;
     fallbackTitle: string;
