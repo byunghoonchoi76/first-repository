@@ -34,12 +34,10 @@ interface Video {
 }
 
 /**
- * 영상이 쇼츠인지 확인합니다.
- * 유튜브 Data API 는 쇼츠 여부를 알려주지 않으므로, '/shorts/{id}' 주소가
- * 리다이렉트되는지로 판별합니다. (쇼츠면 200, 일반 영상이면 watch 로 리다이렉트)
- * 실패하면 false 로 두어 제목 기반 판별에 맡깁니다.
+ * '/shorts/{id}' 주소가 리다이렉트되는지로 '유튜브 쇼츠 등록' 여부를 봅니다.
+ * (쇼츠면 200, 일반 영상이면 watch 로 리다이렉트)
  */
-async function detectShort(videoId: string): Promise<boolean> {
+async function probeShortsUrl(videoId: string): Promise<boolean> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
@@ -48,13 +46,69 @@ async function detectShort(videoId: string): Promise<boolean> {
       redirect: 'manual',
       signal: controller.signal,
     });
-    // 200 = 쇼츠로 그대로 열림 / 3xx = 일반 영상(watch 로 이동)
     return res.status >= 200 && res.status < 300;
   } catch {
     return false;
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** JPEG 바이트에서 실제 가로·세로 픽셀 크기를 읽습니다. (SOF 마커) */
+function readJpegSize(buf: Uint8Array): { w: number; h: number } | null {
+  if (buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) {
+      i++;
+      continue;
+    }
+    const marker = buf[i + 1];
+    // SOF0~SOF15 (해상도 정보). DHT(C4)·DAC(CC)·RSTn 은 제외.
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      const h = (buf[i + 5] << 8) | buf[i + 6];
+      const w = (buf[i + 7] << 8) | buf[i + 8];
+      return { w, h };
+    }
+    const len = (buf[i + 2] << 8) | buf[i + 3];
+    if (len <= 0) break;
+    i += 2 + len;
+  }
+  return null;
+}
+
+/**
+ * 원본 비율(oardefault) 썸네일을 읽어 9:16 등 '세로 영상'인지 판별합니다.
+ * 이 썸네일은 영상이 16:9 가 아닐 때만 생성되므로, 존재하고 세로이면 쇼츠로 봅니다.
+ */
+async function probeVertical(videoId: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`https://i.ytimg.com/vi/${videoId}/oardefault.jpg`, {
+      signal: controller.signal,
+    });
+    if (!res.ok) return false;
+    const size = readJpegSize(new Uint8Array(await res.arrayBuffer()));
+    return Boolean(size && size.h > size.w);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * 영상이 쇼츠인지 확인합니다. 유튜브 Data API 는 쇼츠 여부를 알려주지 않으므로
+ * ① 쇼츠 URL 리다이렉트, ② 실제 세로(9:16) 비율 두 신호로 판별합니다.
+ * 둘 다 실패하면 false 로 두어 제목 기반 판별에 맡깁니다.
+ */
+async function detectShort(videoId: string): Promise<boolean> {
+  const [isShortsUrl, isVertical] = await Promise.all([
+    probeShortsUrl(videoId),
+    probeVertical(videoId),
+  ]);
+  return isShortsUrl || isVertical;
 }
 
 let cache: { at: number; data: Video[] } | null = null;
