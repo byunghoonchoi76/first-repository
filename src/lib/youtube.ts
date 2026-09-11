@@ -69,6 +69,7 @@ export function youtubeThumbnail(videoId: string): string {
 /** 설교 카테고리 — 화면 필터·배지에 쓰는 표준 분류 */
 export type SermonCategory =
   | '주일예배'
+  | '실시간'
   | '주일 저녁예배'
   | '새벽예배'
   | '수요예배'
@@ -80,6 +81,7 @@ export type SermonCategory =
 /** 카테고리 표시 순서 (필터 칩 정렬용) */
 export const SERMON_CATEGORY_ORDER: SermonCategory[] = [
   '주일예배',
+  '실시간',
   '주일 저녁예배',
   '새벽예배',
   '수요예배',
@@ -96,6 +98,8 @@ export const SERMON_CATEGORY_ORDER: SermonCategory[] = [
 export function classifyChurchVideo(title: string, isShorts = false): SermonCategory {
   const t = (title ?? '').replace(/\s/g, '');
   if (isShorts || /#?shorts|쇼츠/i.test(title ?? '')) return '쇼츠';
+  // 제목에 '실시간'이 들어간 영상(실시간 중계본)은 별도 카테고리로 분리합니다.
+  if (/실시간/.test(t)) return '실시간';
   if (/새벽/.test(t)) return '새벽예배';
   if (/수요/.test(t)) return '수요예배';
   if (/금요/.test(t)) return '금요집회';
