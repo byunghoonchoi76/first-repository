@@ -17,13 +17,14 @@ const API_KEY = Deno.env.get('YOUTUBE_API_KEY') ?? '';
 const CHANNEL_ID = Deno.env.get('YT_CHANNEL_ID') ?? '';
 
 // 여러 사람이 동시에 열어도 유튜브를 자주 두드리지 않도록 결과를 재사용합니다.
-// 예배 시간대에만 확인하며, 5분마다 한 번씩만 유튜브를 조회해 무료 할당량을 넉넉히 지킵니다.
-// (방송 시작 후 최대 5분 안에 배지가 켜집니다.)
-const CACHE_TTL_MS = 300_000;
+// 상태에 따라 재확인 주기를 다르게 둡니다(반응성 ↔ 할당량 균형).
+const TTL_LIVE_MS = 120_000; // 방송 중: 2분마다 재확인(종료를 빨리 감지)
+const TTL_WINDOW_MS = 300_000; // 예배 시간대(방송 아님): 5분마다 재확인(시작을 빨리 감지)
+const TTL_IDLE_MS = 900_000; // 그 외 시간대(방송 아님): 15분마다 재확인
 
 // ── 예배 시간대(Asia/Seoul) ──────────────────────────────────────
-// 이 시간대에만 유튜브 라이브를 자동으로 확인합니다(무료 할당량 절약 + 예배만 표시).
-// 기타/불특정 집회는 앱의 관리자 '강제 켜기' 스위치로 표시하세요.
+// 이 시간대에는 더 자주 확인합니다(예정된 예배 시작을 빨리 감지). 시간대와 무관하게
+// 스크랩으로는 항상 확인하므로, 예정에 없던 스트리밍·특별집회도 배지가 켜집니다.
 // day: 0=일 1=월 2=화 3=수 4=목 5=금 6=토
 const SERVICES: { day: number; h: number; m: number }[] = [
   // 주일 예배
@@ -33,8 +34,8 @@ const SERVICES: { day: number; h: number; m: number }[] = [
   // 수요예배 / 금요집회
   { day: 3, h: 19, m: 0 }, { day: 5, h: 20, m: 0 },
 ];
-const PRE_MIN = 5; // 예배 시작 5분 전부터 확인
-const POST_MIN = 45; // 시작 후 45분까지 '시작 감지'(방송이 잡히면 끝날 때까지 계속 따라감)
+const PRE_MIN = 10; // 예배 시작 10분 전부터 자주 확인
+const POST_MIN = 180; // 시작 후 3시간까지 예배 시간대로 보고 자주 확인
 
 const WD: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 function nowSeoul(): { weekday: number; minutes: number } {
@@ -168,43 +169,61 @@ async function checkViaScrape(): Promise<LiveStatus> {
   };
 }
 
-async function getStatus(): Promise<LiveStatus> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.data;
-
-  // 예배 시간대가 아니고, 직전에 방송 중이지도 않으면 유튜브를 조회하지 않습니다(할당량 절약).
-  const following = cache?.data.live === true; // 방송 중이면 끝날 때까지 계속 확인
-  if (!inServiceWindow() && !following) {
-    const off: LiveStatus = {
-      live: false,
-      videoId: null,
-      watchUrl: null,
-      title: null,
-      source: API_KEY ? 'api' : 'scrape',
-      checkedAt: new Date().toISOString(),
-      keyed: Boolean(API_KEY),
-      note: '예배 시간대가 아니어서 유튜브를 확인하지 않았습니다. (기타 집회는 관리자 강제 켜기 사용)',
-    };
-    cache = { at: Date.now(), data: off };
-    return off;
-  }
-
-  let data: LiveStatus;
+async function safeScrape(): Promise<LiveStatus> {
   try {
-    data = API_KEY ? await checkViaApi() : await checkViaScrape();
+    return await checkViaScrape();
   } catch (e) {
-    // 확인에 실패하면 '방송 아님'으로 안전하게 처리합니다(배지를 잘못 켜지 않도록).
-    data = {
+    return {
       live: false,
       videoId: null,
       watchUrl: null,
       title: null,
-      source: API_KEY ? 'api' : 'scrape',
+      source: 'scrape',
       checkedAt: new Date().toISOString(),
-      note: `확인 중 오류: ${e instanceof Error ? e.message : String(e)}`,
+      httpStatus: 0,
+      note: `스크랩 확인 오류: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
+}
+
+async function safeApi(): Promise<LiveStatus | null> {
+  try {
+    return await checkViaApi();
+  } catch {
+    return null;
+  }
+}
+
+async function getStatus(): Promise<LiveStatus> {
+  const prev = cache?.data ?? null;
+  const wasLive = prev?.live === true;
+
+  // 상태별로 재확인 주기를 다르게 둡니다.
+  const ttl = wasLive ? TTL_LIVE_MS : inServiceWindow() ? TTL_WINDOW_MS : TTL_IDLE_MS;
+  if (cache && Date.now() - cache.at < ttl) return cache.data;
+
+  // 1) 무료 스크랩으로 항상 확인합니다(예배 시간대와 무관 → 예정에 없던 스트리밍도 감지).
+  let data = await safeScrape();
+
+  // 2) 스크랩이 방송을 못 찾았는데 페이지가 차단(비200)돼 불확실하면, 키가 있을 때 공식 API로 보조 확인.
+  //    (스크랩이 정상(200)인데 방송이 없으면 진짜 방송 아님이므로 할당량을 아껴 API 를 부르지 않습니다.)
+  if (!data.live && API_KEY && data.httpStatus !== 200) {
+    const viaApi = await safeApi();
+    if (viaApi) data = viaApi;
+  }
+
+  // 3) 그래도 불확실(스크랩 차단 + API 확인 불가)한데 직전이 방송 중이었다면 이전 상태를 유지합니다.
+  //    → 일시적 확인 실패로 방송 중 배지가 꺼지지 않게(방송이 끝날 때까지 유지).
+  const unresolved = !data.live && data.source === 'scrape' && data.httpStatus !== 200;
+  if (unresolved && wasLive && prev) {
+    data = {
+      ...prev,
+      checkedAt: new Date().toISOString(),
+      note: '일시적으로 확인하지 못해 이전 방송 상태를 유지합니다.',
+    };
+  }
+
   data.keyed = Boolean(API_KEY);
-  data.note = data.note ?? undefined;
   cache = { at: Date.now(), data };
   return data;
 }
