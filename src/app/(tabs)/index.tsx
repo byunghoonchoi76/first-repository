@@ -77,7 +77,11 @@ export default function HomeScreen() {
   // '이번 주 말씀' = 교회 유튜브 채널의 가장 최신 예배 영상. 찬양대(찬양) 영상은 제외합니다.
   // 채널을 못 불러오면 최신 등록 설교로 대체.
   const newestVideo = [...(channel.data ?? [])]
-    .filter((v) => classifyChurchVideo(v.title) !== '찬양')
+    .filter((v) => {
+      const c = classifyChurchVideo(v.title, v.isShort);
+      // 찬양대 특송·쇼츠는 '이번 주 말씀'에 올리지 않습니다.
+      return c !== '찬양' && c !== '쇼츠';
+    })
     .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))[0];
   let featured: {
     mediaUrl: string;

@@ -95,7 +95,7 @@ export default function SermonsScreen() {
       .filter((v) => !registeredIds.has(v.videoId))
       .map((v) => ({
         key: `c-${v.videoId}`,
-        category: classifyChurchVideo(v.title),
+        category: classifyChurchVideo(v.title, v.isShort),
         title: v.title,
         date: (v.publishedAt || '').slice(0, 10),
         mediaUrl: `https://www.youtube.com/watch?v=${v.videoId}`,

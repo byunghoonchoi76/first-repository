@@ -151,6 +151,8 @@ export interface ChannelVideo {
   publishedAt: string;
   thumbnail: string;
   description: string;
+  /** 유튜브 쇼츠(세로 단편) 여부 — '쇼츠' 카테고리로만 분류합니다. */
+  isShort?: boolean;
 }
 
 export interface PrayerRequest {

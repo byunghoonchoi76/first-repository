@@ -29,6 +29,32 @@ interface Video {
   publishedAt: string;
   thumbnail: string;
   description: string;
+  /** 유튜브 쇼츠(세로 단편) 여부 — 앱에서 '쇼츠' 카테고리로만 분류하는 데 씁니다. */
+  isShort: boolean;
+}
+
+/**
+ * 영상이 쇼츠인지 확인합니다.
+ * 유튜브 Data API 는 쇼츠 여부를 알려주지 않으므로, '/shorts/{id}' 주소가
+ * 리다이렉트되는지로 판별합니다. (쇼츠면 200, 일반 영상이면 watch 로 리다이렉트)
+ * 실패하면 false 로 두어 제목 기반 판별에 맡깁니다.
+ */
+async function detectShort(videoId: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
+      method: 'HEAD',
+      redirect: 'manual',
+      signal: controller.signal,
+    });
+    // 200 = 쇼츠로 그대로 열림 / 3xx = 일반 영상(watch 로 이동)
+    return res.status >= 200 && res.status < 300;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 let cache: { at: number; data: Video[] } | null = null;
@@ -83,9 +109,16 @@ async function getVideos(): Promise<Video[]> {
         publishedAt: String(sn.publishedAt ?? ''),
         thumbnail: thumb,
         description: String(sn.description ?? '').slice(0, 500),
+        isShort: false,
       };
     })
     .filter((v) => v.videoId && v.title !== 'Private video' && v.title !== 'Deleted video');
+
+  // 각 영상이 쇼츠인지 병렬로 확인해 표시합니다.
+  const shortFlags = await Promise.all(videos.map((v) => detectShort(v.videoId)));
+  videos.forEach((v, i) => {
+    v.isShort = shortFlags[i];
+  });
 
   cache = { at: Date.now(), data: videos };
   return videos;

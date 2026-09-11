@@ -540,9 +540,10 @@ export const sampleRepository: ChurchRepository = {
       return d.toISOString();
     };
     return [
-      { videoId: 'dQw4w9WgXcQ', title: '주일예배 | 늘 함께하시는 하나님', publishedAt: iso(1), thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg', description: '' },
-      { videoId: 'M7lc1UVf-VE', title: '수요부흥예배 | 기도의 능력', publishedAt: iso(4), thumbnail: 'https://i.ytimg.com/vi/M7lc1UVf-VE/mqdefault.jpg', description: '' },
-      { videoId: 'ScMzIvxBSi4', title: '새벽예배 | 말씀 앞에 서다', publishedAt: iso(6), thumbnail: 'https://i.ytimg.com/vi/ScMzIvxBSi4/mqdefault.jpg', description: '' },
+      { videoId: 'dQw4w9WgXcQ', title: '주일예배 | 늘 함께하시는 하나님', publishedAt: iso(1), thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg', description: '', isShort: false },
+      { videoId: 'M7lc1UVf-VE', title: '수요부흥예배 | 기도의 능력', publishedAt: iso(4), thumbnail: 'https://i.ytimg.com/vi/M7lc1UVf-VE/mqdefault.jpg', description: '', isShort: false },
+      { videoId: 'ScMzIvxBSi4', title: '새벽예배 | 말씀 앞에 서다', publishedAt: iso(6), thumbnail: 'https://i.ytimg.com/vi/ScMzIvxBSi4/mqdefault.jpg', description: '', isShort: false },
+      { videoId: 'aqz-KE-bpKQ', title: '오늘의 은혜 한 구절', publishedAt: iso(2), thumbnail: 'https://i.ytimg.com/vi/aqz-KE-bpKQ/mqdefault.jpg', description: '', isShort: true },
     ];
   },
 
