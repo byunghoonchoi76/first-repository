@@ -76,6 +76,15 @@ interface LiveStatus {
   keyed?: boolean;
   httpStatus?: number;
   note?: string;
+  // 스크랩·API 각각의 판별 결과 (원인 파악용)
+  diag?: {
+    scrapeHttp?: number;
+    scrapeLive?: boolean;
+    apiChecked?: boolean;
+    apiLive?: boolean;
+    apiError?: string;
+    inWindow?: boolean;
+  };
 }
 
 let cache: { at: number; data: LiveStatus } | null = null;
@@ -110,6 +119,11 @@ async function checkViaApi(): Promise<LiveStatus> {
       `&eventType=live&type=video&maxResults=1&key=${API_KEY}`,
   );
   const json = await res.json();
+  // 할당량 초과·키 오류 등은 items 대신 error 로 옵니다 → 진단에 드러나게 던집니다.
+  if (json?.error) {
+    const reason = json.error?.errors?.[0]?.reason ?? json.error?.status ?? '';
+    throw new Error(`YouTube API 오류(${res.status} ${reason}): ${json.error?.message ?? ''}`.trim());
+  }
   const item = json?.items?.[0];
   const videoId: string | null = item?.id?.videoId ?? null;
   return {
@@ -186,35 +200,51 @@ async function safeScrape(): Promise<LiveStatus> {
   }
 }
 
-async function safeApi(): Promise<LiveStatus | null> {
+async function safeApi(): Promise<{ status: LiveStatus | null; error?: string }> {
   try {
-    return await checkViaApi();
-  } catch {
-    return null;
+    return { status: await checkViaApi() };
+  } catch (e) {
+    return { status: null, error: e instanceof Error ? e.message : String(e) };
   }
 }
 
 async function getStatus(): Promise<LiveStatus> {
   const prev = cache?.data ?? null;
   const wasLive = prev?.live === true;
+  const inWindow = inServiceWindow();
 
   // 상태별로 재확인 주기를 다르게 둡니다.
-  const ttl = wasLive ? TTL_LIVE_MS : inServiceWindow() ? TTL_WINDOW_MS : TTL_IDLE_MS;
+  const ttl = wasLive ? TTL_LIVE_MS : inWindow ? TTL_WINDOW_MS : TTL_IDLE_MS;
   if (cache && Date.now() - cache.at < ttl) return cache.data;
 
   // 1) 무료 스크랩으로 항상 확인합니다(예배 시간대와 무관 → 예정에 없던 스트리밍도 감지).
-  let data = await safeScrape();
+  const scrape = await safeScrape();
+  let data = scrape;
 
-  // 2) 스크랩이 방송을 못 찾았는데 페이지가 차단(비200)돼 불확실하면, 키가 있을 때 공식 API로 보조 확인.
-  //    (스크랩이 정상(200)인데 방송이 없으면 진짜 방송 아님이므로 할당량을 아껴 API 를 부르지 않습니다.)
-  if (!data.live && API_KEY && data.httpStatus !== 200) {
-    const viaApi = await safeApi();
-    if (viaApi) data = viaApi;
+  const diag: NonNullable<LiveStatus['diag']> = {
+    scrapeHttp: scrape.httpStatus,
+    scrapeLive: scrape.live,
+    inWindow,
+  };
+
+  // 2) 스크랩이 방송을 못 찾으면, 키가 있을 때 공식 API로 확인합니다(스크랩이 봇 차단 페이지를
+  //    200으로 돌려주거나 형식이 바뀌어 놓치는 경우까지 대비 → 항상 확인).
+  if (!scrape.live && API_KEY) {
+    const { status: api, error } = await safeApi();
+    diag.apiChecked = true;
+    diag.apiError = error;
+    diag.apiLive = api?.live;
+    if (api?.live) {
+      data = api; // API가 방송을 찾음 → 사용
+    } else if (api && scrape.httpStatus !== 200) {
+      data = api; // 스크랩은 차단됐고 API는 '방송 아님' → API 신뢰
+    }
   }
 
-  // 3) 그래도 불확실(스크랩 차단 + API 확인 불가)한데 직전이 방송 중이었다면 이전 상태를 유지합니다.
+  // 3) 그래도 불확실(스크랩 차단 + API도 확인 불가)한데 직전이 방송 중이었다면 이전 상태를 유지합니다.
   //    → 일시적 확인 실패로 방송 중 배지가 꺼지지 않게(방송이 끝날 때까지 유지).
-  const unresolved = !data.live && data.source === 'scrape' && data.httpStatus !== 200;
+  const unresolved =
+    !data.live && data.source === 'scrape' && data.httpStatus !== 200 && diag.apiLive !== false;
   if (unresolved && wasLive && prev) {
     data = {
       ...prev,
@@ -222,6 +252,8 @@ async function getStatus(): Promise<LiveStatus> {
       note: '일시적으로 확인하지 못해 이전 방송 상태를 유지합니다.',
     };
   }
+
+  data.diag = diag;
 
   data.keyed = Boolean(API_KEY);
   cache = { at: Date.now(), data };
