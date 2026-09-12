@@ -12,7 +12,7 @@ import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, Sec
 import { ChurchInfo } from '@/constants/church';
 import { todaysVerse } from '@/constants/daily-verses';
 import { Photos } from '@/constants/photos';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
@@ -129,13 +129,13 @@ export default function HomeScreen() {
   return (
     <Screen onRefresh={reloadAll} refreshing={false}>
       {/* 히어로 — 오늘의 말씀 (매일 자동으로 바뀝니다) */}
-      <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={210}>
+      <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={216} style={styles.heroShadow}>
         <ThemedText type="small" style={styles.heroLabel}>
           {greeting()}
           {user ? `, ${user.name}님` : ''} · {formatFullDate(new Date().toISOString().slice(0, 10))}
         </ThemedText>
         <View style={styles.heroTagRow}>
-          <Ionicons name="book-outline" size={13} color="#fff" />
+          <Ionicons name="book-outline" size={12} color="#fff" />
           <ThemedText type="caption" style={styles.heroTag}>
             오늘의 말씀
           </ThemedText>
@@ -172,9 +172,10 @@ export default function HomeScreen() {
           <SectionHeader
             title="이번 주 예배"
             actionLabel="주보 보기"
+            accent
             onAction={() => router.push(`/bulletin/${bulletin.data!.id}`)}
           />
-          <Card onPress={() => router.push(`/bulletin/${bulletin.data!.id}`)}>
+          <Card elevated onPress={() => router.push(`/bulletin/${bulletin.data!.id}`)}>
             <View style={styles.rowBetween}>
               <Badge label={formatDate(bulletin.data.serviceDate)} tone="accent" />
               {bulletin.data.imageUrls.length > 0 ? <Badge label="주보 원본" tone="success" /> : null}
@@ -189,7 +190,7 @@ export default function HomeScreen() {
 
       {/* 교회 소식 — 가로 카드 */}
       <View>
-        <SectionHeader title="교회 소식" actionLabel="더보기" onAction={() => router.push('/news')} />
+        <SectionHeader title="교회 소식" actionLabel="더보기" accent onAction={() => router.push('/news')} />
         {topAnnouncements.length === 0 ? (
           <EmptyState message="아직 등록된 소식이 없습니다." />
         ) : (
@@ -221,8 +222,8 @@ export default function HomeScreen() {
 
       {/* 우리의 기도 */}
       <View>
-        <SectionHeader title="우리의 기도" actionLabel="기도하기" onAction={() => router.push('/prayer')} />
-        <Card>
+        <SectionHeader title="우리의 기도" actionLabel="기도하기" accent onAction={() => router.push('/prayer')} />
+        <Card elevated>
           <View style={styles.prayerRow}>
             <View style={styles.flex}>
               <ThemedText type="caption" themeColor="textSecondary">
@@ -263,8 +264,8 @@ export default function HomeScreen() {
 
       {/* 교회 안내 */}
       <View>
-        <SectionHeader title="교회 안내" />
-        <Card>
+        <SectionHeader title="교회 안내" accent />
+        <Card elevated>
           <ListRow icon="time-outline" title="예배 안내" subtitle="주일예배 · 새벽예배 · 교육부서 시간표" onPress={() => router.push('/services')} />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow icon="people-outline" title="섬기는 사람들" subtitle="교역자와 직분자를 소개합니다" onPress={() => router.push('/staff')} />
@@ -297,11 +298,11 @@ function WeeklyMessage({
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
-      <Card style={styles.weekly}>
+      <Card elevated style={styles.weekly}>
         <View style={[styles.weeklyThumb, { backgroundColor: theme.backgroundSelected }]}>
           {thumbnail ? <Image source={{ uri: thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
           <View style={styles.playDot}>
-            <Ionicons name="play" size={16} color="#fff" />
+            <Ionicons name="play" size={18} color="#fff" style={{ marginLeft: 2 }} />
           </View>
         </View>
         <View style={styles.flex}>
@@ -356,7 +357,7 @@ function QuickAction({
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}>
-      <View style={[styles.quickIcon, { backgroundColor: theme.backgroundSelected }]}>
+      <View style={[styles.quickIcon, Shadow.soft, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <Ionicons name={icon} size={22} color={theme.primary} />
         {badge ? (
           <Animated.View style={[styles.liveBadge, { backgroundColor: theme.danger, opacity: pulse ? pulseAnim : 1 }]}>
@@ -379,37 +380,51 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
 
+  heroShadow: Shadow.card,
   heroLabel: { color: 'rgba(255,255,255,0.95)', fontSize: 15, fontWeight: '600' },
-  heroTagRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.two },
+  heroTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
   heroTag: { color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
-  heroTitle: { color: '#fff', marginTop: Spacing.one, lineHeight: 26 },
-  heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one },
+  heroTitle: { color: '#fff', marginTop: Spacing.two, lineHeight: 27 },
+  heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one, fontWeight: '600' },
 
   weekly: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   weeklyThumb: {
-    width: 92,
-    height: 62,
-    borderRadius: Radius.small,
+    width: 104,
+    height: 68,
+    borderRadius: Radius.medium,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
   playDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  weeklyTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
+  weeklyTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
 
-  quickRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.one },
-  quickAction: { flex: 1, alignItems: 'center', gap: Spacing.one },
+  quickRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two },
+  quickAction: { flex: 1, alignItems: 'center', gap: Spacing.two },
   quickIcon: {
-    width: 52,
-    height: 52,
+    width: 54,
+    height: 54,
     borderRadius: Radius.medium,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -424,8 +439,8 @@ const styles = StyleSheet.create({
   },
   liveText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 
-  newsRow: { gap: Spacing.two, paddingRight: Spacing.three },
-  newsCard: { width: 208 },
+  newsRow: { gap: Spacing.three, paddingRight: Spacing.three, paddingVertical: Spacing.one },
+  newsCard: { width: 208, borderRadius: Radius.large, ...Shadow.soft },
   newsImage: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
   newsBody: {
     borderWidth: StyleSheet.hairlineWidth,

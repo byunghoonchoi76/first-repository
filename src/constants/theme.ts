@@ -100,4 +100,28 @@ export const Radius = {
   pill: 999,
 } as const;
 
+/**
+ * 부드러운 그림자 토큰. 카드가 배경에서 살짝 떠 보이게 해 완성도를 높입니다.
+ * (따뜻한 갈색 계열 그림자라 베이지 배경과 자연스럽게 어울립니다.)
+ * react-native-web 은 shadow* 값을 boxShadow 로 자동 변환합니다.
+ */
+export const Shadow = {
+  // 카드용 — 은은하게 떠 있는 느낌
+  card: {
+    shadowColor: '#3A2E1C',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  // 작은 타일·칩용 — 더 얕은 그림자
+  soft: {
+    shadowColor: '#3A2E1C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+} as const;
+
 export const MaxContentWidth = 720;

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { Radius, Shadow, Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -22,15 +22,23 @@ export function Card({
   children,
   style,
   onPress,
+  elevated = false,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
+  /** 부드러운 그림자로 배경에서 살짝 띄웁니다. */
+  elevated?: boolean;
 }) {
   const theme = useTheme();
   // Pressable 도 View 로 렌더되므로 카드 스타일을 그대로 적용해
   // 바깥에서 준 flex 값이 그대로 살아 있게 합니다.
-  const cardStyle = [styles.card, { backgroundColor: theme.card, borderColor: theme.border }, style];
+  const cardStyle = [
+    styles.card,
+    { backgroundColor: theme.card, borderColor: theme.border },
+    elevated && Shadow.card,
+    style,
+  ];
 
   if (!onPress) return <View style={cardStyle}>{children}</View>;
 
@@ -45,14 +53,21 @@ export function SectionHeader({
   title,
   actionLabel,
   onAction,
+  accent = false,
 }: {
   title: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** 제목 앞에 작은 강조 막대를 붙여 리듬을 줍니다. */
+  accent?: boolean;
 }) {
+  const theme = useTheme();
   return (
     <View style={styles.sectionHeader}>
-      <ThemedText type="heading">{title}</ThemedText>
+      <View style={styles.sectionTitleRow}>
+        {accent ? <View style={[styles.sectionAccent, { backgroundColor: theme.primary }]} /> : null}
+        <ThemedText type="heading">{title}</ThemedText>
+      </View>
       {actionLabel && onAction ? (
         <Pressable onPress={onAction} hitSlop={8}>
           <ThemedText type="link">{actionLabel}</ThemedText>
@@ -288,6 +303,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: Spacing.two,
   },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  sectionAccent: { width: 4, height: 18, borderRadius: Radius.pill },
   badge: {
     alignSelf: 'flex-start',
     paddingHorizontal: Spacing.two,
