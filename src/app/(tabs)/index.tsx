@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef } from 'react';
-import { Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
@@ -76,6 +76,10 @@ export default function HomeScreen() {
 
   // '이번 주 말씀' = 교회 유튜브 채널의 가장 최신 예배 영상. 찬양대(찬양) 영상은 제외합니다.
   // 채널을 못 불러오면 최신 등록 설교로 대체.
+  // 채널 목록이 아직 로딩 중이면(첫 도착 전) 자리표시만 보여주고,
+  // 다 불러온 뒤에만 대체 설교(fallback)를 씁니다 → '지난주→최신' 깜빡임 방지.
+  const channelPending = channel.loading && !channel.data;
+
   const newestVideo = [...(channel.data ?? [])]
     .filter((v) => {
       const c = classifyChurchVideo(v.title, v.isShort);
@@ -107,7 +111,7 @@ export default function HomeScreen() {
       onPress: () =>
         registered ? router.push(`/sermons/${registered.id}`) : router.push(`/watch/${newestVideo.videoId}`),
     };
-  } else if (latestSermon) {
+  } else if (latestSermon && !channelPending) {
     const video = parseYouTubeUrl(latestSermon.mediaUrl);
     featured = {
       mediaUrl: latestSermon.mediaUrl,
@@ -149,7 +153,7 @@ export default function HomeScreen() {
       </HeroBanner>
 
       {/* 이번 주 말씀 — 교회 유튜브 채널 최신 영상 */}
-      {featured ? <WeeklyMessage {...featured} /> : null}
+      {featured ? <WeeklyMessage {...featured} /> : channelPending ? <WeeklyMessageSkeleton /> : null}
 
       {/* 빠른 메뉴 */}
       <View style={styles.quickRow}>
@@ -326,6 +330,28 @@ function WeeklyMessage({
   );
 }
 
+/** 이번 주 말씀 자리표시 — 채널 목록을 불러오는 동안 잠깐 보여줍니다. */
+function WeeklyMessageSkeleton() {
+  const theme = useTheme();
+  return (
+    <Card elevated style={styles.weekly}>
+      <View style={[styles.weeklyThumb, { backgroundColor: theme.backgroundSelected }]}>
+        <ActivityIndicator color={theme.textMuted} />
+      </View>
+      <View style={styles.flex}>
+        <View style={styles.weeklyTag}>
+          <Ionicons name="volume-medium-outline" size={13} color={theme.accent} />
+          <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '700' }}>
+            이번 주 말씀
+          </ThemedText>
+        </View>
+        <View style={[styles.skelLine, { backgroundColor: theme.backgroundSelected, width: '80%' }]} />
+        <View style={[styles.skelLine, { backgroundColor: theme.backgroundSelected, width: '55%' }]} />
+      </View>
+    </Card>
+  );
+}
+
 function QuickAction({
   icon,
   label,
@@ -417,6 +443,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   weeklyTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
+  skelLine: { height: 12, borderRadius: Radius.small, marginTop: 6 },
 
   quickRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two },
   quickAction: { flex: 1, alignItems: 'center', gap: Spacing.two },
