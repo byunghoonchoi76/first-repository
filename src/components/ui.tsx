@@ -22,12 +22,12 @@ export function Card({
   children,
   style,
   onPress,
-  elevated = false,
+  elevated = true,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
-  /** 부드러운 그림자로 배경에서 살짝 띄웁니다. */
+  /** 부드러운 그림자로 배경에서 살짝 띄웁니다. (기본 켜짐. 중첩 카드 등에서는 false) */
   elevated?: boolean;
 }) {
   const theme = useTheme();
@@ -53,12 +53,12 @@ export function SectionHeader({
   title,
   actionLabel,
   onAction,
-  accent = false,
+  accent = true,
 }: {
   title: string;
   actionLabel?: string;
   onAction?: () => void;
-  /** 제목 앞에 작은 강조 막대를 붙여 리듬을 줍니다. */
+  /** 제목 앞에 작은 강조 막대를 붙여 리듬을 줍니다. (기본 켜짐) */
   accent?: boolean;
 }) {
   const theme = useTheme();
