@@ -118,11 +118,10 @@ function titleIsShort(title: string): boolean {
 
 // 한 번 정확히 판별한 영상은 기억해 둡니다(다음 호출부터는 확인하지 않음 → 빠름).
 const shortCache = new Map<string, boolean>();
-// 쇼츠 판별에 쓰는 전체 시간 상한. 이 시간을 넘기면 목록을 먼저 돌려주고,
-// 아직 못 끝낸 영상은 제목 기반 임시값을 쓰며 다음 호출에서 정확히 보정합니다.
-const PROBE_DEADLINE_MS = 2500;
+// 아직 판별 못 한 영상이 남아 있으면 짧게만 캐시해 곧 정확값으로 보정합니다.
+const CACHE_TTL_PARTIAL_MS = 30_000;
 
-let cache: { at: number; data: Video[] } | null = null;
+let cache: { at: number; data: Video[]; ttl: number } | null = null;
 let cachedUploads = '';
 
 /** 채널 ID(UC...)에서 '업로드 재생목록 ID(UU...)'를 얻습니다. */
@@ -149,7 +148,7 @@ async function resolveUploadsPlaylist(): Promise<string> {
 }
 
 async function getVideos(): Promise<Video[]> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.data;
+  if (cache && Date.now() - cache.at < cache.ttl) return cache.data;
   if (!API_KEY) return [];
 
   const uploads = await resolveUploadsPlaylist();
@@ -179,27 +178,36 @@ async function getVideos(): Promise<Video[]> {
     })
     .filter((v) => v.videoId && v.title !== 'Private video' && v.title !== 'Deleted video');
 
-  // 아직 판별 안 된 영상만 확인합니다(이미 아는 건 캐시 사용 → 빠름).
-  const unknown = videos.filter((v) => !shortCache.has(v.videoId));
-  if (unknown.length > 0) {
-    // 전체 시간 상한을 두어, 느린 영상이 있어도 목록이 오래 지연되지 않게 합니다.
-    await Promise.race([
-      Promise.all(
-        unknown.map(async (v) => {
-          const s = await detectShort(v.videoId);
-          shortCache.set(v.videoId, s); // 정확히 판별된 것만 기억
-        }),
-      ),
-      new Promise((resolve) => setTimeout(resolve, PROBE_DEADLINE_MS)),
-    ]);
-  }
-
-  // 캐시에 있으면 정확값, 없으면(상한 초과) 제목 기반 임시값 → 다음 호출에서 보정.
+  // 쇼츠 여부는 이미 아는 값이 있으면 그걸, 없으면 제목 기반 임시값을 씁니다(대기 없음 → 빠름).
   videos.forEach((v) => {
     v.isShort = shortCache.get(v.videoId) ?? titleIsShort(v.title);
   });
 
-  cache = { at: Date.now(), data: videos };
+  // 아직 판별 안 된 영상은 '백그라운드'에서 확인해 캐시에 채웁니다.
+  // 응답을 기다리게 하지 않으므로 목록이 즉시 반환됩니다. (정확값은 곧 다음 호출에 반영)
+  const unknown = videos.filter((v) => !shortCache.has(v.videoId));
+  if (unknown.length > 0) {
+    const bg = Promise.all(
+      unknown.map(async (v) => {
+        try {
+          shortCache.set(v.videoId, await detectShort(v.videoId));
+        } catch {
+          /* 다음 호출에서 다시 시도 */
+        }
+      }),
+    );
+    // 응답을 보낸 뒤에도 백그라운드 작업이 끝나도록 인스턴스를 잠깐 살려 둡니다.
+    try {
+      (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime?.waitUntil?.(bg);
+    } catch {
+      /* waitUntil 미지원 환경에서는 그냥 진행 */
+    }
+  }
+
+  // 아직 판별 못 한 영상이 남아 있으면 짧게 캐시(30초)해 곧 정확값으로 갱신,
+  // 모두 판별됐으면 평소대로 10분 캐시합니다.
+  const ttl = unknown.length > 0 ? CACHE_TTL_PARTIAL_MS : CACHE_TTL_MS;
+  cache = { at: Date.now(), data: videos, ttl };
   return videos;
 }
 
