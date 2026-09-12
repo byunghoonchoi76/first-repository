@@ -39,7 +39,7 @@ interface Video {
  */
 async function probeShortsUrl(videoId: string): Promise<boolean> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const timer = setTimeout(() => controller.abort(), 3000);
   try {
     const res = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
       method: 'HEAD',
@@ -83,7 +83,7 @@ function readJpegSize(buf: Uint8Array): { w: number; h: number } | null {
  */
 async function probeVertical(videoId: string): Promise<boolean> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const timer = setTimeout(() => controller.abort(), 3000);
   try {
     const res = await fetch(`https://i.ytimg.com/vi/${videoId}/oardefault.jpg`, {
       signal: controller.signal,
@@ -110,6 +110,17 @@ async function detectShort(videoId: string): Promise<boolean> {
   ]);
   return isShortsUrl || isVertical;
 }
+
+/** 제목만으로 보는 임시 쇼츠 판별 (네트워크 없이 즉시). 정확 판별 전 대체값으로 씁니다. */
+function titleIsShort(title: string): boolean {
+  return /#?shorts|쇼츠/i.test(title ?? '');
+}
+
+// 한 번 정확히 판별한 영상은 기억해 둡니다(다음 호출부터는 확인하지 않음 → 빠름).
+const shortCache = new Map<string, boolean>();
+// 쇼츠 판별에 쓰는 전체 시간 상한. 이 시간을 넘기면 목록을 먼저 돌려주고,
+// 아직 못 끝낸 영상은 제목 기반 임시값을 쓰며 다음 호출에서 정확히 보정합니다.
+const PROBE_DEADLINE_MS = 2500;
 
 let cache: { at: number; data: Video[] } | null = null;
 let cachedUploads = '';
@@ -168,10 +179,24 @@ async function getVideos(): Promise<Video[]> {
     })
     .filter((v) => v.videoId && v.title !== 'Private video' && v.title !== 'Deleted video');
 
-  // 각 영상이 쇼츠인지 병렬로 확인해 표시합니다.
-  const shortFlags = await Promise.all(videos.map((v) => detectShort(v.videoId)));
-  videos.forEach((v, i) => {
-    v.isShort = shortFlags[i];
+  // 아직 판별 안 된 영상만 확인합니다(이미 아는 건 캐시 사용 → 빠름).
+  const unknown = videos.filter((v) => !shortCache.has(v.videoId));
+  if (unknown.length > 0) {
+    // 전체 시간 상한을 두어, 느린 영상이 있어도 목록이 오래 지연되지 않게 합니다.
+    await Promise.race([
+      Promise.all(
+        unknown.map(async (v) => {
+          const s = await detectShort(v.videoId);
+          shortCache.set(v.videoId, s); // 정확히 판별된 것만 기억
+        }),
+      ),
+      new Promise((resolve) => setTimeout(resolve, PROBE_DEADLINE_MS)),
+    ]);
+  }
+
+  // 캐시에 있으면 정확값, 없으면(상한 초과) 제목 기반 임시값 → 다음 호출에서 보정.
+  videos.forEach((v) => {
+    v.isShort = shortCache.get(v.videoId) ?? titleIsShort(v.title);
   });
 
   cache = { at: Date.now(), data: videos };
