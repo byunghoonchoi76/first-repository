@@ -14,6 +14,7 @@ import {
 import type {
   Announcement,
   AnnouncementInput,
+  AppMember,
   Bulletin,
   BulletinInput,
   ChurchRepository,
@@ -81,6 +82,14 @@ const SAMPLE_DIRECTORY: DirectoryUser[] = [
   { id: 'u-5', name: '정하윤' },
   { id: 'u-6', name: '한지훈' },
 ];
+
+// 샘플 모드 가입자 명단 (삭제 데모용으로 수정 가능)
+let sampleMembers: AppMember[] = SAMPLE_DIRECTORY.map((u, i) => ({
+  id: u.id,
+  name: u.name,
+  role: i === 0 ? 'admin' : 'member',
+  createdAt: new Date(Date.now() - i * 3 * 86400000).toISOString(),
+}));
 
 // 샘플 모드에서는 '나'를 모든 소통방의 리더로 두어 모든 기능을 미리 볼 수 있게 합니다.
 const sampleGroupMembers = (): SampleMember[] =>
@@ -521,6 +530,23 @@ export const sampleRepository: ChurchRepository = {
     return clone(db.groups.map(withMemberCount));
   },
 
+  async listChannelVideos() {
+    await ready();
+    await delay(150);
+    // 샘플 모드에서는 예시 영상을 몇 개 보여 줍니다. (실제 앱은 교회 유튜브 채널에서 가져옵니다)
+    const iso = (daysAgo: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return d.toISOString();
+    };
+    return [
+      { videoId: 'dQw4w9WgXcQ', title: '주일예배 | 늘 함께하시는 하나님', publishedAt: iso(1), thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg', description: '', isShort: false },
+      { videoId: 'M7lc1UVf-VE', title: '수요부흥예배 | 기도의 능력', publishedAt: iso(4), thumbnail: 'https://i.ytimg.com/vi/M7lc1UVf-VE/mqdefault.jpg', description: '', isShort: false },
+      { videoId: 'ScMzIvxBSi4', title: '새벽예배 | 말씀 앞에 서다', publishedAt: iso(6), thumbnail: 'https://i.ytimg.com/vi/ScMzIvxBSi4/mqdefault.jpg', description: '', isShort: false },
+      { videoId: 'aqz-KE-bpKQ', title: '오늘의 은혜 한 구절', publishedAt: iso(2), thumbnail: 'https://i.ytimg.com/vi/aqz-KE-bpKQ/mqdefault.jpg', description: '', isShort: true },
+    ];
+  },
+
   async getGroup(id) {
     await ready();
     await delay(80);
@@ -596,6 +622,25 @@ export const sampleRepository: ChurchRepository = {
     db.messages = [...db.messages, created];
     await persist();
     return clone(created);
+  },
+
+  async countMembers() {
+    await ready();
+    await delay(80);
+    return sampleMembers.length;
+  },
+
+  async listMembers() {
+    await ready();
+    await delay(120);
+    return [...sampleMembers].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  },
+
+  async deleteMember(userId: string) {
+    await ready();
+    await delay();
+    if (userId === SAMPLE_ME.id) throw new Error('본인 계정은 삭제할 수 없습니다.');
+    sampleMembers = sampleMembers.filter((m) => m.id !== userId);
   },
 
   async searchUsers(query: string) {

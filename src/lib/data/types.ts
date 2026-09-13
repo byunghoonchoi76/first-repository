@@ -143,6 +143,18 @@ export interface Sermon {
 
 export type SermonInput = Omit<Sermon, 'id'>;
 
+/** 교회 유튜브 채널의 최신 업로드 영상 (설교 자동 노출·가져오기용) */
+export interface ChannelVideo {
+  videoId: string;
+  title: string;
+  /** ISO 날짜시각 */
+  publishedAt: string;
+  thumbnail: string;
+  description: string;
+  /** 유튜브 쇼츠(세로 단편) 여부 — '쇼츠' 카테고리로만 분류합니다. */
+  isShort?: boolean;
+}
+
 export interface PrayerRequest {
   id: string;
   title: string;
@@ -211,6 +223,15 @@ export interface DirectoryUser {
   name: string;
 }
 
+/** 관리자 가입자 명단 항목 */
+export interface AppMember {
+  id: string;
+  name: string;
+  role: Role;
+  /** 가입일 (ISO) */
+  createdAt: string;
+}
+
 /** 현재 로그인 성도의 특정 소통방 소속 정보 */
 export interface MyGroupMembership {
   isMember: boolean;
@@ -271,6 +292,8 @@ export interface ChurchRepository {
 
   listSermons(): Promise<Sermon[]>;
   getSermon(id: string): Promise<Sermon | null>;
+  /** 교회 유튜브 채널의 최신 영상 목록 (설교 자동 노출·가져오기). 키가 없거나 실패하면 빈 배열. */
+  listChannelVideos(): Promise<ChannelVideo[]>;
   createSermon(input: SermonInput): Promise<Sermon>;
   updateSermon(id: string, input: SermonInput): Promise<Sermon>;
   deleteSermon(id: string): Promise<void>;
@@ -322,6 +345,12 @@ export interface ChurchRepository {
   listGroupMessages(groupId: string): Promise<GroupMessage[]>;
   sendGroupMessage(groupId: string, author: string, body: string): Promise<GroupMessage>;
 
+  /** 앱에 가입한 성도(계정) 수. 관리자 대시보드용. */
+  countMembers(): Promise<number>;
+  /** 가입자 명단 (관리자 전용). 최근 가입 순. */
+  listMembers(): Promise<AppMember[]>;
+  /** 가입자(계정)를 삭제합니다 (관리자 전용, 서버에서 권한 확인). */
+  deleteMember(userId: string): Promise<void>;
   /** 앱에 등록된 성도를 이름으로 검색합니다(초대용, 관리자·리더만). */
   searchUsers(query: string): Promise<DirectoryUser[]>;
   /** 소통방 멤버 목록(이름·역할·알림) */

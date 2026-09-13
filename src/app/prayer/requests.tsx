@@ -146,7 +146,7 @@ function StatusCounter({
         </ThemedText>
       </View>
       <ThemedText type="small" themeColor="textSecondary" style={styles.noteVerse}>
-        “하나님께서 우리 삶에서 일하고 계십니다.”
+        “하나님께서 우리 삶 가운데 일하고 계십니다.”
       </ThemedText>
 
       <View style={[styles.noteDivider, { backgroundColor: theme.border }]} />

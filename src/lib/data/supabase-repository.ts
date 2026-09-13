@@ -5,6 +5,7 @@ import type {
   AnnouncementInput,
   Bulletin,
   BulletinInput,
+  ChannelVideo,
   ChurchProfile,
   ChurchRepository,
   CommunalPrayer,
@@ -339,6 +340,18 @@ export const supabaseRepository: ChurchRepository = {
     return res.data ? toSermon(res.data) : null;
   },
 
+  async listChannelVideos() {
+    const sb = requireSupabase();
+    try {
+      const { data, error } = await sb.functions.invoke('youtube-videos');
+      if (error) return [];
+      const videos = (data as { videos?: ChannelVideo[] })?.videos ?? [];
+      return videos.filter((v) => v.videoId);
+    } catch {
+      return [];
+    }
+  },
+
   async createSermon(input) {
     const sb = requireSupabase();
     const res = await sb.from('sermons').insert(fromSermon(input)).select().single();
@@ -666,6 +679,33 @@ export const supabaseRepository: ChurchRepository = {
       /* 알림 실패는 무시 */
     }
     return message;
+  },
+
+  async countMembers() {
+    const sb = requireSupabase();
+    const res = await sb.from('profiles').select('id', { count: 'exact', head: true });
+    if (res.error) return 0;
+    return res.count ?? 0;
+  },
+
+  async listMembers() {
+    const sb = requireSupabase();
+    const res = await sb.from('profiles').select('id, name, role, created_at').order('created_at', { ascending: false });
+    if (res.error) throw new Error(res.error.message);
+    return ((res.data ?? []) as { id: string; name: string; role: string; created_at: string }[]).map((r) => ({
+      id: r.id,
+      name: r.name,
+      role: (r.role === 'admin' ? 'admin' : 'member') as 'admin' | 'member',
+      createdAt: r.created_at,
+    }));
+  },
+
+  async deleteMember(userId: string) {
+    const sb = requireSupabase();
+    const { data, error } = await sb.functions.invoke('admin-delete-user', { body: { userId } });
+    if (error) throw new Error(error.message);
+    const res = data as { ok?: boolean; error?: string };
+    if (!res?.ok) throw new Error(res?.error ?? '삭제하지 못했습니다.');
   },
 
   async searchUsers(query) {

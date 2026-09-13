@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef } from 'react';
-import { Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
@@ -12,7 +12,7 @@ import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, Sec
 import { ChurchInfo } from '@/constants/church';
 import { todaysVerse } from '@/constants/daily-verses';
 import { Photos } from '@/constants/photos';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
@@ -20,7 +20,7 @@ import { formatDate, formatFullDate, minutesLabel } from '@/lib/format';
 import { useLiveStatus } from '@/lib/live-status';
 import { usePrayerTime } from '@/lib/prayer-log';
 import { useYouTubeTitle } from '@/lib/use-youtube-title';
-import { parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
+import { classifyChurchVideo, parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -40,6 +40,7 @@ export default function HomeScreen() {
   const profile = useAsyncData(() => repository.getChurchProfile());
   const bulletin = useAsyncData(() => repository.getLatestBulletin());
   const sermons = useAsyncData(() => repository.listSermons());
+  const channel = useAsyncData(() => repository.listChannelVideos());
   const announcements = useAsyncData(() => repository.listAnnouncements());
 
   const loading = profile.loading || bulletin.loading || announcements.loading;
@@ -49,6 +50,7 @@ export default function HomeScreen() {
     profile.reload();
     bulletin.reload();
     sermons.reload();
+    channel.reload();
     announcements.reload();
   };
 
@@ -72,6 +74,54 @@ export default function HomeScreen() {
   const latestSermon = sermons.data?.[0];
   const dailyVerse = todaysVerse();
 
+  // '이번 주 말씀' = 교회 유튜브 채널의 가장 최신 예배 영상. 찬양대(찬양) 영상은 제외합니다.
+  // 채널을 못 불러오면 최신 등록 설교로 대체.
+  // 채널 목록이 아직 로딩 중이면(첫 도착 전) 자리표시만 보여주고,
+  // 다 불러온 뒤에만 대체 설교(fallback)를 씁니다 → '지난주→최신' 깜빡임 방지.
+  const channelPending = channel.loading && !channel.data;
+
+  const newestVideo = [...(channel.data ?? [])]
+    .filter((v) => {
+      const c = classifyChurchVideo(v.title, v.isShort);
+      // 찬양대 특송·쇼츠는 '이번 주 말씀'에 올리지 않습니다.
+      return c !== '찬양' && c !== '쇼츠';
+    })
+    .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))[0];
+  let featured: {
+    mediaUrl: string;
+    fallbackTitle: string;
+    thumbnail?: string;
+    subtitle: string;
+    onPress: () => void;
+  } | null = null;
+  if (newestVideo) {
+    // 이미 설교로 등록된 영상이면 그 설교 상세로, 아니면 인앱 재생 화면으로 연결합니다.
+    const registered = (sermons.data ?? []).find(
+      (s) => parseYouTubeUrl(s.mediaUrl)?.videoId === newestVideo.videoId,
+    );
+    featured = {
+      mediaUrl: `https://www.youtube.com/watch?v=${newestVideo.videoId}`,
+      fallbackTitle: registered?.title || newestVideo.title,
+      thumbnail: newestVideo.thumbnail || youtubeThumbnail(newestVideo.videoId),
+      subtitle: registered
+        ? [registered.scripture, registered.preacher].filter(Boolean).join(' · ')
+        : newestVideo.publishedAt
+          ? formatDate(newestVideo.publishedAt.slice(0, 10))
+          : '',
+      onPress: () =>
+        registered ? router.push(`/sermons/${registered.id}`) : router.push(`/watch/${newestVideo.videoId}`),
+    };
+  } else if (latestSermon && !channelPending) {
+    const video = parseYouTubeUrl(latestSermon.mediaUrl);
+    featured = {
+      mediaUrl: latestSermon.mediaUrl,
+      fallbackTitle: latestSermon.title,
+      thumbnail: latestSermon.thumbnailUrl ?? (video ? youtubeThumbnail(video.videoId) : undefined),
+      subtitle: [latestSermon.scripture, latestSermon.preacher].filter(Boolean).join(' · '),
+      onPress: () => router.push(`/sermons/${latestSermon.id}`),
+    };
+  }
+
   const openLive = () => {
     // 방송 중이면 그 라이브 영상으로 바로, 아니면 채널의 실시간/다시보기 목록으로.
     const target = live.live && live.watchUrl ? live.watchUrl : ChurchInfo.youtubeUrl ? `${ChurchInfo.youtubeUrl}/streams` : null;
@@ -83,13 +133,13 @@ export default function HomeScreen() {
   return (
     <Screen onRefresh={reloadAll} refreshing={false}>
       {/* 히어로 — 오늘의 말씀 (매일 자동으로 바뀝니다) */}
-      <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={210}>
+      <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={216} style={styles.heroShadow}>
         <ThemedText type="small" style={styles.heroLabel}>
           {greeting()}
           {user ? `, ${user.name}님` : ''} · {formatFullDate(new Date().toISOString().slice(0, 10))}
         </ThemedText>
         <View style={styles.heroTagRow}>
-          <Ionicons name="book-outline" size={13} color="#fff" />
+          <Ionicons name="book-outline" size={12} color="#fff" />
           <ThemedText type="caption" style={styles.heroTag}>
             오늘의 말씀
           </ThemedText>
@@ -102,8 +152,8 @@ export default function HomeScreen() {
         </ThemedText>
       </HeroBanner>
 
-      {/* 이번 주 말씀 (최신 설교) */}
-      {latestSermon ? <WeeklyMessage sermon={latestSermon} onPress={() => router.push(`/sermons/${latestSermon.id}`)} /> : null}
+      {/* 이번 주 말씀 — 교회 유튜브 채널 최신 영상 */}
+      {featured ? <WeeklyMessage {...featured} /> : channelPending ? <WeeklyMessageSkeleton /> : null}
 
       {/* 빠른 메뉴 */}
       <View style={styles.quickRow}>
@@ -126,9 +176,10 @@ export default function HomeScreen() {
           <SectionHeader
             title="이번 주 예배"
             actionLabel="주보 보기"
+            accent
             onAction={() => router.push(`/bulletin/${bulletin.data!.id}`)}
           />
-          <Card onPress={() => router.push(`/bulletin/${bulletin.data!.id}`)}>
+          <Card elevated onPress={() => router.push(`/bulletin/${bulletin.data!.id}`)}>
             <View style={styles.rowBetween}>
               <Badge label={formatDate(bulletin.data.serviceDate)} tone="accent" />
               {bulletin.data.imageUrls.length > 0 ? <Badge label="주보 원본" tone="success" /> : null}
@@ -143,7 +194,7 @@ export default function HomeScreen() {
 
       {/* 교회 소식 — 가로 카드 */}
       <View>
-        <SectionHeader title="교회 소식" actionLabel="더보기" onAction={() => router.push('/news')} />
+        <SectionHeader title="교회 소식" actionLabel="더보기" accent onAction={() => router.push('/news')} />
         {topAnnouncements.length === 0 ? (
           <EmptyState message="아직 등록된 소식이 없습니다." />
         ) : (
@@ -175,8 +226,8 @@ export default function HomeScreen() {
 
       {/* 우리의 기도 */}
       <View>
-        <SectionHeader title="우리의 기도" actionLabel="기도하기" onAction={() => router.push('/prayer')} />
-        <Card>
+        <SectionHeader title="우리의 기도" actionLabel="기도하기" accent onAction={() => router.push('/prayer')} />
+        <Card elevated>
           <View style={styles.prayerRow}>
             <View style={styles.flex}>
               <ThemedText type="caption" themeColor="textSecondary">
@@ -217,8 +268,8 @@ export default function HomeScreen() {
 
       {/* 교회 안내 */}
       <View>
-        <SectionHeader title="교회 안내" />
-        <Card>
+        <SectionHeader title="교회 안내" accent />
+        <Card elevated>
           <ListRow icon="time-outline" title="예배 안내" subtitle="주일예배 · 새벽예배 · 교육부서 시간표" onPress={() => router.push('/services')} />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow icon="people-outline" title="섬기는 사람들" subtitle="교역자와 직분자를 소개합니다" onPress={() => router.push('/staff')} />
@@ -232,20 +283,30 @@ export default function HomeScreen() {
   );
 }
 
-/** 이번 주 말씀 — 설교 썸네일 + 재생 */
-function WeeklyMessage({ sermon, onPress }: { sermon: Sermon; onPress: () => void }) {
+/** 이번 주 말씀 — 최신 영상 썸네일 + 재생 */
+function WeeklyMessage({
+  mediaUrl,
+  fallbackTitle,
+  thumbnail,
+  subtitle,
+  onPress,
+}: {
+  mediaUrl: string;
+  fallbackTitle: string;
+  thumbnail?: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
   const theme = useTheme();
-  const video = parseYouTubeUrl(sermon.mediaUrl);
-  const title = useYouTubeTitle(sermon.mediaUrl, sermon.title, '이번 주 말씀');
-  const thumb = sermon.thumbnailUrl ?? (video ? youtubeThumbnail(video.videoId) : undefined);
+  const title = useYouTubeTitle(mediaUrl, fallbackTitle, '이번 주 말씀');
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
-      <Card style={styles.weekly}>
+      <Card elevated style={styles.weekly}>
         <View style={[styles.weeklyThumb, { backgroundColor: theme.backgroundSelected }]}>
-          {thumb ? <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+          {thumbnail ? <Image source={{ uri: thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
           <View style={styles.playDot}>
-            <Ionicons name="play" size={16} color="#fff" />
+            <Ionicons name="play" size={18} color="#fff" style={{ marginLeft: 2 }} />
           </View>
         </View>
         <View style={styles.flex}>
@@ -258,12 +319,36 @@ function WeeklyMessage({ sermon, onPress }: { sermon: Sermon; onPress: () => voi
           <ThemedText type="smallBold" numberOfLines={2}>
             {title}
           </ThemedText>
-          <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-            {[sermon.scripture, sermon.preacher].filter(Boolean).join(' · ')}
-          </ThemedText>
+          {subtitle ? (
+            <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
+              {subtitle}
+            </ThemedText>
+          ) : null}
         </View>
       </Card>
     </Pressable>
+  );
+}
+
+/** 이번 주 말씀 자리표시 — 채널 목록을 불러오는 동안 잠깐 보여줍니다. */
+function WeeklyMessageSkeleton() {
+  const theme = useTheme();
+  return (
+    <Card elevated style={styles.weekly}>
+      <View style={[styles.weeklyThumb, { backgroundColor: theme.backgroundSelected }]}>
+        <ActivityIndicator color={theme.textMuted} />
+      </View>
+      <View style={styles.flex}>
+        <View style={styles.weeklyTag}>
+          <Ionicons name="volume-medium-outline" size={13} color={theme.accent} />
+          <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '700' }}>
+            이번 주 말씀
+          </ThemedText>
+        </View>
+        <View style={[styles.skelLine, { backgroundColor: theme.backgroundSelected, width: '80%' }]} />
+        <View style={[styles.skelLine, { backgroundColor: theme.backgroundSelected, width: '55%' }]} />
+      </View>
+    </Card>
   );
 }
 
@@ -298,7 +383,7 @@ function QuickAction({
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}>
-      <View style={[styles.quickIcon, { backgroundColor: theme.backgroundSelected }]}>
+      <View style={[styles.quickIcon, Shadow.soft, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <Ionicons name={icon} size={22} color={theme.primary} />
         {badge ? (
           <Animated.View style={[styles.liveBadge, { backgroundColor: theme.danger, opacity: pulse ? pulseAnim : 1 }]}>
@@ -321,37 +406,52 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
 
+  heroShadow: Shadow.card,
   heroLabel: { color: 'rgba(255,255,255,0.95)', fontSize: 15, fontWeight: '600' },
-  heroTagRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: Spacing.two },
+  heroTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
   heroTag: { color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
-  heroTitle: { color: '#fff', marginTop: Spacing.one, lineHeight: 26 },
-  heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one },
+  heroTitle: { color: '#fff', marginTop: Spacing.two, lineHeight: 27 },
+  heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one, fontWeight: '600' },
 
   weekly: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   weeklyThumb: {
-    width: 92,
-    height: 62,
-    borderRadius: Radius.small,
+    width: 104,
+    height: 68,
+    borderRadius: Radius.medium,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
   playDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  weeklyTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
+  weeklyTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
+  skelLine: { height: 12, borderRadius: Radius.small, marginTop: 6 },
 
-  quickRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.one },
-  quickAction: { flex: 1, alignItems: 'center', gap: Spacing.one },
+  quickRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two },
+  quickAction: { flex: 1, alignItems: 'center', gap: Spacing.two },
   quickIcon: {
-    width: 52,
-    height: 52,
+    width: 54,
+    height: 54,
     borderRadius: Radius.medium,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -366,8 +466,8 @@ const styles = StyleSheet.create({
   },
   liveText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 
-  newsRow: { gap: Spacing.two, paddingRight: Spacing.three },
-  newsCard: { width: 208 },
+  newsRow: { gap: Spacing.three, paddingRight: Spacing.three, paddingVertical: Spacing.one },
+  newsCard: { width: 208, borderRadius: Radius.large, ...Shadow.soft },
   newsImage: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
   newsBody: {
     borderWidth: StyleSheet.hairlineWidth,

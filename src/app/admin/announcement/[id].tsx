@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -26,6 +26,7 @@ export default function AnnouncementEditorScreen() {
   const [pinned, setPinned] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string>();
 
   useEffect(() => {
@@ -74,6 +75,30 @@ export default function AnnouncementEditorScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const confirmDelete = () => {
+    const remove = async () => {
+      setDeleting(true);
+      setError(undefined);
+      try {
+        await repository.deleteAnnouncement(String(id));
+        router.back();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '삭제하지 못했습니다.');
+        setDeleting(false);
+      }
+    };
+    const message = '이 공지를 삭제할까요? 되돌릴 수 없습니다.';
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line no-alert
+      if (window.confirm(message)) void remove();
+      return;
+    }
+    Alert.alert('삭제', message, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => void remove() },
+    ]);
   };
 
   if (loading) {
@@ -129,6 +154,16 @@ export default function AnnouncementEditorScreen() {
         ) : null}
 
         <Button label={isNew ? '등록하기' : '수정 완료'} icon="save-outline" loading={saving} onPress={() => void save()} />
+
+        {!isNew ? (
+          <Button
+            label="공지 삭제"
+            icon="trash-outline"
+            variant="danger"
+            loading={deleting}
+            onPress={confirmDelete}
+          />
+        ) : null}
       </View>
     </Screen>
   );

@@ -91,6 +91,20 @@ async function detect(): Promise<LiveStatus | null> {
   }
 }
 
+/** 관리자 진단용 — live-status 함수의 원시 응답(진단 필드 포함)을 그대로 돌려줍니다. */
+export async function fetchLiveStatusRaw(): Promise<Record<string, unknown>> {
+  if (!hasSupabaseConfig || !supabase) {
+    return { error: '샘플 모드에서는 실시간 감지를 사용하지 않습니다. (Supabase 연결 필요)' };
+  }
+  try {
+    const { data, error } = await supabase.functions.invoke('live-status');
+    if (error) return { error: error.message };
+    return (data as Record<string, unknown>) ?? { error: '응답이 비어 있습니다.' };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export function useLiveStatus(): LiveStatus {
   const [status, setStatus] = useState<LiveStatus>(IDLE);
   const statusRef = useRef<LiveStatus>(IDLE);
