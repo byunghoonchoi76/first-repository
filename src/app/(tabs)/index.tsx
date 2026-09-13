@@ -11,7 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
 import { ChurchInfo } from '@/constants/church';
 import { todaysVerse } from '@/constants/daily-verses';
-import { Photos } from '@/constants/photos';
+import { LocalPhotos, Photos } from '@/constants/photos';
 import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
@@ -28,6 +28,12 @@ function greeting(): string {
   if (hour < 12) return '좋은 아침입니다';
   if (hour < 18) return '평안한 오후입니다';
   return '복된 저녁입니다';
+}
+
+/** 부고(장례) 공지인지 제목·내용으로 판별합니다. 맞으면 국화 이미지를 씁니다. */
+function isFuneralNotice(item: { title?: string; body?: string }): boolean {
+  const text = `${item.title ?? ''} ${item.body ?? ''}`;
+  return /부고|장례|별세|소천|하관|발인|빈소|조문|국화|영결|위독|천국환송|소천하/.test(text);
 }
 
 export default function HomeScreen() {
@@ -202,13 +208,20 @@ export default function HomeScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.newsRow}>
-            {topAnnouncements.map((item) => (
+            {topAnnouncements.map((item) => {
+              const funeral = isFuneralNotice(item);
+              return (
               <Pressable
                 key={item.id}
                 onPress={() => router.push(`/news/${item.id}`)}
                 style={({ pressed }) => [styles.newsCard, pressed && styles.pressed]}>
-                <HeroBanner imageUrl={Photos.community} height={100} base="navy" style={styles.newsImage}>
-                  <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
+                <HeroBanner
+                  imageSource={funeral ? LocalPhotos.funeral : undefined}
+                  imageUrl={funeral ? undefined : Photos.community}
+                  height={100}
+                  base="navy"
+                  style={styles.newsImage}>
+                  <Badge label={funeral ? '부고' : item.category} tone={funeral ? 'textSecondary' : item.category === '행사' ? 'accent' : 'primary'} />
                 </HeroBanner>
                 <View style={[styles.newsBody, { backgroundColor: theme.card, borderColor: theme.border }]}>
                   <ThemedText type="smallBold" numberOfLines={1}>
@@ -219,7 +232,8 @@ export default function HomeScreen() {
                   </ThemedText>
                 </View>
               </Pressable>
-            ))}
+              );
+            })}
           </ScrollView>
         )}
       </View>

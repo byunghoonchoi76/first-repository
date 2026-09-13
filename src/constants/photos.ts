@@ -1,3 +1,13 @@
+import type { ImageSourcePropType } from 'react-native';
+
+/**
+ * 앱에 포함된(로컬) 이미지. 인터넷 없이도 항상 보입니다.
+ */
+export const LocalPhotos = {
+  // 장례(부고) 공지 카드에 쓰는 국화 이미지
+  funeral: require('@/assets/images/funeral-chrysanthemum.jpg') as ImageSourcePropType,
+} as const;
+
 /**
  * 화면 배경으로 쓰는 무료 스톡 사진 주소.
  * 앱이 실행되는 기기에서 불러오며, 못 불러오면 따뜻한 그라데이션이 대신 보입니다.
