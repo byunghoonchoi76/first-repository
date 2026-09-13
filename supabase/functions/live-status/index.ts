@@ -88,7 +88,7 @@ interface LiveStatus {
 }
 
 let cache: { at: number; data: LiveStatus } | null = null;
-let cachedChannelId = CHANNEL_ID;
+let cachedUploads = '';
 
 function decodeEntities(text: string): string {
   return text
@@ -99,41 +99,68 @@ function decodeEntities(text: string): string {
     .replace(/&#39;/g, "'");
 }
 
-/** 공식 YouTube Data API 로 확인 (YOUTUBE_API_KEY 가 있을 때) */
-async function checkViaApi(): Promise<LiveStatus> {
-  // 손잡이(@handle)를 채널 ID(UC...)로 한 번만 바꿔 둡니다.
-  if (!cachedChannelId) {
-    const handleParam = HANDLE.replace(/^@/, '');
-    const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${handleParam}&key=${API_KEY}`,
-    );
-    const json = await res.json();
-    cachedChannelId = json?.items?.[0]?.id ?? '';
-  }
-  if (!cachedChannelId) {
-    return { live: false, videoId: null, watchUrl: null, title: null, source: 'api', checkedAt: new Date().toISOString() };
-  }
+function notLiveApi(): LiveStatus {
+  return { live: false, videoId: null, watchUrl: null, title: null, source: 'api', checkedAt: new Date().toISOString() };
+}
 
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${cachedChannelId}` +
-      `&eventType=live&type=video&maxResults=1&key=${API_KEY}`,
-  );
-  const json = await res.json();
-  // 할당량 초과·키 오류 등은 items 대신 error 로 옵니다 → 진단에 드러나게 던집니다.
+/** 할당량 초과·키 오류 등 API 오류면 진단에 드러나게 던집니다. */
+function throwIfApiError(res: Response, json: { error?: { errors?: { reason?: string }[]; status?: string; message?: string } }) {
   if (json?.error) {
     const reason = json.error?.errors?.[0]?.reason ?? json.error?.status ?? '';
     throw new Error(`YouTube API 오류(${res.status} ${reason}): ${json.error?.message ?? ''}`.trim());
   }
-  const item = json?.items?.[0];
-  const videoId: string | null = item?.id?.videoId ?? null;
-  return {
-    live: Boolean(videoId),
-    videoId,
-    watchUrl: videoId ? `https://www.youtube.com/watch?v=${videoId}` : null,
-    title: item?.snippet?.title ?? null,
-    source: 'api',
-    checkedAt: new Date().toISOString(),
-  };
+}
+
+/**
+ * 공식 YouTube Data API 로 확인 (YOUTUBE_API_KEY 가 있을 때).
+ * 채널의 '최신 업로드' 중 liveBroadcastContent 가 'live' 인 영상을 직접 찾습니다.
+ * (search?eventType=live 는 인덱싱 지연으로 라이브를 놓칠 수 있어, 더 즉각적인 이 방식을 씁니다.)
+ */
+async function checkViaApi(): Promise<LiveStatus> {
+  // 채널 → 업로드 재생목록(UU...) 을 한 번만 해석해 둡니다.
+  if (!cachedUploads) {
+    const url = CHANNEL_ID
+      ? `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${CHANNEL_ID}&key=${API_KEY}`
+      : `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${HANDLE.replace(/^@/, '')}&key=${API_KEY}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    throwIfApiError(res, json);
+    cachedUploads = json?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads ?? '';
+  }
+  if (!cachedUploads) return notLiveApi();
+
+  // 최근 업로드 몇 개의 영상 ID (라이브 방송도 업로드 목록에 나타납니다)
+  const plRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${cachedUploads}&maxResults=5&key=${API_KEY}`,
+  );
+  const plJson = await plRes.json();
+  throwIfApiError(plRes, plJson);
+  const ids: string[] = (plJson?.items ?? [])
+    .map((it: { contentDetails?: { videoId?: string } }) => it?.contentDetails?.videoId)
+    .filter(Boolean);
+  if (ids.length === 0) return notLiveApi();
+
+  // 각 영상의 실시간 상태를 확인 → 'live' 인 영상이 있으면 방송 중.
+  const vRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ids.join(',')}&key=${API_KEY}`,
+  );
+  const vJson = await vRes.json();
+  throwIfApiError(vRes, vJson);
+  const liveItem = (vJson?.items ?? []).find(
+    (it: { snippet?: { liveBroadcastContent?: string } }) => it?.snippet?.liveBroadcastContent === 'live',
+  ) as { id?: string; snippet?: { title?: string } } | undefined;
+
+  if (liveItem?.id) {
+    return {
+      live: true,
+      videoId: liveItem.id,
+      watchUrl: `https://www.youtube.com/watch?v=${liveItem.id}`,
+      title: liveItem.snippet?.title ?? null,
+      source: 'api',
+      checkedAt: new Date().toISOString(),
+    };
+  }
+  return notLiveApi();
 }
 
 /** 채널 /live 페이지를 읽어 방송 여부 판별 (키 없이 동작) */
@@ -217,34 +244,33 @@ async function getStatus(): Promise<LiveStatus> {
   const ttl = wasLive ? TTL_LIVE_MS : inWindow ? TTL_WINDOW_MS : TTL_IDLE_MS;
   if (cache && Date.now() - cache.at < ttl) return cache.data;
 
-  // 1) 무료 스크랩으로 항상 확인합니다(예배 시간대와 무관 → 예정에 없던 스트리밍도 감지).
-  const scrape = await safeScrape();
-  let data = scrape;
+  const diag: NonNullable<LiveStatus['diag']> = { inWindow };
+  let data: LiveStatus | null = null;
 
-  const diag: NonNullable<LiveStatus['diag']> = {
-    scrapeHttp: scrape.httpStatus,
-    scrapeLive: scrape.live,
-    inWindow,
-  };
-
-  // 2) 스크랩이 방송을 못 찾으면, 키가 있을 때 공식 API로 확인합니다(스크랩이 봇 차단 페이지를
-  //    200으로 돌려주거나 형식이 바뀌어 놓치는 경우까지 대비 → 항상 확인).
-  if (!scrape.live && API_KEY) {
+  // 1) 공식 API 우선 — 채널 최신 업로드의 liveBroadcastContent 로 가장 정확하게 확인.
+  if (API_KEY) {
     const { status: api, error } = await safeApi();
     diag.apiChecked = true;
     diag.apiError = error;
     diag.apiLive = api?.live;
-    if (api?.live) {
-      data = api; // API가 방송을 찾음 → 사용
-    } else if (api && scrape.httpStatus !== 200) {
-      data = api; // 스크랩은 차단됐고 API는 '방송 아님' → API 신뢰
-    }
+    if (api) data = api; // 방송 중이든 아니든 API 결과를 채택
   }
 
-  // 3) 그래도 불확실(스크랩 차단 + API도 확인 불가)한데 직전이 방송 중이었다면 이전 상태를 유지합니다.
-  //    → 일시적 확인 실패로 방송 중 배지가 꺼지지 않게(방송이 끝날 때까지 유지).
-  const unresolved =
-    !data.live && data.source === 'scrape' && data.httpStatus !== 200 && diag.apiLive !== false;
+  // 2) API가 없거나 라이브를 못 찾았으면 무료 스크랩으로 한 번 더 확인.
+  if (!data || !data.live) {
+    const scrape = await safeScrape();
+    diag.scrapeHttp = scrape.httpStatus;
+    diag.scrapeLive = scrape.live;
+    if (scrape.live) data = scrape;
+    else if (!data) data = scrape;
+  }
+
+  if (!data) data = notLiveApi();
+
+  // 3) 확인이 불확실(API 오류 + 스크랩 차단)한데 직전이 방송 중이었다면 이전 상태 유지.
+  //    → 일시적 실패로 방송 중 배지가 꺼지지 않게(방송이 끝날 때까지 유지).
+  const scrapeBlocked = diag.scrapeHttp !== undefined && diag.scrapeHttp !== 200;
+  const unresolved = !data.live && Boolean(diag.apiError) && scrapeBlocked;
   if (unresolved && wasLive && prev) {
     data = {
       ...prev,
