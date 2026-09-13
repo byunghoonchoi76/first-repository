@@ -153,6 +153,21 @@ export const sampleBulletins: Bulletin[] = [
 
 export const sampleAnnouncements: Announcement[] = [
   {
+    id: 'ann-funeral',
+    title: '[부고] 김믿음 성도 모친 소천',
+    body: `김믿음 성도(3남전도회)의 모친께서 소천하셨기에 알려 드립니다.
+
+· 빈소: ○○병원 장례식장 3호실
+· 발인: 9월 15일(월) 오전 7시
+· 장지: ○○추모공원
+
+유가족을 위해 함께 기도해 주시고, 위로해 주시기 바랍니다.`,
+    category: '공지',
+    author: '교회 사무실',
+    pinned: false,
+    publishedAt: dateTime(0),
+  },
+  {
     id: 'ann-1',
     title: '여름 수련회 신청 안내 (7/18~7/20)',
     body: `올해 여름 수련회를 강원도 평창 수양관에서 진행합니다.
