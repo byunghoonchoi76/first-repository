@@ -1,8 +1,12 @@
 // 교회 유튜브 채널 최신 영상 목록 — 설교 자동 노출·가져오기에 사용합니다.
 //
 // 앱이 이 함수를 호출하면, 서버(Supabase)가 유튜브에서 채널의 최근 업로드 영상을 가져와
-// { videos: [{ videoId, title, publishedAt, thumbnail, description }] } 형태로 돌려줍니다.
+// { videos: [{ videoId, title, publishedAt, thumbnail, description, isShort }] } 형태로 돌려줍니다.
 // 유튜브 API 키는 이 함수(서버) 안에만 두므로 앱 코드에는 노출되지 않습니다.
+//
+// 쇼츠 판별: 유튜브 Data API 로 영상 '길이'를 한 번에 받아 짧은 영상(≤ 3분)을 쇼츠로 봅니다.
+//   - 교회 채널은 정식 예배가 길기 때문에(수십 분) 길이 기준이 빠르고 정확합니다.
+//   - 영상마다 네트워크로 따로 확인하지 않으므로 목록이 빨리 뜹니다(홈 '이번 주 말씀' 포함).
 //
 // 필요 시크릿(Edge Functions → Secrets) — 실시간 배지(live-status)와 같은 키를 씁니다:
 //   YOUTUBE_API_KEY   (필수)
@@ -16,6 +20,8 @@ const MAX = 15;
 
 // 유튜브 할당량 절약: 결과를 10분간 재사용합니다. (업로드 후 최대 10분 내 노출)
 const CACHE_TTL_MS = 600_000;
+// 이 길이(초) 이하이면 쇼츠로 봅니다. 유튜브 쇼츠는 최대 3분(180초)입니다.
+const SHORT_MAX_SECONDS = 185;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -29,128 +35,56 @@ interface Video {
   publishedAt: string;
   thumbnail: string;
   description: string;
-  /** 유튜브 쇼츠(세로 단편) 여부 — 앱에서 '쇼츠' 카테고리로만 분류하는 데 씁니다. */
+  /** 유튜브 쇼츠(짧은 영상) 여부 — 앱에서 '쇼츠' 카테고리로만 분류하는 데 씁니다. */
   isShort: boolean;
 }
 
-/**
- * '/shorts/{id}' 주소가 리다이렉트되는지로 '유튜브 쇼츠 등록' 여부를 봅니다.
- * (쇼츠면 200, 일반 영상이면 watch 로 리다이렉트)
- */
-async function probeShortsUrl(videoId: string): Promise<boolean> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 3000);
-  try {
-    const res = await fetch(`https://www.youtube.com/shorts/${videoId}`, {
-      method: 'HEAD',
-      redirect: 'manual',
-      signal: controller.signal,
-    });
-    return res.status >= 200 && res.status < 300;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** JPEG 바이트에서 실제 가로·세로 픽셀 크기를 읽습니다. (SOF 마커) */
-function readJpegSize(buf: Uint8Array): { w: number; h: number } | null {
-  if (buf[0] !== 0xff || buf[1] !== 0xd8) return null;
-  let i = 2;
-  while (i + 9 < buf.length) {
-    if (buf[i] !== 0xff) {
-      i++;
-      continue;
-    }
-    const marker = buf[i + 1];
-    // SOF0~SOF15 (해상도 정보). DHT(C4)·DAC(CC)·RSTn 은 제외.
-    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
-      const h = (buf[i + 5] << 8) | buf[i + 6];
-      const w = (buf[i + 7] << 8) | buf[i + 8];
-      return { w, h };
-    }
-    const len = (buf[i + 2] << 8) | buf[i + 3];
-    if (len <= 0) break;
-    i += 2 + len;
-  }
-  return null;
-}
-
-/**
- * 원본 비율(oardefault) 썸네일을 읽어 9:16 등 '세로 영상'인지 판별합니다.
- * 이 썸네일은 영상이 16:9 가 아닐 때만 생성되므로, 존재하고 세로이면 쇼츠로 봅니다.
- */
-async function probeVertical(videoId: string): Promise<boolean> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 3000);
-  try {
-    const res = await fetch(`https://i.ytimg.com/vi/${videoId}/oardefault.jpg`, {
-      signal: controller.signal,
-    });
-    if (!res.ok) return false;
-    const size = readJpegSize(new Uint8Array(await res.arrayBuffer()));
-    return Boolean(size && size.h > size.w);
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * 영상이 쇼츠인지 확인합니다. 유튜브 Data API 는 쇼츠 여부를 알려주지 않으므로
- * ① 쇼츠 URL 리다이렉트, ② 실제 세로(9:16) 비율 두 신호로 판별합니다.
- * 둘 다 실패하면 false 로 두어 제목 기반 판별에 맡깁니다.
- */
-async function detectShort(videoId: string): Promise<boolean> {
-  const [isShortsUrl, isVertical] = await Promise.all([
-    probeShortsUrl(videoId),
-    probeVertical(videoId),
-  ]);
-  return isShortsUrl || isVertical;
-}
-
-/** 제목만으로 보는 임시 쇼츠 판별 (네트워크 없이 즉시). 정확 판별 전 대체값으로 씁니다. */
+/** 제목에 쇼츠 표기가 있으면 즉시 쇼츠로 봅니다. (길이 확인 전 보조 신호) */
 function titleIsShort(title: string): boolean {
   return /#?shorts|쇼츠/i.test(title ?? '');
 }
 
-// 한 번 정확히 판별한 영상은 기억해 둡니다(다음 호출부터는 확인하지 않음 → 빠름).
-const shortCache = new Map<string, boolean>();
-// 아직 판별 못 한 영상이 남아 있으면 짧게만 캐시해 곧 정확값으로 보정합니다.
-const CACHE_TTL_PARTIAL_MS = 30_000;
-// 쇼츠 판별 전체 시간 상한 — 이 시간을 넘기면 목록을 먼저 돌려줍니다.
-const PROBE_DEADLINE_MS = 3000;
+/** ISO8601 길이(PT1M30S 등)를 초로 변환합니다. 라이브/미상은 0. */
+function iso8601ToSeconds(iso: string | undefined): number {
+  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(iso ?? '');
+  if (!m) return 0;
+  const [, d, h, mi, s] = m;
+  return (+(d ?? 0)) * 86400 + (+(h ?? 0)) * 3600 + (+(mi ?? 0)) * 60 + (+(s ?? 0));
+}
 
-let cache: { at: number; data: Video[]; ttl: number } | null = null;
+let cache: { at: number; data: Video[] } | null = null;
 let cachedUploads = '';
 
 /** 채널 ID(UC...)에서 '업로드 재생목록 ID(UU...)'를 얻습니다. */
 async function resolveUploadsPlaylist(): Promise<string> {
   if (cachedUploads) return cachedUploads;
 
-  let channelId = CHANNEL_ID_ENV;
-  if (!channelId) {
-    const handleParam = HANDLE.replace(/^@/, '');
-    const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${handleParam}&key=${API_KEY}`,
-    );
-    const json = await res.json();
-    cachedUploads = json?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads ?? '';
-    return cachedUploads;
-  }
-
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}&key=${API_KEY}`,
-  );
+  const channelId = CHANNEL_ID_ENV;
+  const url = channelId
+    ? `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}&key=${API_KEY}`
+    : `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${HANDLE.replace(/^@/, '')}&key=${API_KEY}`;
+  const res = await fetch(url);
   const json = await res.json();
   cachedUploads = json?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads ?? '';
   return cachedUploads;
 }
 
+/** 여러 영상의 길이(초)를 한 번의 API 호출로 받아옵니다. */
+async function fetchDurations(ids: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (ids.length === 0) return map;
+  const res = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids.join(',')}&key=${API_KEY}`,
+  );
+  const json = await res.json();
+  for (const it of (json?.items ?? []) as { id?: string; contentDetails?: { duration?: string } }[]) {
+    if (it.id) map.set(it.id, iso8601ToSeconds(it.contentDetails?.duration));
+  }
+  return map;
+}
+
 async function getVideos(): Promise<Video[]> {
-  if (cache && Date.now() - cache.at < cache.ttl) return cache.data;
+  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.data;
   if (!API_KEY) return [];
 
   const uploads = await resolveUploadsPlaylist();
@@ -180,35 +114,14 @@ async function getVideos(): Promise<Video[]> {
     })
     .filter((v) => v.videoId && v.title !== 'Private video' && v.title !== 'Deleted video');
 
-  // 아직 판별 안 된 영상만 확인합니다(이미 아는 건 캐시 사용). 전체 시간 상한을 둬서
-  // 느린 영상이 있어도 목록이 오래 지연되지 않게 하되, 응답 자체에 정확값을 담습니다.
-  // (백그라운드에만 맡기면 인스턴스가 재활용될 때 결과가 남지 않아 쇼츠가 갱신되지 않습니다.)
-  const unknown = videos.filter((v) => !shortCache.has(v.videoId));
-  if (unknown.length > 0) {
-    await Promise.race([
-      Promise.all(
-        unknown.map(async (v) => {
-          try {
-            shortCache.set(v.videoId, await detectShort(v.videoId));
-          } catch {
-            /* 다음 호출에서 다시 시도 */
-          }
-        }),
-      ),
-      new Promise((resolve) => setTimeout(resolve, PROBE_DEADLINE_MS)),
-    ]);
-  }
-
-  // 캐시에 있으면 정확값, 없으면(상한 초과) 제목 기반 임시값 → 다음 호출에서 보정.
+  // 영상 길이를 한 번에 받아 짧은 영상(≤ 3분)을 쇼츠로 분류합니다. (빠르고 정확)
+  const durations = await fetchDurations(videos.map((v) => v.videoId));
   videos.forEach((v) => {
-    v.isShort = shortCache.get(v.videoId) ?? titleIsShort(v.title);
+    const secs = durations.get(v.videoId) ?? 0;
+    v.isShort = titleIsShort(v.title) || (secs > 0 && secs <= SHORT_MAX_SECONDS);
   });
 
-  // 아직 판별 못 한 영상이 남아 있으면 짧게 캐시(30초)해 곧 정확값으로 갱신,
-  // 모두 판별됐으면 평소대로 10분 캐시합니다.
-  const stillUnknown = videos.some((v) => !shortCache.has(v.videoId));
-  const ttl = stillUnknown ? CACHE_TTL_PARTIAL_MS : CACHE_TTL_MS;
-  cache = { at: Date.now(), data: videos, ttl };
+  cache = { at: Date.now(), data: videos };
   return videos;
 }
 
