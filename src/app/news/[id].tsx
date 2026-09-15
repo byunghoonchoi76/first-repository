@@ -57,7 +57,10 @@ export default function AnnouncementDetailScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
+        <View style={styles.badgeRow}>
+          <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
+          {item.subCategory ? <Badge label={item.subCategory} tone="textSecondary" /> : null}
+        </View>
         <ThemedText type="title">{item.title}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           {item.author} · {formatRelative(item.publishedAt)}
@@ -86,6 +89,7 @@ export default function AnnouncementDetailScreen() {
 
 const styles = StyleSheet.create({
   header: { gap: Spacing.two },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   adminRow: { flexDirection: 'row', gap: Spacing.two },
   flex: { flex: 1 },
 });

@@ -162,7 +162,8 @@ export const sampleAnnouncements: Announcement[] = [
 · 장지: ○○추모공원
 
 유가족을 위해 함께 기도해 주시고, 위로해 주시기 바랍니다.`,
-    category: '공지',
+    category: '소식',
+    subCategory: '장례',
     author: '교회 사무실',
     pinned: false,
     publishedAt: dateTime(0),
@@ -179,6 +180,7 @@ export const sampleAnnouncements: Announcement[] = [
 
 신청 마감은 7월 6일 주일까지입니다. 은혜의 자리에 함께해 주세요.`,
     category: '행사',
+    subCategory: '수련회',
     author: '교육부',
     pinned: true,
     publishedAt: dateTime(1),

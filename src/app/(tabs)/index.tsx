@@ -30,8 +30,9 @@ function greeting(): string {
   return '복된 저녁입니다';
 }
 
-/** 부고(장례) 공지인지 제목·내용으로 판별합니다. 맞으면 국화 이미지를 씁니다. */
-function isFuneralNotice(item: { title?: string; body?: string }): boolean {
+/** 부고(장례) 공지인지 세부 분류·제목·내용으로 판별합니다. 맞으면 국화 이미지를 씁니다. */
+function isFuneralNotice(item: { title?: string; body?: string; subCategory?: string }): boolean {
+  if (item.subCategory === '장례') return true;
   const text = `${item.title ?? ''} ${item.body ?? ''}`;
   return /부고|장례|별세|소천|하관|발인|빈소|조문|국화|영결|위독|천국환송|소천하/.test(text);
 }

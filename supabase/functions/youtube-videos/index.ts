@@ -21,8 +21,8 @@ const CHANNEL_ID_ENV = Deno.env.get('YT_CHANNEL_ID') ?? '';
 // (playlistItems·videos 모두 한 번의 호출로 최대 50개까지 처리 → 속도·할당량 영향 없음)
 const MAX = 50;
 
-// 유튜브 할당량 절약: 결과를 10분간 재사용합니다. (업로드 후 최대 10분 내 노출)
-const CACHE_TTL_MS = 600_000;
+// 유튜브 할당량 절약: 결과를 30분간 재사용합니다. (업로드 후 최대 30분 내 노출)
+const CACHE_TTL_MS = 1_800_000;
 // 이 길이(초) 이하이면 쇼츠로 봅니다. 유튜브 쇼츠는 최대 3분(180초)입니다.
 const SHORT_MAX_SECONDS = 185;
 

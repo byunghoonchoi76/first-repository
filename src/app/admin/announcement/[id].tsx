@@ -8,9 +8,16 @@ import { Button, Field, LoadingState, Toggle } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, type AnnouncementCategory } from '@/lib/data';
+import { repository, SUBCATEGORIES, type AnnouncementCategory } from '@/lib/data';
 
 const CATEGORIES: AnnouncementCategory[] = ['공지', '행사', '소식'];
+
+/** 분류가 모호하지 않도록 각 카테고리의 뜻을 안내합니다. */
+const CATEGORY_HINTS: Record<AnnouncementCategory, string> = {
+  공지: '교회 전체에 알리는 일반 공지 (주차·시설·행정 등)',
+  행사: '교회에서 여는 행사 — 아래에서 세부 항목을 골라주세요',
+  소식: '성도들의 일상 소식 — 아래에서 세부 항목을 골라주세요',
+};
 
 export default function AnnouncementEditorScreen() {
   const theme = useTheme();
@@ -22,6 +29,7 @@ export default function AnnouncementEditorScreen() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [category, setCategory] = useState<AnnouncementCategory>('공지');
+  const [subCategory, setSubCategory] = useState<string>('');
   const [author, setAuthor] = useState(user?.name ?? '');
   const [pinned, setPinned] = useState(false);
   const [loading, setLoading] = useState(!isNew);
@@ -39,6 +47,7 @@ export default function AnnouncementEditorScreen() {
         setTitle(found.title);
         setBody(found.body);
         setCategory(found.category);
+        setSubCategory(found.subCategory ?? '');
         setAuthor(found.author);
         setPinned(found.pinned);
       })
@@ -61,6 +70,7 @@ export default function AnnouncementEditorScreen() {
         title: title.trim(),
         body: body.trim(),
         category,
+        subCategory: SUBCATEGORIES[category].length > 0 ? subCategory || undefined : undefined,
         author: author.trim() || '교회 사무실',
         pinned,
       };
@@ -123,7 +133,11 @@ export default function AnnouncementEditorScreen() {
               return (
                 <Pressable
                   key={option}
-                  onPress={() => setCategory(option)}
+                  onPress={() => {
+                    setCategory(option);
+                    // 새 카테고리에 없는 세부 분류는 초기화합니다.
+                    setSubCategory((prev) => (SUBCATEGORIES[option].includes(prev) ? prev : ''));
+                  }}
                   style={[
                     styles.chip,
                     {
@@ -140,7 +154,41 @@ export default function AnnouncementEditorScreen() {
               );
             })}
           </View>
+          <ThemedText type="caption" themeColor="textMuted" style={styles.hint}>
+            {CATEGORY_HINTS[category]}
+          </ThemedText>
         </View>
+
+        {SUBCATEGORIES[category].length > 0 ? (
+          <View style={styles.field}>
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              세부 분류 {category === '소식' ? '(장례·결혼 등)' : '(행사 종류)'}
+            </ThemedText>
+            <View style={styles.chipWrap}>
+              {SUBCATEGORIES[category].map((option) => {
+                const active = option === subCategory;
+                return (
+                  <Pressable
+                    key={option}
+                    onPress={() => setSubCategory(active ? '' : option)}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: active ? theme.accent : theme.backgroundElement,
+                        borderColor: active ? theme.accent : theme.border,
+                      },
+                    ]}>
+                    <ThemedText
+                      type="caption"
+                      style={{ color: active ? theme.onPrimary : theme.textSecondary, fontWeight: '700' }}>
+                      {option}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
 
         <Field label="제목" value={title} onChangeText={setTitle} placeholder="공지 제목" />
         <Field label="내용" value={body} onChangeText={setBody} placeholder="공지 내용" multiline />
@@ -173,6 +221,8 @@ const styles = StyleSheet.create({
   form: { gap: Spacing.three },
   field: { gap: Spacing.one },
   chipRow: { flexDirection: 'row', gap: Spacing.two },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  hint: { marginTop: 2 },
   chip: {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one + 2,
