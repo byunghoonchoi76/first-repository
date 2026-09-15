@@ -16,7 +16,10 @@
 const HANDLE = (Deno.env.get('YT_HANDLE') ?? '@mychmedia').replace(/^@?/, '@');
 const API_KEY = Deno.env.get('YOUTUBE_API_KEY') ?? '';
 const CHANNEL_ID_ENV = Deno.env.get('YT_CHANNEL_ID') ?? '';
-const MAX = 15;
+// 가져올 최신 영상 수. 최근 며칠간 새벽·수요·주일 예배가 많이 올라오면 15개로는
+// 조금 지난 쇼츠가 밀려나 빠집니다. 50개까지 받아 더 넓게 포함합니다.
+// (playlistItems·videos 모두 한 번의 호출로 최대 50개까지 처리 → 속도·할당량 영향 없음)
+const MAX = 50;
 
 // 유튜브 할당량 절약: 결과를 10분간 재사용합니다. (업로드 후 최대 10분 내 노출)
 const CACHE_TTL_MS = 600_000;
