@@ -92,7 +92,10 @@ export default function NewsScreen() {
           {items.map((item) => (
             <Card key={item.id} onPress={() => router.push(`/news/${item.id}`)}>
               <View style={styles.rowBetween}>
-                <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
+                <View style={styles.metaRow}>
+                  <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
+                  {item.subCategory ? <Badge label={item.subCategory} tone="textSecondary" /> : null}
+                </View>
                 <View style={styles.metaRow}>
                   {item.pinned ? <Ionicons name="pin" size={13} color={theme.accent} /> : null}
                   <ThemedText type="caption" themeColor="textMuted">

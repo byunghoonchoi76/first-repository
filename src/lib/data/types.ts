@@ -110,11 +110,25 @@ export type BulletinInput = Omit<Bulletin, 'id'>;
 
 export type AnnouncementCategory = '공지' | '행사' | '소식';
 
+/** 소식(성도 일상 소식) 세부 분류 */
+export const NEWS_SUBCATEGORIES = ['장례', '결혼', '출산', '입원·회복', '이사', '개업', '기타'] as const;
+/** 행사(교회 행사) 세부 분류 */
+export const EVENT_SUBCATEGORIES = ['수련회', '세미나·특강', '전도·선교', '봉사·구제', '친교·모임', '절기예배', '기타'] as const;
+
+/** 카테고리별 세부 분류 목록 (공지는 세부 분류 없음) */
+export const SUBCATEGORIES: Record<AnnouncementCategory, readonly string[]> = {
+  공지: [],
+  행사: EVENT_SUBCATEGORIES,
+  소식: NEWS_SUBCATEGORIES,
+};
+
 export interface Announcement {
   id: string;
   title: string;
   body: string;
   category: AnnouncementCategory;
+  /** 세부 분류 (소식: 장례·결혼 등 / 행사: 수련회·세미나 등). 공지는 비어 있음. */
+  subCategory?: string;
   author: string;
   pinned: boolean;
   /** ISO 날짜시각 */

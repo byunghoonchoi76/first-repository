@@ -110,10 +110,13 @@ create table if not exists public.announcements (
   title text not null,
   body text not null,
   category text not null default '공지' check (category in ('공지', '행사', '소식')),
+  sub_category text,
   author text not null default '교회 사무실',
   pinned boolean not null default false,
   published_at timestamptz not null default now()
 );
+-- 이미 만들어진 테이블에도 세부 분류 컬럼을 추가합니다(있으면 무시).
+alter table public.announcements add column if not exists sub_category text;
 
 create index if not exists announcements_published_idx on public.announcements (pinned desc, published_at desc);
 
