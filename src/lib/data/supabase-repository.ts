@@ -696,6 +696,22 @@ export const supabaseRepository: ChurchRepository = {
     return message;
   },
 
+  async listGroupReads(groupId) {
+    const sb = requireSupabase();
+    const res = await sb.from('group_reads').select('user_id, last_read_at').eq('group_id', groupId);
+    if (res.error) throw new Error(res.error.message);
+    return ((res.data ?? []) as { user_id: string; last_read_at: string }[]).map((r) => ({
+      userId: r.user_id,
+      lastReadAt: r.last_read_at,
+    }));
+  },
+
+  async markGroupRead(groupId) {
+    const sb = requireSupabase();
+    const { error } = await sb.rpc('mark_group_read', { gid: groupId });
+    if (error) throw new Error(error.message);
+  },
+
   async countMembers() {
     const sb = requireSupabase();
     const res = await sb.from('profiles').select('id', { count: 'exact', head: true });

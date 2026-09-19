@@ -632,6 +632,19 @@ export const sampleRepository: ChurchRepository = {
     return clone(created);
   },
 
+  async listGroupReads(groupId) {
+    await ready();
+    await delay(60);
+    // 샘플에서는 '나'만 최신까지 읽은 상태로 보여, 읽음 표시(안 읽은 사람 수)가 어떻게 보이는지 확인할 수 있게 합니다.
+    void groupId;
+    return [{ userId: SAMPLE_ME.id, lastReadAt: new Date().toISOString() }];
+  },
+
+  async markGroupRead() {
+    await ready();
+    await delay(40);
+  },
+
   async countMembers() {
     await ready();
     await delay(80);

@@ -264,6 +264,13 @@ export interface GroupMessage {
   createdAt: string;
 }
 
+/** 소통방 멤버의 읽음 위치 — 안 읽은 사람 수(카톡식) 계산에 사용 */
+export interface GroupRead {
+  userId: string;
+  /** 이 멤버가 마지막으로 읽은 시각(ISO) */
+  lastReadAt: string;
+}
+
 /** 기도시간 기록 (기기 로컬에 저장) */
 export interface PrayerLogEntry {
   /** YYYY-MM-DD */
@@ -362,6 +369,10 @@ export interface ChurchRepository {
   deleteGroup(id: string): Promise<void>;
   listGroupMessages(groupId: string): Promise<GroupMessage[]>;
   sendGroupMessage(groupId: string, author: string, body: string): Promise<GroupMessage>;
+  /** 이 소통방 멤버들의 읽음 위치(안 읽은 사람 수 계산용) */
+  listGroupReads(groupId: string): Promise<GroupRead[]>;
+  /** 현재 로그인 성도가 이 소통방을 지금까지 읽었다고 표시합니다. */
+  markGroupRead(groupId: string): Promise<void>;
 
   /** 앱에 가입한 성도(계정) 수. 관리자 대시보드용. */
   countMembers(): Promise<number>;

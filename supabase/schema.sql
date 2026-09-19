@@ -364,6 +364,30 @@ create table if not exists public.group_messages (
 
 create index if not exists group_messages_group_idx on public.group_messages (group_id, created_at);
 
+-- 소통방 읽음 표시(카톡식) — 멤버별로 마지막으로 읽은 시각을 기록
+create table if not exists public.group_reads (
+  group_id uuid not null references public.small_groups on delete cascade,
+  user_id uuid not null references auth.users on delete cascade,
+  last_read_at timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+create index if not exists group_reads_group_idx on public.group_reads (group_id);
+alter table public.group_reads enable row level security;
+drop policy if exists "읽음 조회" on public.group_reads;
+create policy "읽음 조회" on public.group_reads
+  for select using (public.is_group_member(group_id) or public.is_admin());
+create or replace function public.mark_group_read(gid uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_group_member(gid) then
+    return;
+  end if;
+  insert into public.group_reads (group_id, user_id, last_read_at)
+  values (gid, auth.uid(), now())
+  on conflict (group_id, user_id) do update set last_read_at = now();
+end; $$;
+grant execute on function public.mark_group_read(uuid) to authenticated;
+
 -- ─────────────────────────────────────────────
 -- RLS: 읽기는 모두에게, 쓰기는 로그인/관리자에게
 -- ─────────────────────────────────────────────
