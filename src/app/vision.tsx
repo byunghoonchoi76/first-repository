@@ -29,7 +29,7 @@ export default function VisionScreen() {
     <Screen>
       <Stack.Screen options={{ title: '교회 비전' }} />
 
-      <HeroBanner imageSource={LocalPhotos.vision} base="navy" height={190} style={styles.hero}>
+      <HeroBanner imageSource={LocalPhotos.vision} base="navy" aspectRatio={537 / 500} style={styles.hero}>
         <ThemedText type="caption" style={styles.heroTag}>
           우리의 비전
         </ThemedText>
