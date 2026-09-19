@@ -1,4 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -19,6 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, type GroupMessage, type GroupRead, type MyGroupMembership, type SmallGroup } from '@/lib/data';
 import { formatTime } from '@/lib/format';
+import { uploadChatImage } from '@/lib/storage';
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -36,6 +39,9 @@ export default function GroupRoomScreen() {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [reads, setReads] = useState<GroupRead[]>([]);
   const [draft, setDraft] = useState('');
+  // 보내기 전 첨부한 사진(업로드된 공개 주소)
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const listRef = useRef<FlatList<GroupMessage>>(null);
@@ -100,17 +106,51 @@ export default function GroupRoomScreen() {
     return () => clearInterval(timer);
   }, [load, needsSignIn]);
 
+  const attachImage = async () => {
+    if (pendingImage || attaching) return;
+    setError(undefined);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setError('사진 접근을 허용해 주셔야 사진을 보낼 수 있습니다.');
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+      base64: Platform.OS !== 'web',
+    });
+    if (picked.canceled || !picked.assets[0]) return;
+    const asset = picked.assets[0];
+    setAttaching(true);
+    try {
+      const url = await uploadChatImage({
+        uri: asset.uri,
+        base64: asset.base64,
+        mimeType: asset.mimeType,
+        fileName: asset.fileName ?? undefined,
+      });
+      setPendingImage(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '사진을 올리지 못했습니다.');
+    } finally {
+      setAttaching(false);
+    }
+  };
+
   const send = async () => {
     const body = draft.trim();
-    if (!body) return;
+    const image = pendingImage;
+    if (!body && !image) return;
     setDraft('');
+    setPendingImage(null);
     try {
-      const created = await repository.sendGroupMessage(groupId, user?.name ?? '성도', body);
+      const created = await repository.sendGroupMessage(groupId, user?.name ?? '성도', body, image ?? undefined);
       setMessages((current) => [...current, created]);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     } catch (e) {
-      // 전송에 실패하면 작성한 내용을 다시 입력창에 되돌려 재시도할 수 있게 합니다.
+      // 전송에 실패하면 작성한 내용·사진을 되돌려 재시도할 수 있게 합니다.
       setDraft((cur) => (cur ? cur : body));
+      setPendingImage((cur) => cur ?? image);
       setError(e instanceof Error ? e.message : '메시지를 보내지 못했습니다.');
     }
   };
@@ -234,18 +274,21 @@ export default function GroupRoomScreen() {
                     {item.author}
                   </ThemedText>
                 ) : null}
-                <View
-                  style={[
-                    styles.bubble,
-                    {
-                      backgroundColor: mine ? theme.primary : theme.backgroundElement,
-                      borderColor: mine ? theme.primary : theme.border,
-                    },
-                  ]}>
-                  <ThemedText type="small" style={{ color: mine ? theme.onPrimary : theme.text }}>
-                    {item.body}
-                  </ThemedText>
-                </View>
+                {item.imageUrl ? <ChatImage url={item.imageUrl} mine={mine} /> : null}
+                {item.body ? (
+                  <View
+                    style={[
+                      styles.bubble,
+                      {
+                        backgroundColor: mine ? theme.primary : theme.backgroundElement,
+                        borderColor: mine ? theme.primary : theme.border,
+                      },
+                    ]}>
+                    <ThemedText type="small" style={{ color: mine ? theme.onPrimary : theme.text }}>
+                      {item.body}
+                    </ThemedText>
+                  </View>
+                ) : null}
                 <View style={[styles.metaRow, mine && styles.metaRowMine]}>
                   {unread > 0 ? (
                     <ThemedText type="caption" style={[styles.unread, { color: theme.accent }]}>
@@ -265,30 +308,52 @@ export default function GroupRoomScreen() {
       {canParticipate ? (
         <View
           style={[
-            styles.composer,
+            styles.composerWrap,
             {
               backgroundColor: theme.backgroundElement,
               borderColor: theme.border,
               paddingBottom: Math.max(insets.bottom, Spacing.two),
             },
           ]}>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="메시지를 입력하세요"
-            placeholderTextColor={theme.textMuted}
-            style={[styles.input, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
-            multiline
-            onSubmitEditing={() => void send()}
-          />
-          <Pressable
-            onPress={() => void send()}
-            style={({ pressed }) => [
-              styles.sendButton,
-              { backgroundColor: theme.primary, opacity: pressed || !draft.trim() ? 0.6 : 1 },
-            ]}>
-            <Ionicons name="arrow-up" size={18} color={theme.onPrimary} />
-          </Pressable>
+          {pendingImage ? (
+            <View style={styles.pendingRow}>
+              <Image source={{ uri: pendingImage }} style={styles.pendingThumb} contentFit="cover" />
+              <Pressable onPress={() => setPendingImage(null)} style={[styles.pendingX, { backgroundColor: theme.background }]}>
+                <Ionicons name="close" size={14} color={theme.text} />
+              </Pressable>
+            </View>
+          ) : null}
+          <View style={styles.composerRow}>
+            <Pressable
+              onPress={() => void attachImage()}
+              disabled={attaching || !!pendingImage}
+              hitSlop={6}
+              style={styles.attachBtn}
+              accessibilityLabel="사진 첨부">
+              <Ionicons
+                name={attaching ? 'hourglass-outline' : 'image-outline'}
+                size={24}
+                color={pendingImage ? theme.textMuted : theme.primary}
+              />
+            </Pressable>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="메시지를 입력하세요"
+              placeholderTextColor={theme.textMuted}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.background, borderColor: theme.border }]}
+              multiline
+              onSubmitEditing={() => void send()}
+            />
+            <Pressable
+              onPress={() => void send()}
+              style={({ pressed }) => [
+                styles.sendButton,
+                { backgroundColor: theme.primary, opacity: pressed || (!draft.trim() && !pendingImage) ? 0.6 : 1 },
+              ]}>
+              <Ionicons name="arrow-up" size={18} color={theme.onPrimary} />
+            </Pressable>
+          </View>
         </View>
       ) : (
         <View
@@ -302,6 +367,23 @@ export default function GroupRoomScreen() {
         </View>
       )}
     </KeyboardAvoidingView>
+  );
+}
+
+/** 말풍선 안 사진 — 사진 비율 그대로, 최대 220px 폭으로 보여 줍니다. */
+function ChatImage({ url, mine }: { url: string; mine: boolean }) {
+  const [ratio, setRatio] = useState(1);
+  return (
+    <Image
+      source={{ uri: url }}
+      style={[styles.msgImage, { aspectRatio: ratio, alignSelf: mine ? 'flex-end' : 'flex-start' }]}
+      contentFit="cover"
+      transition={120}
+      onLoad={(e) => {
+        const { width, height } = e.source ?? {};
+        if (width && height) setRatio(width / height);
+      }}
+    />
   );
 }
 
@@ -329,13 +411,26 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaRowMine: { justifyContent: 'flex-end' },
   unread: { fontWeight: '700' },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.two,
+  msgImage: { width: 220, maxWidth: '100%', borderRadius: Radius.medium, backgroundColor: 'rgba(0,0,0,0.05)' },
+  composerWrap: {
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
+    gap: Spacing.two,
+  },
+  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
+  attachBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  pendingRow: { position: 'relative', alignSelf: 'flex-start' },
+  pendingThumb: { width: 72, height: 72, borderRadius: Radius.medium },
+  pendingX: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     flex: 1,

@@ -1,10 +1,12 @@
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, ErrorState, LoadingState } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData } from '@/lib/data';
 import { formatRelative } from '@/lib/format';
@@ -71,6 +73,10 @@ export default function AnnouncementDetailScreen() {
         <ThemedText type="body">{item.body}</ThemedText>
       </Card>
 
+      {(item.images ?? []).map((url) => (
+        <Poster key={url} url={url} />
+      ))}
+
       {isAdmin ? (
         <View style={styles.adminRow}>
           <Button
@@ -87,9 +93,27 @@ export default function AnnouncementDetailScreen() {
   );
 }
 
+/** 포스터 한 장 — 사진 비율 그대로(가로 꽉 채움) 보여 잘림 없이 전체가 나옵니다. */
+function Poster({ url }: { url: string }) {
+  const [ratio, setRatio] = useState(3 / 4); // 로딩 전 기본값(세로형)
+  return (
+    <Image
+      source={{ uri: url }}
+      style={[styles.poster, { aspectRatio: ratio }]}
+      contentFit="cover"
+      transition={150}
+      onLoad={(e) => {
+        const { width, height } = e.source ?? {};
+        if (width && height) setRatio(width / height);
+      }}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   header: { gap: Spacing.two },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   adminRow: { flexDirection: 'row', gap: Spacing.two },
   flex: { flex: 1 },
+  poster: { width: '100%', borderRadius: Radius.medium, backgroundColor: 'rgba(0,0,0,0.05)' },
 });

@@ -211,14 +211,15 @@ export default function HomeScreen() {
             contentContainerStyle={styles.newsRow}>
             {topAnnouncements.map((item) => {
               const funeral = isFuneralNotice(item);
+              const poster = item.images?.[0];
               return (
               <Pressable
                 key={item.id}
                 onPress={() => router.push(`/news/${item.id}`)}
                 style={({ pressed }) => [styles.newsCard, pressed && styles.pressed]}>
                 <HeroBanner
-                  imageSource={funeral ? LocalPhotos.funeral : undefined}
-                  imageUrl={funeral ? undefined : Photos.community}
+                  imageSource={poster ? undefined : funeral ? LocalPhotos.funeral : undefined}
+                  imageUrl={poster ?? (funeral ? undefined : Photos.community)}
                   height={100}
                   base="navy"
                   style={styles.newsImage}>

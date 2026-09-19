@@ -113,10 +113,12 @@ create table if not exists public.announcements (
   sub_category text,
   author text not null default '교회 사무실',
   pinned boolean not null default false,
+  images text[] not null default '{}',
   published_at timestamptz not null default now()
 );
--- 이미 만들어진 테이블에도 세부 분류 컬럼을 추가합니다(있으면 무시).
+-- 이미 만들어진 테이블에도 세부 분류·포스터 컬럼을 추가합니다(있으면 무시).
 alter table public.announcements add column if not exists sub_category text;
+alter table public.announcements add column if not exists images text[] not null default '{}';
 
 create index if not exists announcements_published_idx on public.announcements (pinned desc, published_at desc);
 
@@ -359,8 +361,10 @@ create table if not exists public.group_messages (
   author text not null default '성도',
   author_id uuid references auth.users on delete set null,
   body text not null,
+  image_url text,
   created_at timestamptz not null default now()
 );
+alter table public.group_messages add column if not exists image_url text;
 
 create index if not exists group_messages_group_idx on public.group_messages (group_id, created_at);
 

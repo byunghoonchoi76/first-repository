@@ -131,6 +131,8 @@ export interface Announcement {
   subCategory?: string;
   author: string;
   pinned: boolean;
+  /** 첨부 포스터 사진 주소 (최대 2장) */
+  images?: string[];
   /** ISO 날짜시각 */
   publishedAt: string;
 }
@@ -261,6 +263,8 @@ export interface GroupMessage {
   /** 글쓴이 계정 id (본인 메시지 구분용) */
   authorId?: string;
   body: string;
+  /** 첨부 사진 주소 (있으면 말풍선에 사진이 함께 표시됩니다) */
+  imageUrl?: string;
   createdAt: string;
 }
 
@@ -368,7 +372,7 @@ export interface ChurchRepository {
   updateGroup(id: string, input: SmallGroupInput): Promise<SmallGroup>;
   deleteGroup(id: string): Promise<void>;
   listGroupMessages(groupId: string): Promise<GroupMessage[]>;
-  sendGroupMessage(groupId: string, author: string, body: string): Promise<GroupMessage>;
+  sendGroupMessage(groupId: string, author: string, body: string, imageUrl?: string): Promise<GroupMessage>;
   /** 이 소통방 멤버들의 읽음 위치(안 읽은 사람 수 계산용) */
   listGroupReads(groupId: string): Promise<GroupRead[]>;
   /** 현재 로그인 성도가 이 소통방을 지금까지 읽었다고 표시합니다. */
