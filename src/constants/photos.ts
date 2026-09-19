@@ -8,6 +8,8 @@ export const LocalPhotos = {
   funeral: require('@/assets/images/funeral-chrysanthemum.jpg') as ImageSourcePropType,
   // 교회 비전 히어로 — 손으로 십자가를 만든 공동체 사진
   vision: require('@/assets/images/vision-cross.jpg') as ImageSourcePropType,
+  // 성경 읽기표 히어로 — 가을 숲의 펼쳐진 성경책
+  reading: require('@/assets/images/reading-hero.jpg') as ImageSourcePropType,
 } as const;
 
 /**

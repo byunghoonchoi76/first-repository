@@ -4,9 +4,11 @@ import * as WebBrowser from 'expo-web-browser';
 import { useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Card, SectionHeader } from '@/components/ui';
+import { LocalPhotos } from '@/constants/photos';
 import { Radius, Spacing } from '@/constants/theme';
 import { bskoreaUrl, mccheyneForDate, mccheyneIndex } from '@/constants/mccheyne';
 import { formatFullDate } from '@/lib/format';
@@ -46,6 +48,19 @@ export default function ReadingPlanScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ title: '성경 읽기표' }} />
+
+      {/* 상단 히어로 이미지 */}
+      <HeroBanner imageSource={LocalPhotos.reading} base="warm" aspectRatio={1200 / 564} style={styles.hero}>
+        <ThemedText type="caption" style={styles.heroTag}>
+          오늘의 양식
+        </ThemedText>
+        <ThemedText type="subtitle" style={styles.heroTitle}>
+          성경 읽기표
+        </ThemedText>
+        <ThemedText type="small" style={styles.heroVerse}>
+          주의 말씀은 내 발의 등이요 내 길의 빛
+        </ThemedText>
+      </HeroBanner>
 
       {/* 날짜 이동 + 진도 */}
       <Card elevated>
@@ -315,6 +330,10 @@ function Divider({ color }: { color: string }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  hero: {},
+  heroTag: { color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
+  heroTitle: { color: '#fff', marginTop: Spacing.one },
+  heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one, fontWeight: '600' },
   navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   navBtn: { padding: Spacing.one },
   navCenter: { alignItems: 'center', gap: 2 },
