@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
@@ -13,43 +14,57 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function VisionScreen() {
   const theme = useTheme();
+  // 첫 항목은 펼친 상태로 시작합니다.
+  const [open, setOpen] = useState<Set<number>>(new Set([0]));
+
+  const toggle = (i: number) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
 
   return (
     <Screen>
       <Stack.Screen options={{ title: '교회 비전' }} />
 
-      <HeroBanner imageUrl={Photos.heroWorship} base="navy" height={200} style={styles.hero}>
+      <HeroBanner imageUrl={Photos.heroWorship} base="navy" height={190} style={styles.hero}>
         <ThemedText type="caption" style={styles.heroTag}>
           우리의 비전
         </ThemedText>
-        <ThemedText type="subtitle" style={styles.heroTitle} numberOfLines={3}>
+        <ThemedText type="subtitle" style={styles.heroTitle}>
           {ChurchVision.headline}
         </ThemedText>
         <ThemedText type="small" style={styles.heroVerse}>
-          {ChurchVision.verse}
+          {ChurchVision.subtitle}
         </ThemedText>
       </HeroBanner>
 
-      <Card elevated>
-        <ThemedText type="body">{ChurchVision.intro}</ThemedText>
-      </Card>
-
-      <View style={styles.points}>
-        {ChurchVision.points.map((p) => (
-          <Card key={p.title} elevated>
-            <View style={styles.pointRow}>
-              <View style={[styles.pointIcon, { backgroundColor: theme.backgroundSelected }]}>
-                <Ionicons name={p.icon as React.ComponentProps<typeof Ionicons>['name']} size={20} color={theme.primary} />
-              </View>
-              <View style={styles.flex}>
-                <ThemedText type="smallBold">{p.title}</ThemedText>
-                <ThemedText type="caption" themeColor="textSecondary">
-                  {p.desc}
+      <View style={styles.list}>
+        {ChurchVision.communities.map((c, i) => {
+          const expanded = open.has(i);
+          return (
+            <Card key={c.no} elevated>
+              <Pressable onPress={() => toggle(i)} style={styles.header}>
+                <View style={[styles.noBadge, { backgroundColor: theme.primary }]}>
+                  <ThemedText type="caption" style={{ color: theme.onPrimary, fontWeight: '800' }}>
+                    {c.no}
+                  </ThemedText>
+                </View>
+                <ThemedText type="smallBold" style={styles.flex}>
+                  {c.title}
                 </ThemedText>
-              </View>
-            </View>
-          </Card>
-        ))}
+                <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={theme.textMuted} />
+              </Pressable>
+              {expanded ? (
+                <ThemedText type="small" themeColor="textSecondary" style={styles.desc}>
+                  {c.desc}
+                </ThemedText>
+              ) : null}
+            </Card>
+          );
+        })}
       </View>
     </Screen>
   );
@@ -59,9 +74,10 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   hero: {},
   heroTag: { color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
-  heroTitle: { color: '#fff', marginTop: Spacing.one, lineHeight: 28 },
+  heroTitle: { color: '#fff', marginTop: Spacing.one },
   heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one, fontWeight: '600' },
-  points: { gap: Spacing.two },
-  pointRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  pointIcon: { width: 40, height: 40, borderRadius: Radius.medium, alignItems: 'center', justifyContent: 'center' },
+  list: { gap: Spacing.two },
+  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  noBadge: { width: 32, height: 32, borderRadius: Radius.small, alignItems: 'center', justifyContent: 'center' },
+  desc: { marginTop: Spacing.three, lineHeight: 22 },
 });
