@@ -8,7 +8,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui';
 import { ChurchVision } from '@/constants/church';
-import { Photos } from '@/constants/photos';
+import { LocalPhotos } from '@/constants/photos';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -29,7 +29,7 @@ export default function VisionScreen() {
     <Screen>
       <Stack.Screen options={{ title: '교회 비전' }} />
 
-      <HeroBanner imageUrl={Photos.heroWorship} base="navy" height={190} style={styles.hero}>
+      <HeroBanner imageSource={LocalPhotos.vision} base="navy" height={190} style={styles.hero}>
         <ThemedText type="caption" style={styles.heroTag}>
           우리의 비전
         </ThemedText>
