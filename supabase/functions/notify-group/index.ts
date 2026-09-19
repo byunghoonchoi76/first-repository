@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   // 메시지 + 방 정보
   const { data: msg } = await service
     .from('group_messages')
-    .select('id, group_id, author, author_id, body')
+    .select('id, group_id, author, author_id, body, image_url')
     .eq('id', messageId)
     .maybeSingle();
   if (!msg) return json({ ok: false, error: 'message not found' }, 404);
@@ -77,7 +77,8 @@ Deno.serve(async (req) => {
   const byEndpoint = new Map<string, { endpoint: string; p256dh: string; auth: string }>();
   for (const s of subs ?? []) if (s.endpoint) byEndpoint.set(s.endpoint, s);
 
-  const preview = String(msg.body ?? '').slice(0, 120);
+  const text = String(msg.body ?? '').trim();
+  const preview = text ? text.slice(0, 120) : msg.image_url ? '📷 사진' : '';
   const payload = JSON.stringify({
     title: groupName,
     body: `${msg.author ?? '성도'}: ${preview}`,

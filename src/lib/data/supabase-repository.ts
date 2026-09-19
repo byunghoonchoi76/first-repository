@@ -1,4 +1,5 @@
 import { ChurchInfo } from '@/constants/church';
+import { deleteImage } from '@/lib/storage';
 import { requireSupabase } from '@/lib/supabase';
 import type {
   Announcement,
@@ -81,6 +82,7 @@ const toAnnouncement = (row: Row): Announcement => ({
   subCategory: row.sub_category ?? undefined,
   author: row.author,
   pinned: row.pinned,
+  images: (row.images as string[] | null) ?? [],
   publishedAt: row.published_at,
 });
 
@@ -91,6 +93,7 @@ const fromAnnouncement = (input: AnnouncementInput) => ({
   sub_category: input.subCategory ?? null,
   author: input.author,
   pinned: input.pinned,
+  images: input.images ?? [],
   published_at: input.publishedAt ?? new Date().toISOString(),
 });
 
@@ -207,6 +210,7 @@ const toMessage = (row: Row): GroupMessage => ({
   author: row.author,
   authorId: row.author_id ?? undefined,
   body: row.body,
+  imageUrl: row.image_url ?? undefined,
   createdAt: row.created_at,
 });
 
@@ -325,6 +329,10 @@ export const supabaseRepository: ChurchRepository = {
 
   async deleteAnnouncement(id) {
     const sb = requireSupabase();
+    // 딸린 포스터 사진도 저장소에서 함께 정리합니다(어느 경로로 삭제하든 확실히).
+    const { data } = await sb.from('announcements').select('images').eq('id', id).maybeSingle();
+    const images = ((data?.images as string[] | null) ?? []).filter(Boolean);
+    await Promise.all(images.map((url) => deleteImage(url)));
     const { error } = await sb.from('announcements').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
@@ -679,11 +687,11 @@ export const supabaseRepository: ChurchRepository = {
     return unwrap(res).map(toMessage);
   },
 
-  async sendGroupMessage(groupId, author, body) {
+  async sendGroupMessage(groupId, author, body, imageUrl) {
     const sb = requireSupabase();
     const res = await sb
       .from('group_messages')
-      .insert({ group_id: groupId, author, body, author_id: await currentUserId() })
+      .insert({ group_id: groupId, author, body, image_url: imageUrl ?? null, author_id: await currentUserId() })
       .select()
       .single();
     const message = toMessage(unwrap(res));

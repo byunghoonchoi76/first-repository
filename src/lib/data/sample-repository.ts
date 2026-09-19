@@ -616,7 +616,7 @@ export const sampleRepository: ChurchRepository = {
     );
   },
 
-  async sendGroupMessage(groupId, author, body) {
+  async sendGroupMessage(groupId, author, body, imageUrl) {
     await ready();
     await delay(80);
     const created: GroupMessage = {
@@ -625,6 +625,7 @@ export const sampleRepository: ChurchRepository = {
       author,
       authorId: SAMPLE_ME.id,
       body,
+      imageUrl,
       createdAt: new Date().toISOString(),
     };
     db.messages = [...db.messages, created];

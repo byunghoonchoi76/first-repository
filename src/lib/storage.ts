@@ -43,29 +43,67 @@ export interface PickedImage {
 }
 
 /**
- * 고른 사진을 Supabase Storage 에 올리고, 앱에서 바로 쓸 수 있는 공개 주소를 돌려줍니다.
- * (Supabase 를 연결하지 않은 샘플 모드에서는 기기 안의 주소를 그대로 씁니다.)
+ * (웹 전용) 사진을 캔버스로 다시 그려 가로·세로 최대 1600px 로 줄이고 JPEG 로 압축합니다.
+ * 포스터 한 장이 보통 3~8MB → 200~400KB 수준으로 줄어 저장소·전송량을 아낍니다.
+ * 캔버스를 쓸 수 없으면 원본을 그대로 올립니다.
  */
-export async function uploadBulletinImage(image: PickedImage): Promise<string> {
+async function shrinkForWeb(uri: string, maxEdge = 1600, quality = 0.8): Promise<{ body: Blob; contentType: string; extension: string }> {
+  const srcBlob = await (await fetch(uri)).blob();
+  try {
+    if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') {
+      return { body: srcBlob, contentType: srcBlob.type || 'image/jpeg', extension: 'jpg' };
+    }
+    const bitmap = await createImageBitmap(srcBlob);
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { body: srcBlob, contentType: srcBlob.type || 'image/jpeg', extension: 'jpg' };
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    const out = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (out) return { body: out, contentType: 'image/jpeg', extension: 'jpg' };
+  } catch {
+    // 아래에서 원본으로 처리
+  }
+  return { body: srcBlob, contentType: srcBlob.type || 'image/jpeg', extension: 'jpg' };
+}
+
+/**
+ * 고른 사진을 Supabase Storage(bulletins 버킷) 의 `folder` 아래에 올리고, 공개 주소를 돌려줍니다.
+ * - 웹에서는 올리기 전에 자동으로 리사이즈·압축합니다.
+ * - Supabase 를 연결하지 않은 샘플 모드에서는 기기 안의 주소를 그대로 씁니다.
+ */
+export async function uploadImage(image: PickedImage, folder = ''): Promise<string> {
   if (!hasSupabaseConfig) {
     // 샘플 모드: 올릴 곳이 없으므로 이 기기에서만 보이는 주소를 사용합니다.
     return image.uri;
   }
 
   const supabase = requireSupabase();
-  const extension = extensionFor(image.mimeType, image.fileName);
-  const path = `${new Date().toISOString().slice(0, 10)}/${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}.${extension}`;
+  const prefix = folder ? `${folder.replace(/\/$/, '')}/` : '';
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-  // 웹은 Blob 을, 앱은 사진의 base64 를 바이트로 바꿔 올립니다.
-  const body =
-    Platform.OS === 'web'
-      ? await (await fetch(image.uri)).blob()
-      : base64ToBytes(image.base64 ?? '');
+  let body: Blob | Uint8Array;
+  let contentType: string;
+  let extension: string;
+  if (Platform.OS === 'web') {
+    const shrunk = await shrinkForWeb(image.uri);
+    body = shrunk.body;
+    contentType = shrunk.contentType;
+    extension = shrunk.extension;
+  } else {
+    // 앱(iOS·안드로이드): 사진 picker 의 quality 로 이미 압축된 base64 를 그대로 올립니다.
+    body = base64ToBytes(image.base64 ?? '');
+    extension = extensionFor(image.mimeType, image.fileName);
+    contentType = image.mimeType ?? `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+  }
 
+  const path = `${prefix}${new Date().toISOString().slice(0, 10)}/${name}.${extension}`;
   const { error } = await supabase.storage.from(BULLETIN_BUCKET).upload(path, body, {
-    contentType: image.mimeType ?? `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+    contentType,
     upsert: false,
   });
   if (error) {
@@ -73,7 +111,7 @@ export async function uploadBulletinImage(image: PickedImage): Promise<string> {
       throw new Error('저장소가 준비되지 않았습니다. supabase/storage.sql 을 실행해 주세요.');
     }
     if (/policy|permission|unauthorized/i.test(error.message)) {
-      throw new Error('업로드 권한이 없습니다. 관리자 계정으로 로그인했는지 확인해 주세요.');
+      throw new Error('업로드 권한이 없습니다. 로그인했는지 확인해 주세요.');
     }
     throw new Error(error.message);
   }
@@ -82,9 +120,24 @@ export async function uploadBulletinImage(image: PickedImage): Promise<string> {
   return data.publicUrl;
 }
 
-/** 주보에서 뺀 이미지가 우리 저장소의 파일이면 함께 지웁니다. (실패해도 화면 동작에는 지장 없음) */
-export async function deleteBulletinImage(publicUrl: string): Promise<void> {
-  if (!hasSupabaseConfig) return;
+/** 주보 사진 업로드 (기존 호출 호환) */
+export function uploadBulletinImage(image: PickedImage): Promise<string> {
+  return uploadImage(image, '');
+}
+
+/** 교회 소식 포스터 업로드 */
+export function uploadAnnouncementImage(image: PickedImage): Promise<string> {
+  return uploadImage(image, 'announcements');
+}
+
+/** 소통방 사진 업로드 */
+export function uploadChatImage(image: PickedImage): Promise<string> {
+  return uploadImage(image, 'chat');
+}
+
+/** 우리 저장소(bulletins 버킷)의 파일이면 지웁니다. 다른 주소는 건드리지 않습니다. (실패해도 무시) */
+export async function deleteImage(publicUrl: string): Promise<void> {
+  if (!hasSupabaseConfig || !publicUrl) return;
 
   const marker = `/storage/v1/object/public/${BULLETIN_BUCKET}/`;
   const index = publicUrl.indexOf(marker);
@@ -94,6 +147,9 @@ export async function deleteBulletinImage(publicUrl: string): Promise<void> {
   try {
     await requireSupabase().storage.from(BULLETIN_BUCKET).remove([path]);
   } catch {
-    // 지우지 못해도 주보에서는 이미 빠졌으므로 넘어갑니다.
+    // 지우지 못해도 화면에서는 이미 빠졌으므로 넘어갑니다.
   }
 }
+
+/** 기존 호출 호환 (deleteImage 와 동일) */
+export const deleteBulletinImage = deleteImage;

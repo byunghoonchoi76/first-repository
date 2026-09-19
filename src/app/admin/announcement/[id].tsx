@@ -1,3 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -9,6 +12,9 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, SUBCATEGORIES, type AnnouncementCategory } from '@/lib/data';
+import { deleteImage, uploadAnnouncementImage } from '@/lib/storage';
+
+const MAX_IMAGES = 2;
 
 const CATEGORIES: AnnouncementCategory[] = ['공지', '행사', '소식'];
 
@@ -32,6 +38,8 @@ export default function AnnouncementEditorScreen() {
   const [subCategory, setSubCategory] = useState<string>('');
   const [author, setAuthor] = useState(user?.name ?? '');
   const [pinned, setPinned] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -50,6 +58,7 @@ export default function AnnouncementEditorScreen() {
         setSubCategory(found.subCategory ?? '');
         setAuthor(found.author);
         setPinned(found.pinned);
+        setImages(found.images ?? []);
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : '불러오지 못했습니다.'))
       .finally(() => active && setLoading(false));
@@ -57,6 +66,54 @@ export default function AnnouncementEditorScreen() {
       active = false;
     };
   }, [id, isNew]);
+
+  const pickAndUpload = async () => {
+    setError(undefined);
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) {
+      setError(`포스터는 최대 ${MAX_IMAGES}장까지 올릴 수 있어요.`);
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setError('사진 접근을 허용해 주셔야 포스터를 올릴 수 있습니다.');
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      quality: 0.85,
+      base64: Platform.OS !== 'web',
+    });
+    if (picked.canceled) return;
+
+    setUploading(true);
+    try {
+      const assets = picked.assets.slice(0, remaining);
+      const uploaded: string[] = [];
+      for (const asset of assets) {
+        uploaded.push(
+          await uploadAnnouncementImage({
+            uri: asset.uri,
+            base64: asset.base64,
+            mimeType: asset.mimeType,
+            fileName: asset.fileName ?? undefined,
+          }),
+        );
+      }
+      setImages((cur) => [...cur, ...uploaded].slice(0, MAX_IMAGES));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '사진을 올리지 못했습니다.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (url: string) => {
+    setImages((cur) => cur.filter((u) => u !== url));
+    void deleteImage(url);
+  };
 
   const save = async () => {
     if (!title.trim() || !body.trim()) {
@@ -73,6 +130,7 @@ export default function AnnouncementEditorScreen() {
         subCategory: SUBCATEGORIES[category].length > 0 ? subCategory || undefined : undefined,
         author: author.trim() || '교회 사무실',
         pinned,
+        images,
       };
       if (isNew) {
         await repository.createAnnouncement(input);
@@ -193,6 +251,38 @@ export default function AnnouncementEditorScreen() {
         <Field label="제목" value={title} onChangeText={setTitle} placeholder="공지 제목" />
         <Field label="내용" value={body} onChangeText={setBody} placeholder="공지 내용" multiline />
         <Field label="작성 부서" value={author} onChangeText={setAuthor} placeholder="예) 교육부" />
+
+        {/* 포스터 사진 (최대 2장) */}
+        <View style={styles.field}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            포스터 사진 (최대 {MAX_IMAGES}장, 선택)
+          </ThemedText>
+          <View style={styles.imageRow}>
+            {images.map((url) => (
+              <View key={url} style={styles.thumbWrap}>
+                <Image source={{ uri: url }} style={styles.thumb} contentFit="cover" />
+                <Pressable onPress={() => removeImage(url)} style={[styles.thumbX, { backgroundColor: theme.background }]}>
+                  <Ionicons name="close" size={14} color={theme.text} />
+                </Pressable>
+              </View>
+            ))}
+            {images.length < MAX_IMAGES ? (
+              <Pressable
+                onPress={() => void pickAndUpload()}
+                disabled={uploading}
+                style={[styles.addThumb, { borderColor: theme.border, backgroundColor: theme.backgroundElement, opacity: uploading ? 0.6 : 1 }]}>
+                <Ionicons name={uploading ? 'hourglass-outline' : 'image-outline'} size={20} color={theme.primary} />
+                <ThemedText type="caption" themeColor="textMuted">
+                  {uploading ? '올리는 중' : '사진 추가'}
+                </ThemedText>
+              </Pressable>
+            ) : null}
+          </View>
+          <ThemedText type="caption" themeColor="textMuted" style={styles.hint}>
+            올릴 때 자동으로 크기를 줄여 저장 용량을 아낍니다.
+          </ThemedText>
+        </View>
+
         <Toggle label="중요 소식으로 표시 (제목 옆에 표시가 붙습니다)" value={pinned} onChange={setPinned} />
 
         {error ? (
@@ -228,5 +318,27 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one + 2,
     borderRadius: Radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  imageRow: { flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap' },
+  thumbWrap: { position: 'relative' },
+  thumb: { width: 96, height: 96, borderRadius: Radius.medium },
+  thumbX: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addThumb: {
+    width: 96,
+    height: 96,
+    borderRadius: Radius.medium,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
   },
 });

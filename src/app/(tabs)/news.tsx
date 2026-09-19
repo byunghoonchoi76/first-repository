@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -106,9 +107,14 @@ export default function NewsScreen() {
               <ThemedText type="heading" numberOfLines={2}>
                 {item.title}
               </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-                {item.body}
-              </ThemedText>
+              <View style={styles.bodyRow}>
+                <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.flex}>
+                  {item.body}
+                </ThemedText>
+                {item.images && item.images.length > 0 ? (
+                  <Image source={{ uri: item.images[0] }} style={styles.thumb} contentFit="cover" transition={120} />
+                ) : null}
+              </View>
               <ThemedText type="caption" themeColor="textMuted">
                 {item.author}
               </ThemedText>
@@ -131,4 +137,7 @@ const styles = StyleSheet.create({
   },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  bodyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+  flex: { flex: 1 },
+  thumb: { width: 56, height: 56, borderRadius: Radius.small },
 });
