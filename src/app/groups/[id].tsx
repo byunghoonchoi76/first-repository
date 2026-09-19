@@ -17,7 +17,7 @@ import { Button, Card, EmptyState, ErrorState, LoadingState } from '@/components
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { dataMode, repository, type GroupMessage, type MyGroupMembership, type SmallGroup } from '@/lib/data';
+import { dataMode, repository, type GroupMessage, type GroupRead, type MyGroupMembership, type SmallGroup } from '@/lib/data';
 import { formatTime } from '@/lib/format';
 
 const POLL_INTERVAL_MS = 5000;
@@ -34,10 +34,13 @@ export default function GroupRoomScreen() {
   const [group, setGroup] = useState<SmallGroup | null>(null);
   const [membership, setMembership] = useState<MyGroupMembership | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
+  const [reads, setReads] = useState<GroupRead[]>([]);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const listRef = useRef<FlatList<GroupMessage>>(null);
+  // 최신 메시지가 바뀔 때만 '읽음'을 서버에 표시하기 위한 기준
+  const lastMarkedRef = useRef<string | null>(null);
 
   const canParticipate = membership?.isMember ?? false;
   // 초대되지 않은 사람(관리자 제외)은 입장할 수 없습니다.
@@ -56,20 +59,34 @@ export default function GroupRoomScreen() {
           setError(undefined);
           return;
         }
-        const [foundGroup, list] = await Promise.all([
+        const [foundGroup, list, readList] = await Promise.all([
           repository.getGroup(groupId),
           repository.listGroupMessages(groupId),
+          repository.listGroupReads(groupId).catch(() => [] as GroupRead[]),
         ]);
         setGroup(foundGroup);
         setMessages(list);
+        // 내 읽음 위치는 항상 최신으로 반영(다른 멤버 메시지의 '안 읽음'이 바로 줄어들도록)
+        const uid = user?.id;
+        setReads(
+          uid
+            ? [...readList.filter((r) => r.userId !== uid), { userId: uid, lastReadAt: new Date().toISOString() }]
+            : readList,
+        );
         setError(undefined);
+        // 최신 메시지가 바뀌었을 때만 서버에 '여기까지 읽음' 표시
+        const latestId = list.length ? list[list.length - 1].id : null;
+        if (latestId && lastMarkedRef.current !== latestId) {
+          lastMarkedRef.current = latestId;
+          void repository.markGroupRead(groupId).catch(() => {});
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : '대화를 불러오지 못했습니다.');
       } finally {
         setLoading(false);
       }
     },
-    [groupId, isAdmin],
+    [groupId, isAdmin, user?.id],
   );
 
   useEffect(() => {
@@ -142,6 +159,20 @@ export default function GroupRoomScreen() {
 
   const myName = user?.name ?? '성도';
 
+  // 카톡식 '안 읽은 사람 수' — 이 방 멤버 중 글쓴이를 뺀 사람 가운데, 아직 이 글 시각까지 읽지 않은 수
+  const memberCount = group?.memberCount ?? 0;
+  const unreadCountFor = (m: GroupMessage): number => {
+    const others = memberCount - 1; // 글쓴이 본인 제외
+    if (others <= 0) return 0;
+    const created = new Date(m.createdAt).getTime();
+    let readers = 0;
+    for (const r of reads) {
+      if (m.authorId && r.userId === m.authorId) continue; // 글쓴이는 셈에서 제외
+      if (new Date(r.lastReadAt).getTime() >= created) readers += 1;
+    }
+    return Math.max(0, others - readers);
+  };
+
   return (
     <KeyboardAvoidingView
       style={[styles.fill, { backgroundColor: theme.background }]}
@@ -192,6 +223,7 @@ export default function GroupRoomScreen() {
         }
         renderItem={({ item }) => {
           const mine = item.authorId && user?.id ? item.authorId === user.id : item.author === myName;
+          const unread = unreadCountFor(item);
           return (
             <View style={[styles.messageRow, mine && styles.messageRowMine]}>
               <View style={styles.bubbleGroup}>
@@ -212,9 +244,16 @@ export default function GroupRoomScreen() {
                     {item.body}
                   </ThemedText>
                 </View>
-                <ThemedText type="caption" themeColor="textMuted" style={mine ? styles.timeMine : undefined}>
-                  {formatTime(item.createdAt)}
-                </ThemedText>
+                <View style={[styles.metaRow, mine && styles.metaRowMine]}>
+                  {unread > 0 ? (
+                    <ThemedText type="caption" style={[styles.unread, { color: theme.accent }]}>
+                      {unread}
+                    </ThemedText>
+                  ) : null}
+                  <ThemedText type="caption" themeColor="textMuted">
+                    {formatTime(item.createdAt)}
+                  </ThemedText>
+                </View>
               </View>
             </View>
           );
@@ -285,7 +324,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.medium,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  timeMine: { textAlign: 'right' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaRowMine: { justifyContent: 'flex-end' },
+  unread: { fontWeight: '700' },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
