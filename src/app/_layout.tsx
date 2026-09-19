@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { registerServiceWorker } from '@/lib/register-sw';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -44,6 +45,11 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const palette = isDark ? Colors.dark : Colors.light;
+
+  // 웹(PWA) 자동 갱신: 새 버전이 배포되면 다음에 열 때 자동으로 최신 화면이 뜹니다.
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   const navigationTheme = isDark
     ? {

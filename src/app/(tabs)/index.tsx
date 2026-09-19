@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HeroBanner } from '@/components/hero-banner';
@@ -281,20 +281,43 @@ export default function HomeScreen() {
         </Card>
       </View>
 
-      {/* 교회 안내 */}
-      <View>
-        <SectionHeader title="교회 안내" accent />
-        <Card elevated>
-          <ListRow icon="time-outline" title="예배 안내" subtitle="주일예배 · 새벽예배 · 교육부서 시간표" onPress={() => router.push('/services')} />
-          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow icon="people-outline" title="섬기는 사람들" subtitle="교역자와 직분자를 소개합니다" onPress={() => router.push('/staff')} />
-          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow icon="location-outline" title="교회 주소" subtitle={profile.data?.address} onPress={() => router.push('/location')} />
-          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow icon="flag-outline" title="교회 비전" subtitle="우리 교회가 나아갈 방향" onPress={() => router.push('/vision')} />
-        </Card>
-      </View>
+      {/* 교회 안내 — 아코디언 */}
+      <CollapsibleCard title="교회 안내">
+        <ListRow icon="time-outline" title="예배 안내" subtitle="주일예배 · 새벽예배 · 교육부서 시간표" onPress={() => router.push('/services')} />
+        <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+        <ListRow icon="people-outline" title="섬기는 사람들" subtitle="교역자와 직분자를 소개합니다" onPress={() => router.push('/staff')} />
+        <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+        <ListRow icon="location-outline" title="교회 주소" subtitle={profile.data?.address} onPress={() => router.push('/location')} />
+        <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+        <ListRow icon="flag-outline" title="교회 비전" subtitle="우리 교회가 나아갈 방향" onPress={() => router.push('/vision')} />
+      </CollapsibleCard>
     </Screen>
+  );
+}
+
+/** 접었다 펼치는 카드(아코디언). 헤더를 누르면 내용이 열리고 닫힙니다. */
+function CollapsibleCard({
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card elevated style={styles.collapseCard}>
+      <Pressable onPress={() => setOpen((v) => !v)} style={styles.collapseHeader}>
+        <View style={[styles.collapseBar, { backgroundColor: theme.primary }]} />
+        <ThemedText type="smallBold" style={styles.flex}>
+          {title}
+        </ThemedText>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={theme.textMuted} />
+      </Pressable>
+      {open ? <View style={styles.collapseBody}>{children}</View> : null}
+    </Card>
   );
 }
 
@@ -420,6 +443,10 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.8 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
+  collapseCard: { gap: 0 },
+  collapseHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  collapseBar: { width: 3, height: 16, borderRadius: 2 },
+  collapseBody: { marginTop: Spacing.two },
 
   heroShadow: Shadow.card,
   heroLabel: { color: 'rgba(255,255,255,0.95)', fontSize: 15, fontWeight: '600' },
