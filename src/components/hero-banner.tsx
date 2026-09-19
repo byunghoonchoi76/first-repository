@@ -13,6 +13,7 @@ export function HeroBanner({
   imageUrl,
   imageSource,
   height = 180,
+  aspectRatio,
   base = 'warm',
   children,
   style,
@@ -21,6 +22,11 @@ export function HeroBanner({
   /** 앱에 포함된 로컬 이미지(require 결과). imageUrl 보다 우선합니다. */
   imageSource?: ImageSourcePropType;
   height?: number;
+  /**
+   * 가로:세로 비율(예: 537/500). 지정하면 고정 높이 대신 폭에 맞춰 높이가 정해져,
+   * 화면 폭이 달라져도 사진이 같은 비율로 보입니다(잘림 없이 전체가 보이게 할 때 사용).
+   */
+  aspectRatio?: number;
   /** 사진이 없을 때 깔리는 바탕 그라데이션 */
   base?: keyof typeof Gradients;
   children?: ReactNode;
@@ -29,9 +35,10 @@ export function HeroBanner({
   const [imageOk, setImageOk] = useState(true);
   const source = imageSource ?? (imageUrl ? { uri: imageUrl } : undefined);
   const showImage = Boolean(source) && imageOk;
+  const sizeStyle = aspectRatio ? { aspectRatio } : { height };
 
   return (
-    <View style={[styles.wrap, { height }, style]}>
+    <View style={[styles.wrap, sizeStyle, style]}>
       {/* 바탕: 따뜻한 그라데이션 (사진이 없거나 실패해도 예쁩니다) */}
       <LinearGradient colors={Gradients[base]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
 
