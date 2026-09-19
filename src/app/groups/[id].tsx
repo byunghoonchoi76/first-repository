@@ -109,6 +109,8 @@ export default function GroupRoomScreen() {
       setMessages((current) => [...current, created]);
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     } catch (e) {
+      // 전송에 실패하면 작성한 내용을 다시 입력창에 되돌려 재시도할 수 있게 합니다.
+      setDraft((cur) => (cur ? cur : body));
       setError(e instanceof Error ? e.message : '메시지를 보내지 못했습니다.');
     }
   };

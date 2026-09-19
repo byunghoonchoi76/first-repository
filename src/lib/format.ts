@@ -1,15 +1,26 @@
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+/**
+ * 'YYYY-MM-DD'(날짜만)는 로컬 자정으로 해석합니다.
+ * new Date('2026-08-30') 은 UTC 자정으로 읽혀, UTC 보다 뒤인 지역에서는 하루 전 날짜/요일로
+ * 어긋납니다. 시각까지 포함된 ISO 는 그대로 해석합니다.
+ */
+function parseLocalDate(iso: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(iso);
+}
+
 /** '2026-08-30' → '8월 30일 (일)' */
 export function formatDate(iso: string): string {
-  const d = new Date(iso);
+  const d = parseLocalDate(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
 }
 
 /** '2026-08-30' → '2026년 8월 30일 (일)' */
 export function formatFullDate(iso: string): string {
-  const d = new Date(iso);
+  const d = parseLocalDate(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return `${d.getFullYear()}년 ${formatDate(iso)}`;
 }
