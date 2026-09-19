@@ -19,17 +19,17 @@ export const Brand = {
 
 export const Colors = {
   light: {
-    text: '#2A2620',
-    textSecondary: '#6C6355',
-    textMuted: '#9C9384',
-    background: '#F7F1E7',
+    text: '#231F1A',
+    textSecondary: '#6B6355',
+    textMuted: '#A79E8E',
+    background: '#F6F3ED',
     backgroundElement: '#FFFFFF',
-    backgroundSelected: '#F0E7D6',
+    backgroundSelected: '#EFEADF',
     card: '#FFFFFF',
-    border: '#E9E0CF',
+    border: '#EAE3D6',
     primary: Brand.navy,
     onPrimary: '#FFFFFF',
-    accent: '#C0894A',
+    accent: '#BE8A4C',
     danger: '#C4453B',
     success: '#4F8A6B',
   },
@@ -94,9 +94,9 @@ export const Gradients = {
 } as const;
 
 export const Radius = {
-  small: 8,
-  medium: 14,
-  large: 20,
+  small: 10,
+  medium: 16,
+  large: 24,
   pill: 999,
 } as const;
 
@@ -106,20 +106,20 @@ export const Radius = {
  * react-native-web 은 shadow* 값을 boxShadow 로 자동 변환합니다.
  */
 export const Shadow = {
-  // 카드용 — 은은하게 떠 있는 느낌
+  // 카드용 — 넓고 부드럽게 떠 있는 모던한 느낌(살짝 차가운 톤)
   card: {
-    shadowColor: '#3A2E1C',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
+    shadowColor: '#1C2B36',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
     elevation: 3,
   },
   // 작은 타일·칩용 — 더 얕은 그림자
   soft: {
-    shadowColor: '#3A2E1C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowColor: '#1C2B36',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
     elevation: 2,
   },
 } as const;
