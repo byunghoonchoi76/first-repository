@@ -11,7 +11,7 @@ import { Card, SectionHeader } from '@/components/ui';
 import { LocalPhotos } from '@/constants/photos';
 import { Radius, Spacing } from '@/constants/theme';
 import { bskoreaUrl, mccheyneForDate, mccheyneIndex } from '@/constants/mccheyne';
-import { formatFullDate } from '@/lib/format';
+import { formatFullDate, toDateKey } from '@/lib/format';
 import { useReadingProgress } from '@/lib/reading-progress';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -69,7 +69,7 @@ export default function ReadingPlanScreen() {
             <Ionicons name="chevron-back" size={22} color={theme.primary} />
           </Pressable>
           <View style={styles.navCenter}>
-            <ThemedText type="smallBold">{formatFullDate(date.toISOString().slice(0, 10))}</ThemedText>
+            <ThemedText type="smallBold">{formatFullDate(toDateKey(date))}</ThemedText>
             <ThemedText type="caption" themeColor="textMuted">
               맥체인 성경읽기표 · {dayNo}일차 / 365
             </ThemedText>

@@ -16,7 +16,7 @@ import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
-import { formatDate, formatFullDate, minutesLabel } from '@/lib/format';
+import { formatDate, formatFullDate, minutesLabel, toDateKey } from '@/lib/format';
 import { useLiveStatus } from '@/lib/live-status';
 import { usePrayerTime } from '@/lib/prayer-log';
 import { useYouTubeTitle } from '@/lib/use-youtube-title';
@@ -143,7 +143,7 @@ export default function HomeScreen() {
       <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={216} style={styles.heroShadow}>
         <ThemedText type="small" style={styles.heroLabel}>
           {greeting()}
-          {user ? `, ${user.name}님` : ''} · {formatFullDate(new Date().toISOString().slice(0, 10))}
+          {user ? `, ${user.name}님` : ''} · {formatFullDate(toDateKey())}
         </ThemedText>
         <View style={styles.heroTagRow}>
           <Ionicons name="book-outline" size={12} color="#fff" />
