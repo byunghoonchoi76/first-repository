@@ -341,6 +341,10 @@ export interface ChurchRepository {
   addMyPrayerTime(kind: PrayerKind, date: string, minutes: number): Promise<void>;
   clearMyPrayerTime(kind: PrayerKind, date: string): Promise<void>;
 
+  /** 맥체인 성경읽기표 진도(완료한 날 인덱스 0~364) — 계정별 */
+  getMyReadingProgress(): Promise<number[]>;
+  setMyReadingProgress(days: number[]): Promise<void>;
+
   createNewFamily(input: NewFamilyInput): Promise<NewFamily>;
   listNewFamilies(): Promise<NewFamily[]>;
   deleteNewFamily(id: string): Promise<void>;

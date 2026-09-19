@@ -463,6 +463,14 @@ export const sampleRepository: ChurchRepository = {
     await persist();
   },
 
+  // 샘플 모드는 계정이 없어 로컬(AsyncStorage)에만 저장하므로 여기선 사용되지 않습니다.
+  async getMyReadingProgress() {
+    return [];
+  },
+  async setMyReadingProgress() {
+    /* no-op (샘플 모드) */
+  },
+
   async createNewFamily(input: NewFamilyInput) {
     await ready();
     await delay();

@@ -222,6 +222,30 @@ as $$
 $$;
 grant execute on function public.add_prayer_time(date, text, integer) to authenticated;
 
+-- 맥체인 성경읽기표 진도 (계정별) — 완료한 날을 표 인덱스(0~364) 배열로 저장합니다.
+create table if not exists public.reading_plan_progress (
+  user_id uuid primary key references auth.users on delete cascade,
+  done_days smallint[] not null default '{}',
+  updated_at timestamptz not null default now()
+);
+alter table public.reading_plan_progress enable row level security;
+drop policy if exists "본인 읽기진도 조회" on public.reading_plan_progress;
+create policy "본인 읽기진도 조회" on public.reading_plan_progress
+  for select using (user_id = auth.uid());
+
+-- 진도 저장(본인 것만). auth.uid() 로 본인 행에 통째로 upsert 합니다.
+create or replace function public.set_reading_progress(p_days smallint[])
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.reading_plan_progress (user_id, done_days, updated_at)
+  values (auth.uid(), coalesce(p_days, '{}'), now())
+  on conflict (user_id) do update set done_days = excluded.done_days, updated_at = now();
+$$;
+grant execute on function public.set_reading_progress(smallint[]) to authenticated;
+
 -- ─────────────────────────────────────────────
 -- 소그룹 · 소통방
 -- ─────────────────────────────────────────────
