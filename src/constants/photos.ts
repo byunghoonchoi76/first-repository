@@ -6,6 +6,8 @@ import type { ImageSourcePropType } from 'react-native';
 export const LocalPhotos = {
   // 장례(부고) 공지 카드에 쓰는 국화 이미지
   funeral: require('@/assets/images/funeral-chrysanthemum.jpg') as ImageSourcePropType,
+  // 교회 비전 히어로 — 손으로 십자가를 만든 공동체 사진
+  vision: require('@/assets/images/vision-cross.jpg') as ImageSourcePropType,
 } as const;
 
 /**
