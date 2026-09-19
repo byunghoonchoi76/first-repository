@@ -27,8 +27,7 @@ function sameYMD(a: Date, b: Date): boolean {
 export default function ReadingPlanScreen() {
   const theme = useTheme();
   const [date, setDate] = useState(new Date());
-  const [view, setView] = useState<'week' | 'month'>('week');
-  const { done, toggle, count } = useReadingProgress();
+  const { done, toggle, count, synced } = useReadingProgress();
 
   const readings = useMemo(() => mccheyneForDate(date), [date]);
   const idx = mccheyneIndex(date);
@@ -65,17 +64,27 @@ export default function ReadingPlanScreen() {
           </Pressable>
         </View>
 
-        {/* 진도 막대 */}
         <View style={styles.progressWrap}>
           <View style={[styles.progressTrack, { backgroundColor: theme.backgroundSelected }]}>
             <View style={[styles.progressFill, { backgroundColor: theme.primary, width: `${percent}%` }]} />
           </View>
-          <ThemedText type="caption" themeColor="textSecondary">
-            {count} / 365 완료 · {percent}%
-          </ThemedText>
+          <View style={styles.progressMeta}>
+            <ThemedText type="caption" themeColor="textSecondary">
+              {count} / 365 완료 · {percent}%
+            </ThemedText>
+            <View style={styles.syncTag}>
+              <Ionicons
+                name={synced ? 'cloud-done-outline' : 'phone-portrait-outline'}
+                size={12}
+                color={theme.textMuted}
+              />
+              <ThemedText type="caption" themeColor="textMuted">
+                {synced ? '여러 기기 공유' : '이 기기에 저장'}
+              </ThemedText>
+            </View>
+          </View>
         </View>
 
-        {/* 읽기 완료 토글 */}
         <Pressable
           onPress={() => toggle(idx)}
           style={[
@@ -85,11 +94,7 @@ export default function ReadingPlanScreen() {
               borderColor: isDone ? theme.success : theme.border,
             },
           ]}>
-          <Ionicons
-            name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
-            size={18}
-            color={isDone ? theme.onPrimary : theme.textSecondary}
-          />
+          <Ionicons name={isDone ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={isDone ? theme.onPrimary : theme.textSecondary} />
           <ThemedText type="smallBold" style={{ color: isDone ? theme.onPrimary : theme.text }}>
             {isDone ? '읽기 완료됨' : isToday ? '오늘 읽기 완료' : '이 날 읽기 완료'}
           </ThemedText>
@@ -124,32 +129,31 @@ export default function ReadingPlanScreen() {
         </Card>
       </View>
 
-      {/* 진도 체크 (주간/월별) */}
+      {/* 이번 주 진도 */}
       <View>
-        <View style={styles.viewToggleRow}>
-          {(['week', 'month'] as const).map((v) => {
-            const active = v === view;
-            return (
-              <Pressable
-                key={v}
-                onPress={() => setView(v)}
-                style={[
-                  styles.viewChip,
-                  { backgroundColor: active ? theme.primary : theme.backgroundElement, borderColor: active ? theme.primary : theme.border },
-                ]}>
-                <ThemedText type="caption" style={{ color: active ? theme.onPrimary : theme.textSecondary, fontWeight: '700' }}>
-                  {v === 'week' ? '이번 주' : '월별'}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SectionHeader title="이번 주" accent />
         <Card elevated>
-          {view === 'week' ? (
-            <WeekGrid date={date} today={today} done={done} onSelect={setDate} theme={theme} />
-          ) : (
-            <MonthGrid date={date} today={today} done={done} onSelect={setDate} theme={theme} />
-          )}
+          <WeekGrid date={date} today={today} done={done} onSelect={setDate} theme={theme} />
+        </Card>
+      </View>
+
+      {/* 월별(연간) 진도 — 한 해 전체를 한눈에 */}
+      <View>
+        <SectionHeader title={`${date.getFullYear()}년 월별 진도`} accent />
+        <Card elevated>
+          <View style={styles.yearGrid}>
+            {Array.from({ length: 12 }, (_, m) => (
+              <MonthBlock
+                key={m}
+                monthDate={new Date(date.getFullYear(), m, 1)}
+                selected={date}
+                today={today}
+                done={done}
+                onSelect={setDate}
+                theme={theme}
+              />
+            ))}
+          </View>
           <ThemedText type="caption" themeColor="textMuted" style={styles.gridHint}>
             날짜를 누르면 그 날 본문이 위에 표시됩니다. 초록색은 읽기 완료한 날이에요.
           </ThemedText>
@@ -178,7 +182,51 @@ function PassageRow({ reference, onPress, theme }: { reference: string; onPress:
   );
 }
 
-/** 이번 주(일~토) 7일 체크 */
+function DayDot({
+  d,
+  selectedDate,
+  today,
+  done,
+  onSelect,
+  theme,
+  size = 34,
+  small = false,
+}: {
+  d: Date;
+  selectedDate: Date;
+  today: Date;
+  done: Set<number>;
+  onSelect: (d: Date) => void;
+  theme: ReturnType<typeof useTheme>;
+  size?: number;
+  small?: boolean;
+}) {
+  const isDone = done.has(mccheyneIndex(d));
+  const selected = sameYMD(d, selectedDate);
+  const isToday = sameYMD(d, today);
+  return (
+    <Pressable onPress={() => onSelect(d)} hitSlop={2}>
+      <View
+        style={[
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: isDone ? theme.success : selected ? theme.primary : theme.backgroundSelected,
+            borderColor: isToday ? theme.accent : 'transparent',
+            borderWidth: isToday ? 2 : 0,
+          },
+        ]}>
+        <ThemedText type={small ? 'caption' : 'smallBold'} style={{ color: isDone || selected ? theme.onPrimary : theme.text, fontWeight: '700' }}>
+          {d.getDate()}
+        </ThemedText>
+      </View>
+    </Pressable>
+  );
+}
+
 function WeekGrid({
   date,
   today,
@@ -192,61 +240,42 @@ function WeekGrid({
   onSelect: (d: Date) => void;
   theme: ReturnType<typeof useTheme>;
 }) {
-  const start = addDays(date, -date.getDay()); // 그 주 일요일
+  const start = addDays(date, -date.getDay());
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   return (
     <View style={styles.weekRow}>
-      {days.map((d) => {
-        const dIdx = mccheyneIndex(d);
-        const isDone = done.has(dIdx);
-        const selected = sameYMD(d, date);
-        const isToday = sameYMD(d, today);
-        return (
-          <Pressable key={d.toISOString()} onPress={() => onSelect(d)} style={styles.weekCell}>
-            <ThemedText type="caption" themeColor="textMuted">
-              {WEEKDAYS[d.getDay()]}
-            </ThemedText>
-            <View
-              style={[
-                styles.dayDot,
-                {
-                  backgroundColor: isDone ? theme.success : selected ? theme.primary : theme.backgroundSelected,
-                  borderColor: isToday ? theme.accent : 'transparent',
-                  borderWidth: isToday ? 2 : 0,
-                },
-              ]}>
-              <ThemedText
-                type="smallBold"
-                style={{ color: isDone || selected ? theme.onPrimary : theme.text }}>
-                {d.getDate()}
-              </ThemedText>
-            </View>
-          </Pressable>
-        );
-      })}
+      {days.map((d) => (
+        <View key={d.toISOString()} style={styles.weekCell}>
+          <ThemedText type="caption" themeColor="textMuted">
+            {WEEKDAYS[d.getDay()]}
+          </ThemedText>
+          <DayDot d={d} selectedDate={date} today={today} done={done} onSelect={onSelect} theme={theme} />
+        </View>
+      ))}
     </View>
   );
 }
 
-/** 월별 달력 체크 */
-function MonthGrid({
-  date,
+/** 한 달 미니 달력 (연간 보기용) */
+function MonthBlock({
+  monthDate,
+  selected,
   today,
   done,
   onSelect,
   theme,
 }: {
-  date: Date;
+  monthDate: Date;
+  selected: Date;
   today: Date;
   done: Set<number>;
   onSelect: (d: Date) => void;
   theme: ReturnType<typeof useTheme>;
 }) {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const first = new Date(year, month, 1);
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const leading = first.getDay(); // 1일의 요일(빈칸 수)
+  const leading = new Date(year, month, 1).getDay();
   const cells: (Date | null)[] = [
     ...Array.from({ length: leading }, () => null),
     ...Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1)),
@@ -254,39 +283,27 @@ function MonthGrid({
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <View>
+    <View style={styles.monthBlock}>
+      <ThemedText type="smallBold" style={styles.monthTitle}>
+        {month + 1}월
+      </ThemedText>
       <View style={styles.monthHeadRow}>
         {WEEKDAYS.map((w) => (
-          <ThemedText key={w} type="caption" themeColor="textMuted" style={styles.monthHeadCell}>
+          <ThemedText key={w} type="caption" themeColor="textMuted" style={styles.miniCell}>
             {w}
           </ThemedText>
         ))}
       </View>
       <View style={styles.monthGrid}>
-        {cells.map((d, i) => {
-          if (!d) return <View key={`b${i}`} style={styles.monthCell} />;
-          const dIdx = mccheyneIndex(d);
-          const isDone = done.has(dIdx);
-          const selected = sameYMD(d, date);
-          const isToday = sameYMD(d, today);
-          return (
-            <Pressable key={d.toISOString()} onPress={() => onSelect(d)} style={styles.monthCell}>
-              <View
-                style={[
-                  styles.dayDot,
-                  {
-                    backgroundColor: isDone ? theme.success : selected ? theme.primary : theme.backgroundSelected,
-                    borderColor: isToday ? theme.accent : 'transparent',
-                    borderWidth: isToday ? 2 : 0,
-                  },
-                ]}>
-                <ThemedText type="caption" style={{ color: isDone || selected ? theme.onPrimary : theme.text, fontWeight: '700' }}>
-                  {d.getDate()}
-                </ThemedText>
-              </View>
-            </Pressable>
-          );
-        })}
+        {cells.map((d, i) =>
+          d ? (
+            <View key={d.toISOString()} style={styles.miniCell}>
+              <DayDot d={d} selectedDate={selected} today={today} done={done} onSelect={onSelect} theme={theme} size={26} small />
+            </View>
+          ) : (
+            <View key={`b${i}`} style={styles.miniCell} />
+          ),
+        )}
       </View>
     </View>
   );
@@ -304,6 +321,8 @@ const styles = StyleSheet.create({
   progressWrap: { gap: Spacing.one, marginTop: Spacing.two },
   progressTrack: { height: 8, borderRadius: Radius.pill, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: Radius.pill },
+  progressMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  syncTag: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   doneBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -317,20 +336,14 @@ const styles = StyleSheet.create({
   todayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: Spacing.two },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two + 2 },
   rowIcon: { width: 34, height: 34, borderRadius: Radius.small, alignItems: 'center', justifyContent: 'center' },
-  viewToggleRow: { flexDirection: 'row', gap: Spacing.two, marginBottom: Spacing.two },
-  viewChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   weekCell: { alignItems: 'center', gap: 4, flex: 1 },
-  dayDot: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  yearGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  monthBlock: { width: '48%', marginBottom: Spacing.three },
+  monthTitle: { textAlign: 'center', marginBottom: 4 },
   monthHeadRow: { flexDirection: 'row' },
-  monthHeadCell: { width: `${100 / 7}%`, textAlign: 'center' },
-  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: Spacing.one },
-  monthCell: { width: `${100 / 7}%`, alignItems: 'center', paddingVertical: 3 },
+  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 2 },
+  miniCell: { width: `${100 / 7}%`, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 },
   gridHint: { marginTop: Spacing.two, lineHeight: 17 },
   note: { lineHeight: 18 },
 });

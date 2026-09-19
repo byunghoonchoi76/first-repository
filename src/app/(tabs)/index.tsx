@@ -291,7 +291,7 @@ export default function HomeScreen() {
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
           <ListRow icon="location-outline" title="교회 주소" subtitle={profile.data?.address} onPress={() => router.push('/location')} />
           <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow icon="card-outline" title="헌금 안내" subtitle="헌금 계좌 안내" onPress={() => router.push('/giving')} />
+          <ListRow icon="flag-outline" title="교회 비전" subtitle="우리 교회가 나아갈 방향" onPress={() => router.push('/vision')} />
         </Card>
       </View>
     </Screen>

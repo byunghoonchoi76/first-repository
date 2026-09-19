@@ -543,6 +543,19 @@ export const supabaseRepository: ChurchRepository = {
     if (error) throw new Error(error.message);
   },
 
+  async getMyReadingProgress() {
+    const sb = requireSupabase();
+    const { data } = await sb.from('reading_plan_progress').select('done_days').maybeSingle();
+    const days = (data as { done_days?: number[] } | null)?.done_days ?? [];
+    return days.filter((n) => Number.isInteger(n));
+  },
+
+  async setMyReadingProgress(days) {
+    const sb = requireSupabase();
+    const { error } = await sb.rpc('set_reading_progress', { p_days: days });
+    if (error) throw new Error(error.message);
+  },
+
   async createNewFamily(input) {
     const sb = requireSupabase();
     const res = await sb
