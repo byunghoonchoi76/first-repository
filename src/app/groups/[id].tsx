@@ -141,6 +141,7 @@ export default function GroupRoomScreen() {
     const body = draft.trim();
     const image = pendingImage;
     if (!body && !image) return;
+    setError(undefined);
     setDraft('');
     setPendingImage(null);
     try {
@@ -315,6 +316,15 @@ export default function GroupRoomScreen() {
               paddingBottom: Math.max(insets.bottom, Spacing.two),
             },
           ]}>
+          {error ? (
+            <ThemedText type="caption" themeColor="danger" style={styles.composerError}>
+              {error}
+            </ThemedText>
+          ) : attaching ? (
+            <ThemedText type="caption" themeColor="textMuted" style={styles.composerError}>
+              사진 올리는 중…
+            </ThemedText>
+          ) : null}
           {pendingImage ? (
             <View style={styles.pendingRow}>
               <Image source={{ uri: pendingImage }} style={styles.pendingThumb} contentFit="cover" />
@@ -418,6 +428,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: Spacing.two,
   },
+  composerError: { paddingHorizontal: Spacing.one, paddingBottom: Spacing.one },
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
   attachBtn: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   pendingRow: { position: 'relative', alignSelf: 'flex-start' },
