@@ -12,4 +12,10 @@ create policy "소통방 사진 업로드" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'bulletins' and name like 'chat/%');
 
+-- 메시지를 지우면 올린 본인의 소통방 사진도 저장소에서 함께 삭제되도록 허용
+drop policy if exists "소통방 사진 삭제(본인)" on storage.objects;
+create policy "소통방 사진 삭제(본인)" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'bulletins' and name like 'chat/%' and owner = auth.uid());
+
 -- 조회(공개 읽기)는 기존 '주보 이미지 공개 조회' 정책이 bulletins 버킷 전체를 이미 허용하므로 추가 설정이 필요 없습니다.

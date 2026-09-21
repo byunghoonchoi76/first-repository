@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -156,6 +157,37 @@ export default function GroupRoomScreen() {
     }
   };
 
+  // 이 메시지를 삭제할 수 있는지: 작성자 본인 · 관리자 · 리더
+  const canDeleteMessage = (m: GroupMessage): boolean => {
+    const mine = m.authorId && user?.id ? m.authorId === user.id : m.author === (user?.name ?? '성도');
+    return mine || isAdmin || membership?.role === 'leader';
+  };
+
+  const confirmDeleteMessage = (m: GroupMessage) => {
+    if (!canDeleteMessage(m)) return;
+    const run = async () => {
+      setError(undefined);
+      const prev = messages;
+      setMessages((cur) => cur.filter((x) => x.id !== m.id)); // 먼저 화면에서 제거
+      try {
+        await repository.deleteGroupMessage(m.id);
+      } catch (e) {
+        setMessages(prev); // 실패하면 되돌립니다
+        setError(e instanceof Error ? e.message : '삭제하지 못했습니다.');
+      }
+    };
+    const label = m.imageUrl && !m.body ? '이 사진을 삭제할까요?' : '이 메시지를 삭제할까요?';
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line no-alert
+      if (window.confirm(label)) void run();
+      return;
+    }
+    Alert.alert('삭제', label, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => void run() },
+    ]);
+  };
+
   // Supabase 를 쓰는 경우 소그룹 대화는 로그인한 성도만 볼 수 있습니다.
   if (needsSignIn) {
     return (
@@ -267,9 +299,13 @@ export default function GroupRoomScreen() {
         renderItem={({ item }) => {
           const mine = item.authorId && user?.id ? item.authorId === user.id : item.author === myName;
           const unread = unreadCountFor(item);
+          const deletable = canDeleteMessage(item);
           return (
             <View style={[styles.messageRow, mine && styles.messageRowMine]}>
-              <View style={styles.bubbleGroup}>
+              <Pressable
+                style={styles.bubbleGroup}
+                onLongPress={deletable ? () => confirmDeleteMessage(item) : undefined}
+                delayLongPress={350}>
                 {!mine ? (
                   <ThemedText type="caption" themeColor="textSecondary">
                     {item.author}
@@ -300,7 +336,7 @@ export default function GroupRoomScreen() {
                     {formatTime(item.createdAt)}
                   </ThemedText>
                 </View>
-              </View>
+              </Pressable>
             </View>
           );
         }}

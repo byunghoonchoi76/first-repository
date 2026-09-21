@@ -35,5 +35,11 @@ create policy "소통방 사진 업로드" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'bulletins' and name like 'chat/%');
 
+-- 메시지 삭제 시 올린 본인의 소통방 사진도 저장소에서 함께 삭제
+drop policy if exists "소통방 사진 삭제(본인)" on storage.objects;
+create policy "소통방 사진 삭제(본인)" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'bulletins' and name like 'chat/%' and owner = auth.uid());
+
 -- 확인용: 버킷이 잘 만들어졌는지
 select id, name, public from storage.buckets where id = 'bulletins';

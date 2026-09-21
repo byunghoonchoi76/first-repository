@@ -373,6 +373,8 @@ export interface ChurchRepository {
   deleteGroup(id: string): Promise<void>;
   listGroupMessages(groupId: string): Promise<GroupMessage[]>;
   sendGroupMessage(groupId: string, author: string, body: string, imageUrl?: string): Promise<GroupMessage>;
+  /** 메시지를 삭제합니다(작성자 본인·관리자·리더만, 서버에서 권한 확인). 첨부 사진도 함께 정리합니다. */
+  deleteGroupMessage(messageId: string): Promise<void>;
   /** 이 소통방 멤버들의 읽음 위치(안 읽은 사람 수 계산용) */
   listGroupReads(groupId: string): Promise<GroupRead[]>;
   /** 현재 로그인 성도가 이 소통방을 지금까지 읽었다고 표시합니다. */

@@ -633,6 +633,13 @@ export const sampleRepository: ChurchRepository = {
     return clone(created);
   },
 
+  async deleteGroupMessage(messageId) {
+    await ready();
+    await delay(60);
+    db.messages = db.messages.filter((m) => m.id !== messageId);
+    await persist();
+  },
+
   async listGroupReads(groupId) {
     await ready();
     await delay(60);
