@@ -704,6 +704,16 @@ export const supabaseRepository: ChurchRepository = {
     return message;
   },
 
+  async deleteGroupMessage(messageId) {
+    const sb = requireSupabase();
+    // 첨부 사진이 있으면 저장소에서도 정리(권한이 없어 못 지워도 메시지 삭제는 진행).
+    const { data } = await sb.from('group_messages').select('image_url').eq('id', messageId).maybeSingle();
+    const imageUrl = (data?.image_url as string | null) ?? null;
+    if (imageUrl) await deleteImage(imageUrl);
+    const { error } = await sb.from('group_messages').delete().eq('id', messageId);
+    if (error) throw new Error(error.message);
+  },
+
   async listGroupReads(groupId) {
     const sb = requireSupabase();
     const res = await sb.from('group_reads').select('user_id, last_read_at').eq('group_id', groupId);
