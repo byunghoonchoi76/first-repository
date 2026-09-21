@@ -302,10 +302,12 @@ export default function GroupRoomScreen() {
           const deletable = canDeleteMessage(item);
           return (
             <View style={[styles.messageRow, mine && styles.messageRowMine]}>
-              <Pressable
-                style={styles.bubbleGroup}
-                onLongPress={deletable ? () => confirmDeleteMessage(item) : undefined}
-                delayLongPress={350}>
+              {mine && deletable ? (
+                <Pressable onPress={() => confirmDeleteMessage(item)} hitSlop={8} style={styles.deleteBtn} accessibilityLabel="삭제">
+                  <Ionicons name="trash-outline" size={16} color={theme.textMuted} />
+                </Pressable>
+              ) : null}
+              <View style={styles.bubbleGroup}>
                 {!mine ? (
                   <ThemedText type="caption" themeColor="textSecondary">
                     {item.author}
@@ -336,7 +338,12 @@ export default function GroupRoomScreen() {
                     {formatTime(item.createdAt)}
                   </ThemedText>
                 </View>
-              </Pressable>
+              </View>
+              {!mine && deletable ? (
+                <Pressable onPress={() => confirmDeleteMessage(item)} hitSlop={8} style={styles.deleteBtn} accessibilityLabel="삭제">
+                  <Ionicons name="trash-outline" size={16} color={theme.textMuted} />
+                </Pressable>
+              ) : null}
             </View>
           );
         }}
@@ -445,8 +452,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   emptyText: { textAlign: 'center', paddingVertical: Spacing.five },
-  messageRow: { flexDirection: 'row' },
+  messageRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.one },
   messageRowMine: { justifyContent: 'flex-end' },
+  deleteBtn: { padding: 6, marginBottom: 2, alignSelf: 'flex-end' },
   bubbleGroup: { maxWidth: '80%', gap: 2 },
   bubble: {
     paddingHorizontal: Spacing.three,
