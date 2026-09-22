@@ -61,10 +61,12 @@ export default function PrayerScreen() {
     <Screen onRefresh={reloadCommunal}>
       <KindToggle value={kind} onChange={setKind} />
 
+      {/* 큰 기도 타이머 — 화면 맨 위, 마치면 결과가 바로 나옵니다 */}
+      <TimerCard active={active} kind={kind} goal={goal} />
+
       <GaugeCard active={active} kind={kind} goal={goal} onGoal={setGoal} canEdit={canEditGoal} />
       <CalendarCard active={active} />
       <AverageCard active={active} />
-      <InputCard active={active} kind={kind} />
 
       <TopicsCard />
 
@@ -172,6 +174,17 @@ function thisWeekMinutes(entries: PrayerLogEntry[]): number {
   start.setDate(start.getDate() - start.getDay());
   const startKey = toDateKey(start);
   return entries.reduce((sum, e) => (e.date >= startKey ? sum + e.minutes : sum), 0);
+}
+
+/** 이번 달 합계 분 */
+function thisMonthMinutes(entries: PrayerLogEntry[]): number {
+  const prefix = toDateKey(new Date()).slice(0, 7); // 'YYYY-MM'
+  return entries.reduce((sum, e) => (e.date.startsWith(prefix) ? sum + e.minutes : sum), 0);
+}
+
+/** 전체 누적 분 */
+function allTimeMinutes(entries: PrayerLogEntry[]): number {
+  return entries.reduce((sum, e) => sum + e.minutes, 0);
 }
 
 function GaugeCard({
@@ -506,32 +519,183 @@ function TopicsCard() {
   );
 }
 
-// ── 기도 시간 입력 ──────────────────────────────────────────────
-function InputCard({ active, kind }: { active: PrayerTime; kind: PrayerKind }) {
+// ── 큰 기도 타이머 (맨 위) ───────────────────────────────────────
+function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKind; goal: number }) {
+  const theme = useTheme();
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [resultMinutes, setResultMinutes] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (startedAt === null) return;
+    intervalRef.current = setInterval(() => setElapsed(Date.now() - startedAt), 1000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [startedAt]);
+
+  const stop = async () => {
+    const minutes = Math.round(elapsed / 60000); // 가장 가까운 분 (30초 미만은 0분)
+    setStartedAt(null);
+    setElapsed(0);
+    if (minutes > 0) {
+      await active.addMinutes(minutes);
+      setResultMinutes(minutes); // 마치면 결과 모달 표시
+    }
+  };
+
+  const seconds = Math.floor(elapsed / 1000);
+  const display = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  const kindLabel = kind === 'personal' ? '개인' : '공동';
+
   return (
-    <View>
-      <SectionHeader title="기도 시간 입력" />
-      <Card>
-        <PrayerTimer onSave={active.addMinutes} />
-        <View style={styles.quickRow}>
-          {QUICK_MINUTES.map((minutes) => (
-            <Button
-              key={minutes}
-              label={`+${minutes}분`}
-              variant="ghost"
-              style={styles.flex}
-              onPress={() => void active.addMinutes(minutes)}
-            />
-          ))}
-        </View>
-        {active.todayMinutes > 0 ? (
-          <Pressable onPress={() => void active.clearToday()} hitSlop={6}>
-            <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-              오늘 {kind === 'personal' ? '개인' : '공동'} 기도 기록 지우기
+    <Card elevated style={styles.timerCard}>
+      {startedAt === null ? (
+        <>
+          <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
+            오늘 {kindLabel} 기도{' '}
+            <ThemedText type="smallBold" themeColor="primary">
+              {active.todayMinutes > 0 ? minutesLabel(active.todayMinutes) : '0분'}
+            </ThemedText>
+          </ThemedText>
+          <Pressable
+            onPress={() => setStartedAt(Date.now())}
+            style={({ pressed }) => [styles.bigStart, { backgroundColor: theme.primary, opacity: pressed ? 0.9 : 1 }]}>
+            <Ionicons name="play" size={30} color={theme.onPrimary} />
+            <ThemedText type="subtitle" style={{ color: theme.onPrimary }}>
+              기도 시작
             </ThemedText>
           </Pressable>
-        ) : null}
-      </Card>
+          <View style={styles.addRow}>
+            <ThemedText type="caption" themeColor="textMuted">
+              타이머 없이 더하기
+            </ThemedText>
+            {QUICK_MINUTES.map((m) => (
+              <Pressable
+                key={m}
+                onPress={() => void active.addMinutes(m)}
+                style={[styles.addChip, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                <ThemedText type="smallBold" themeColor="primary">
+                  +{m}분
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+          {active.todayMinutes > 0 ? (
+            <Pressable onPress={() => void active.clearToday()} hitSlop={6}>
+              <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
+                오늘 기록 지우기
+              </ThemedText>
+            </Pressable>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
+            {kindLabel} 기도 중…
+          </ThemedText>
+          <ThemedText style={[styles.bigTimer, { color: theme.text }]}>{display}</ThemedText>
+          <Pressable
+            onPress={() => void stop()}
+            style={({ pressed }) => [styles.bigStop, { backgroundColor: theme.accent, opacity: pressed ? 0.9 : 1 }]}>
+            <Ionicons name="stop" size={26} color="#fff" />
+            <ThemedText type="subtitle" style={{ color: '#fff' }}>
+              마치고 기록하기
+            </ThemedText>
+          </Pressable>
+        </>
+      )}
+
+      <PrayerResultModal
+        minutes={resultMinutes}
+        onClose={() => setResultMinutes(null)}
+        active={active}
+        goal={goal}
+        kind={kind}
+      />
+    </Card>
+  );
+}
+
+/** 기도를 마치면 바로 뜨는 결과 — 이번 기도·오늘·주간·월간·목표 달성률 */
+function PrayerResultModal({
+  minutes,
+  onClose,
+  active,
+  goal,
+  kind,
+}: {
+  minutes: number | null;
+  onClose: () => void;
+  active: PrayerTime;
+  goal: number;
+  kind: PrayerKind;
+}) {
+  const theme = useTheme();
+  if (minutes === null) return null;
+
+  const week = thisWeekMinutes(active.entries);
+  const month = thisMonthMinutes(active.entries);
+  const total = allTimeMinutes(active.entries);
+  const pct = goal > 0 ? Math.min(100, Math.round((week / goal) * 100)) : 0;
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.resultBackdrop} onPress={onClose}>
+        <Pressable style={[styles.resultSheet, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => {}}>
+          <View style={[styles.resultCheck, { backgroundColor: theme.success }]}>
+            <Ionicons name="checkmark" size={34} color="#fff" />
+          </View>
+          <ThemedText type="subtitle" style={styles.center}>
+            기도를 마쳤어요
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary" style={[styles.center, styles.mt4]}>
+            이번에 {minutesLabel(minutes)} 기도했어요 🙏
+          </ThemedText>
+
+          {/* 목표 달성률 */}
+          <View style={[styles.resultGoalBox, { backgroundColor: theme.backgroundSelected }]}>
+            <View style={styles.rowBetween}>
+              <ThemedText type="small" themeColor="textSecondary">
+                이번 주 목표 {goalLabel(goal)} 대비
+              </ThemedText>
+              <ThemedText type="subtitle" themeColor="primary">
+                {pct}%
+              </ThemedText>
+            </View>
+            <View style={[styles.resultTrack, { backgroundColor: theme.border }]}>
+              <View style={[styles.resultFill, { width: `${pct}%`, backgroundColor: theme.accent }]} />
+            </View>
+          </View>
+
+          {/* 기간별 합계 */}
+          <View style={styles.resultStats}>
+            <ResultStat label="오늘" value={minutesLabel(active.todayMinutes)} theme={theme} />
+            <ResultStat label="이번 주" value={minutesLabel(week)} theme={theme} />
+            <ResultStat label="이번 달" value={minutesLabel(month)} theme={theme} />
+            <ResultStat label="전체" value={minutesLabel(total)} theme={theme} />
+          </View>
+
+          <Button label="확인" icon="checkmark-circle-outline" onPress={onClose} />
+          <ThemedText type="caption" themeColor="textMuted" style={[styles.center, styles.mt4]}>
+            {kind === 'personal' ? '개인' : '공동'} 기도 기록에 저장되었습니다.
+          </ThemedText>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ResultStat({ label, value, theme }: { label: string; value: string; theme: ReturnType<typeof useTheme> }) {
+  return (
+    <View style={[styles.resultStat, { borderColor: theme.border }]}>
+      <ThemedText type="caption" themeColor="textMuted">
+        {label}
+      </ThemedText>
+      <ThemedText type="smallBold" themeColor="primary" style={styles.mt4}>
+        {value}
+      </ThemedText>
     </View>
   );
 }
@@ -704,6 +868,53 @@ const styles = StyleSheet.create({
 
   quickRow: { flexDirection: 'row', gap: Spacing.two },
   timerBox: { borderRadius: Radius.medium, padding: Spacing.three, alignItems: 'center', gap: Spacing.two },
+
+  // 큰 기도 타이머
+  timerCard: { alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.four },
+  bigStart: {
+    width: '100%',
+    minHeight: 76,
+    borderRadius: Radius.large,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+  },
+  bigStop: {
+    width: '100%',
+    minHeight: 68,
+    borderRadius: Radius.large,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+  },
+  bigTimer: { fontSize: 64, lineHeight: 72, fontWeight: '800', letterSpacing: 1, fontVariant: ['tabular-nums'] },
+  addRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: Spacing.two },
+  addChip: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+
+  // 결과 모달
+  resultBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: Spacing.five },
+  resultSheet: {
+    width: '90%',
+    maxWidth: 360,
+    borderRadius: Radius.large,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.four,
+    alignItems: 'stretch',
+    gap: Spacing.two,
+  },
+  resultCheck: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: Spacing.one },
+  resultGoalBox: { borderRadius: Radius.medium, padding: Spacing.three, gap: Spacing.two, marginTop: Spacing.two },
+  resultTrack: { height: 10, borderRadius: Radius.pill, overflow: 'hidden' },
+  resultFill: { height: '100%', borderRadius: Radius.pill },
+  resultStats: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.one, marginBottom: Spacing.two },
+  resultStat: { flex: 1, alignItems: 'center', paddingVertical: Spacing.two, borderRadius: Radius.medium, borderWidth: StyleSheet.hairlineWidth },
 
   communalHero: { alignItems: 'center', gap: 2, marginBottom: Spacing.two },
   communalTotal: {
