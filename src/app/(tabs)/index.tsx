@@ -16,7 +16,7 @@ import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
-import { formatDate, formatFullDate, isWithinDays, minutesLabel, toDateKey } from '@/lib/format';
+import { durationLabel, formatDate, formatFullDate, isWithinDays, toDateKey } from '@/lib/format';
 import { useLiveStatus } from '@/lib/live-status';
 import { usePrayerTime } from '@/lib/prayer-log';
 import { useYouTubeTitle } from '@/lib/use-youtube-title';
@@ -257,7 +257,7 @@ export default function HomeScreen() {
                 오늘 기도시간
               </ThemedText>
               <ThemedText type="subtitle">
-                {prayerLog.todayMinutes > 0 ? minutesLabel(prayerLog.todayMinutes) : '아직 없음'}
+                {prayerLog.todayMinutes > 0 ? durationLabel(prayerLog.todayMinutes) : '아직 없음'}
               </ThemedText>
             </View>
             <View style={[styles.streakBox, { backgroundColor: theme.backgroundSelected }]}>

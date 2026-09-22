@@ -74,3 +74,31 @@ export function minutesLabel(minutes: number): string {
   const m = minutes % 60;
   return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
 }
+
+/**
+ * 누적 기도시간(초)을 사람이 읽기 쉬운 문구로 바꿉니다.
+ *   45 → '45초',  128 → '2분 8초',  7680 → '2시간 8분'
+ * 1시간 이상은 초를 생략해 지나치게 길어지지 않게 합니다.
+ */
+export function durationLabel(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s}초`;
+  const totalMin = Math.floor(s / 60);
+  const secRem = s % 60;
+  if (totalMin < 60) return secRem ? `${totalMin}분 ${secRem}초` : `${totalMin}분`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m ? `${h}시간 ${m}분` : `${h}시간`;
+}
+
+/** 좁은 통계 칸용: 큰 단위/작은 단위를 두 줄로 쌓아 보여줍니다. (예: '2시간\n8분') */
+export function stackedDuration(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s}초`;
+  const totalMin = Math.floor(s / 60);
+  const secRem = s % 60;
+  if (totalMin < 60) return secRem ? `${totalMin}분\n${secRem}초` : `${totalMin}분`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m ? `${h}시간\n${m}분` : `${h}시간`;
+}

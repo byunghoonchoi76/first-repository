@@ -180,7 +180,7 @@ create table if not exists public.communal_prayers (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   body text not null default '',
-  total_minutes integer not null default 0,
+  total_minutes integer not null default 0, -- 누적 기도시간(초). 이름은 total_minutes 지만 단위는 '초'. migrate-prayer-seconds.sql 참고
   sort_order smallint not null default 0,
   created_at timestamptz not null default now()
 );
@@ -206,7 +206,7 @@ create table if not exists public.prayer_time (
   user_id uuid not null references auth.users on delete cascade,
   date date not null,
   kind text not null,
-  minutes integer not null default 0,
+  minutes integer not null default 0, -- 누적 기도시간(초). 이름은 minutes 지만 단위는 '초'. migrate-prayer-seconds.sql 참고
   primary key (user_id, date, kind)
 );
 

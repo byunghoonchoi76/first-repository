@@ -199,7 +199,7 @@ export interface CommunalPrayer {
   id: string;
   title: string;
   body: string;
-  /** 온 성도가 이 제목으로 기도한 시간의 합계(분). 모두가 함께 쌓아 갑니다. */
+  /** 온 성도가 이 제목으로 기도한 시간의 합계(초). 이름은 과거 호환으로 totalMinutes 지만 단위는 '초'입니다. */
   totalMinutes: number;
   sortOrder: number;
   createdAt: string;
@@ -279,6 +279,7 @@ export interface GroupRead {
 export interface PrayerLogEntry {
   /** YYYY-MM-DD */
   date: string;
+  /** 누적 시간(초). 필드 이름은 과거 호환으로 minutes 지만 단위는 '초'입니다. */
   minutes: number;
   note?: string;
 }
@@ -291,6 +292,7 @@ export interface PrayerTimeEntry {
   /** YYYY-MM-DD */
   date: string;
   kind: PrayerKind;
+  /** 누적 시간(초). 필드 이름은 과거 호환으로 minutes 지만 단위는 '초'입니다. */
   minutes: number;
 }
 
