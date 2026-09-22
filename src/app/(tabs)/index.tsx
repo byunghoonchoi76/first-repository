@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Animated, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, FlatList, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
@@ -19,7 +19,6 @@ import { repository, useAsyncData, type Sermon } from '@/lib/data';
 import { durationLabel, formatDate, formatFullDate, isWithinDays, toDateKey } from '@/lib/format';
 import { useLiveStatus } from '@/lib/live-status';
 import { usePrayerTime } from '@/lib/prayer-log';
-import { useYouTubeTitle } from '@/lib/use-youtube-title';
 import { classifyChurchVideo, parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 
 function greeting(): string {
@@ -87,46 +86,42 @@ export default function HomeScreen() {
   // 다 불러온 뒤에만 대체 설교(fallback)를 씁니다 → '지난주→최신' 깜빡임 방지.
   const channelPending = channel.loading && !channel.data;
 
-  const newestVideo = [...(channel.data ?? [])]
+  // 최신 예배 영상들을 좌우로 넘겨 볼 수 있게 목록으로 만듭니다. 찬양대·쇼츠·실시간은 제외.
+  const weeklyItems: WeeklyItem[] = [...(channel.data ?? [])]
     .filter((v) => {
       const c = classifyChurchVideo(v.title, v.isShort);
-      // 찬양대 특송·쇼츠는 '이번 주 말씀'에 올리지 않습니다.
-      return c !== '찬양' && c !== '쇼츠';
+      return c !== '찬양' && c !== '쇼츠' && c !== '실시간';
     })
-    .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))[0];
-  let featured: {
-    mediaUrl: string;
-    fallbackTitle: string;
-    thumbnail?: string;
-    subtitle: string;
-    onPress: () => void;
-  } | null = null;
-  if (newestVideo) {
-    // 이미 설교로 등록된 영상이면 그 설교 상세로, 아니면 인앱 재생 화면으로 연결합니다.
-    const registered = (sermons.data ?? []).find(
-      (s) => parseYouTubeUrl(s.mediaUrl)?.videoId === newestVideo.videoId,
-    );
-    featured = {
-      mediaUrl: `https://www.youtube.com/watch?v=${newestVideo.videoId}`,
-      fallbackTitle: registered?.title || newestVideo.title,
-      thumbnail: newestVideo.thumbnail || youtubeThumbnail(newestVideo.videoId),
-      subtitle: registered
-        ? [registered.scripture, registered.preacher].filter(Boolean).join(' · ')
-        : newestVideo.publishedAt
-          ? formatDate(newestVideo.publishedAt.slice(0, 10))
-          : '',
-      onPress: () =>
-        registered ? router.push(`/sermons/${registered.id}`) : router.push(`/watch/${newestVideo.videoId}`),
-    };
-  } else if (latestSermon && !channelPending) {
+    .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))
+    .slice(0, 8)
+    .map((v) => {
+      // 이미 설교로 등록된 영상이면 그 설교 상세로, 아니면 인앱 재생 화면으로 연결합니다.
+      const registered = (sermons.data ?? []).find((s) => parseYouTubeUrl(s.mediaUrl)?.videoId === v.videoId);
+      return {
+        key: v.videoId,
+        title: registered?.title || v.title,
+        thumbnail: v.thumbnail || youtubeThumbnail(v.videoId),
+        category: classifyChurchVideo(v.title, v.isShort),
+        subtitle: registered
+          ? [registered.scripture, registered.preacher].filter(Boolean).join(' · ')
+          : v.publishedAt
+            ? formatDate(v.publishedAt.slice(0, 10))
+            : '',
+        onPress: () => (registered ? router.push(`/sermons/${registered.id}`) : router.push(`/watch/${v.videoId}`)),
+      };
+    });
+
+  // 채널을 못 불러오면 최신 등록 설교 한 편으로 대체합니다.
+  if (weeklyItems.length === 0 && latestSermon && !channelPending) {
     const video = parseYouTubeUrl(latestSermon.mediaUrl);
-    featured = {
-      mediaUrl: latestSermon.mediaUrl,
-      fallbackTitle: latestSermon.title,
+    weeklyItems.push({
+      key: latestSermon.id,
+      title: latestSermon.title,
       thumbnail: latestSermon.thumbnailUrl ?? (video ? youtubeThumbnail(video.videoId) : undefined),
+      category: '설교',
       subtitle: [latestSermon.scripture, latestSermon.preacher].filter(Boolean).join(' · '),
       onPress: () => router.push(`/sermons/${latestSermon.id}`),
-    };
+    });
   }
 
   const openLive = () => {
@@ -159,8 +154,8 @@ export default function HomeScreen() {
         </ThemedText>
       </HeroBanner>
 
-      {/* 이번 주 말씀 — 교회 유튜브 채널 최신 영상 */}
-      {featured ? <WeeklyMessage {...featured} /> : channelPending ? <WeeklyMessageSkeleton /> : null}
+      {/* 이번 주 말씀 — 교회 유튜브 채널 최신 영상들을 좌우로 넘겨 봅니다 */}
+      {weeklyItems.length > 0 ? <WeeklyCarousel items={weeklyItems} /> : channelPending ? <WeeklyMessageSkeleton /> : null}
 
       {/* 빠른 메뉴 */}
       <View style={styles.quickRow}>
@@ -329,50 +324,91 @@ function CollapsibleCard({
   );
 }
 
-/** 이번 주 말씀 — 최신 영상 썸네일 + 재생 */
-function WeeklyMessage({
-  mediaUrl,
-  fallbackTitle,
-  thumbnail,
-  subtitle,
-  onPress,
-}: {
-  mediaUrl: string;
-  fallbackTitle: string;
+type WeeklyItem = {
+  key: string;
+  title: string;
   thumbnail?: string;
+  category: string;
   subtitle: string;
   onPress: () => void;
-}) {
+};
+
+/** 이번 주 말씀 — 최신 예배 영상들을 좌우로 넘겨 보는 캐러셀 */
+function WeeklyCarousel({ items }: { items: WeeklyItem[] }) {
   const theme = useTheme();
-  const title = useYouTubeTitle(mediaUrl, fallbackTitle, '이번 주 말씀');
+  const [pageW, setPageW] = useState(0);
+  const [index, setIndex] = useState(0);
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
-      <Card elevated style={styles.weekly}>
-        <View style={[styles.weeklyThumb, { backgroundColor: theme.backgroundSelected }]}>
-          {thumbnail ? <Image source={{ uri: thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
-          <View style={styles.playDot}>
-            <Ionicons name="play" size={18} color="#fff" style={{ marginLeft: 2 }} />
-          </View>
+    <View>
+      <View style={styles.weeklyTag}>
+        <Ionicons name="volume-medium-outline" size={13} color={theme.accent} />
+        <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '700' }}>
+          이번 주 말씀
+        </ThemedText>
+      </View>
+
+      <View onLayout={(e) => setPageW(e.nativeEvent.layout.width)}>
+        {pageW > 0 ? (
+          <FlatList
+            data={items}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(it) => it.key}
+            getItemLayout={(_, i) => ({ length: pageW, offset: pageW * i, index: i })}
+            scrollEventThrottle={16}
+            onScroll={(e) => {
+              const i = Math.round(e.nativeEvent.contentOffset.x / pageW);
+              setIndex((cur) => (cur === i ? cur : i));
+            }}
+            renderItem={({ item }) => <WeeklySlide item={item} width={pageW} theme={theme} />}
+          />
+        ) : null}
+      </View>
+
+      {items.length > 1 ? (
+        <View style={styles.dotsRow}>
+          {items.map((it, i) => (
+            <View
+              key={it.key}
+              style={[styles.dot, { width: i === index ? 18 : 6, backgroundColor: i === index ? theme.primary : theme.border }]}
+            />
+          ))}
         </View>
-        <View style={styles.flex}>
-          <View style={styles.weeklyTag}>
-            <Ionicons name="volume-medium-outline" size={13} color={theme.accent} />
-            <ThemedText type="caption" style={{ color: theme.accent, fontWeight: '700' }}>
-              이번 주 말씀
+      ) : null}
+    </View>
+  );
+}
+
+/** 캐러셀 한 장 — 큰 썸네일 + 카테고리 배지 + 제목 */
+function WeeklySlide({ item, width, theme }: { item: WeeklyItem; width: number; theme: ReturnType<typeof useTheme> }) {
+  return (
+    <View style={{ width }}>
+      <Pressable onPress={item.onPress} style={({ pressed }) => pressed && styles.pressed}>
+        <View style={[styles.posterThumb, { backgroundColor: theme.backgroundSelected }]}>
+          {item.thumbnail ? <Image source={{ uri: item.thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+          <View style={styles.posterBadge}>
+            <ThemedText type="caption" style={styles.posterBadgeText}>
+              {item.category}
             </ThemedText>
           </View>
-          <ThemedText type="smallBold" numberOfLines={2}>
-            {title}
+          <View style={styles.playDot}>
+            <Ionicons name="play" size={20} color="#fff" style={{ marginLeft: 2 }} />
+          </View>
+        </View>
+        <View style={styles.posterMeta}>
+          <ThemedText type="smallBold" numberOfLines={2} style={styles.posterTitle}>
+            {item.title}
           </ThemedText>
-          {subtitle ? (
+          {item.subtitle ? (
             <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1}>
-              {subtitle}
+              {item.subtitle}
             </ThemedText>
           ) : null}
         </View>
-      </Card>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -494,6 +530,30 @@ const styles = StyleSheet.create({
   },
   weeklyTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
   skelLine: { height: 12, borderRadius: Radius.small, marginTop: 6 },
+
+  // 이번 주 말씀 캐러셀
+  posterThumb: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: Radius.large,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  posterBadge: {
+    position: 'absolute',
+    top: Spacing.two,
+    left: Spacing.two,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+  },
+  posterBadgeText: { color: '#fff', fontWeight: '800' },
+  posterMeta: { marginTop: Spacing.two, alignItems: 'center', gap: 2 },
+  posterTitle: { textAlign: 'center' },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: Spacing.two },
+  dot: { height: 6, borderRadius: 3 },
 
   quickRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two },
   quickAction: { flex: 1, alignItems: 'center', gap: Spacing.two },
