@@ -71,7 +71,7 @@ export default function TabsLayout() {
         options={{
           title: '기도',
           tabBarLabel: tabLabel('기도'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="flower-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="hand-left-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
