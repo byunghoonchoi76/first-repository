@@ -692,7 +692,10 @@ function PrayerResultModal({
             {who} 기도는 결코 헛되지 않습니다
           </ThemedText>
           <ThemedText type="caption" themeColor="textSecondary" style={[styles.center, styles.mt4]}>
-            이번에 {minutesLabel(minutes)} 기도했어요. 하나님이 기억하십니다 🙏
+            이번에 {minutesLabel(minutes)} 기도했어요.
+          </ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary" style={[styles.center, styles.mt4]}>
+            하나님이 기억하십니다 🙏
           </ThemedText>
 
           {/* 목표 달성률 */}
