@@ -296,44 +296,7 @@ export default function HomeScreen() {
           />
         </Card>
       </View>
-
-      {/* 교회 안내 — 아코디언 */}
-      <CollapsibleCard title="교회 안내">
-        <ListRow icon="time-outline" title="예배 안내" subtitle="주일예배 · 새벽예배 · 교육부서 시간표" onPress={() => router.push('/services')} />
-        <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-        <ListRow icon="people-outline" title="섬기는 사람들" subtitle="교역자와 직분자를 소개합니다" onPress={() => router.push('/staff')} />
-        <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-        <ListRow icon="location-outline" title="교회 주소" subtitle={profile.data?.address} onPress={() => router.push('/location')} />
-        <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-        <ListRow icon="flag-outline" title="교회 비전" subtitle="우리 교회가 나아갈 방향" onPress={() => router.push('/vision')} />
-      </CollapsibleCard>
     </Screen>
-  );
-}
-
-/** 접었다 펼치는 카드(아코디언). 헤더를 누르면 내용이 열리고 닫힙니다. */
-function CollapsibleCard({
-  title,
-  defaultOpen = true,
-  children,
-}: {
-  title: string;
-  defaultOpen?: boolean;
-  children: ReactNode;
-}) {
-  const theme = useTheme();
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <Card elevated style={styles.collapseCard}>
-      <Pressable onPress={() => setOpen((v) => !v)} style={styles.collapseHeader}>
-        <View style={[styles.collapseBar, { backgroundColor: theme.primary }]} />
-        <ThemedText type="smallBold" style={styles.flex}>
-          {title}
-        </ThemedText>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={theme.textMuted} />
-      </Pressable>
-      {open ? <View style={styles.collapseBody}>{children}</View> : null}
-    </Card>
   );
 }
 
