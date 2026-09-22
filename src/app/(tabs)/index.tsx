@@ -16,7 +16,7 @@ import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
-import { formatDate, formatFullDate, minutesLabel, toDateKey } from '@/lib/format';
+import { formatDate, formatFullDate, isWithinDays, minutesLabel, toDateKey } from '@/lib/format';
 import { useLiveStatus } from '@/lib/live-status';
 import { usePrayerTime } from '@/lib/prayer-log';
 import { useYouTubeTitle } from '@/lib/use-youtube-title';
@@ -223,6 +223,13 @@ export default function HomeScreen() {
                   height={100}
                   base="navy"
                   style={styles.newsImage}>
+                  {isWithinDays(item.publishedAt, 3) ? (
+                    <View style={styles.newTag}>
+                      <ThemedText type="caption" style={styles.newTagText}>
+                        새 소식
+                      </ThemedText>
+                    </View>
+                  ) : null}
                   <Badge label={funeral ? '부고' : item.category} tone={funeral ? 'textSecondary' : item.category === '행사' ? 'accent' : 'primary'} />
                 </HeroBanner>
                 <View style={[styles.newsBody, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -512,6 +519,8 @@ const styles = StyleSheet.create({
   newsRow: { gap: Spacing.three, paddingRight: Spacing.three, paddingVertical: Spacing.one },
   newsCard: { width: 208, borderRadius: Radius.large, ...Shadow.soft },
   newsImage: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  newTag: { position: 'absolute', top: 8, right: 8, backgroundColor: '#C4453B', paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill },
+  newTagText: { color: '#fff', fontWeight: '800', fontSize: 10 },
   newsBody: {
     borderWidth: StyleSheet.hairlineWidth,
     borderTopWidth: 0,

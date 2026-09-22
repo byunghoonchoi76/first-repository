@@ -61,6 +61,13 @@ export function toDateKey(date: Date = new Date()): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 }
 
+/** ISO 시각이 지금으로부터 `days`일 이내면 true (예: 새 소식 표시). */
+export function isWithinDays(iso: string, days: number): boolean {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t <= days * 86_400_000;
+}
+
 export function minutesLabel(minutes: number): string {
   if (minutes < 60) return `${minutes}분`;
   const h = Math.floor(minutes / 60);

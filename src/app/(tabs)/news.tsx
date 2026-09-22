@@ -11,7 +11,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type AnnouncementCategory } from '@/lib/data';
-import { formatRelative } from '@/lib/format';
+import { formatRelative, isWithinDays } from '@/lib/format';
 
 const FILTERS: ('전체' | AnnouncementCategory)[] = ['전체', '공지', '행사', '소식'];
 
@@ -94,6 +94,7 @@ export default function NewsScreen() {
             <Card key={item.id} onPress={() => router.push(`/news/${item.id}`)}>
               <View style={styles.rowBetween}>
                 <View style={styles.metaRow}>
+                  {isWithinDays(item.publishedAt, 3) ? <Badge label="새 소식" tone="danger" /> : null}
                   <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
                   {item.subCategory ? <Badge label={item.subCategory} tone="textSecondary" /> : null}
                 </View>
