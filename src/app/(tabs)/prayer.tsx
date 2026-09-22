@@ -648,10 +648,10 @@ function PrayerResultModal({
             <Ionicons name="checkmark" size={34} color="#fff" />
           </View>
           <ThemedText type="subtitle" style={styles.center}>
-            귀한 기도의 시간이었어요
+            성도의 기도는 결코 헛되지 않습니다
           </ThemedText>
           <ThemedText type="caption" themeColor="textSecondary" style={[styles.center, styles.mt4]}>
-            이번에 {minutesLabel(minutes)} 기도했어요 🙏
+            이번에 {minutesLabel(minutes)} 기도했어요. 하나님이 기억하십니다 🙏
           </ThemedText>
 
           {/* 목표 달성률 */}
