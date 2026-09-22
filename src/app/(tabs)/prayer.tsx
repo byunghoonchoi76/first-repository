@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { Screen } from '@/components/screen';
@@ -10,8 +11,8 @@ import { Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHea
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
-import { repository, useAsyncData } from '@/lib/data';
-import type { CommunalPrayer, PrayerKind, PrayerLogEntry } from '@/lib/data/types';
+import { dataMode, repository, useAsyncData } from '@/lib/data';
+import type { CommunalPrayer, PrayerKind, PrayerLogEntry, PrayerRequest } from '@/lib/data/types';
 import { durationLabel, stackedDuration } from '@/lib/format';
 import { toDateKey } from '@/lib/format';
 import { GOAL_CONFIG, useCommunalGoal, useWeeklyGoal } from '@/lib/prayer-goal';
@@ -522,12 +523,24 @@ function TopicsCard() {
 // ── 큰 기도 타이머 (맨 위) ───────────────────────────────────────
 function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKind; goal: number }) {
   const theme = useTheme();
+  const { user } = useAuth();
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [resultSeconds, setResultSeconds] = useState<number | null>(null);
   const [addText, setAddText] = useState('');
   const [unit, setUnit] = useState<'min' | 'hour'>('hour');
+
+  // 전체 화면 기도 중에 함께 볼 '나의 기도제목' (로그인 안 하면 비움)
+  const topics = useAsyncData<PrayerRequest[]>(
+    () => (dataMode === 'supabase' && !user ? Promise.resolve([]) : repository.listMyPrayerRequests()),
+    [user],
+  );
+
+  const begin = () => {
+    topics.reload(); // 시작할 때 최신 기도제목을 불러옵니다.
+    setStartedAt(Date.now());
+  };
 
   const addManual = async () => {
     const val = parseFloat(addText.replace(/[^0-9.]/g, ''));
@@ -573,7 +586,7 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
             </ThemedText>
           </ThemedText>
           <Pressable
-            onPress={() => setStartedAt(Date.now())}
+            onPress={begin}
             style={({ pressed }) => [styles.bigStart, { backgroundColor: theme.primary, opacity: pressed ? 0.9 : 1 }]}>
             <Ionicons name="play" size={30} color={theme.onPrimary} />
             <ThemedText type="subtitle" style={{ color: theme.onPrimary }}>
@@ -632,21 +645,20 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
           ) : null}
         </>
       ) : (
-        <>
-          <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-            {kindLabel} 기도 중…
-          </ThemedText>
-          <ThemedText style={[styles.bigTimer, { color: theme.text }]}>{display}</ThemedText>
-          <Pressable
-            onPress={() => void stop()}
-            style={({ pressed }) => [styles.bigStop, { backgroundColor: theme.accent, opacity: pressed ? 0.9 : 1 }]}>
-            <Ionicons name="stop" size={26} color="#fff" />
-            <ThemedText type="subtitle" style={{ color: '#fff' }}>
-              마치고 기록하기
-            </ThemedText>
-          </Pressable>
-        </>
+        // 전체 화면 기도 모드가 위에 뜨는 동안, 카드 자리에는 간단한 안내만 둡니다.
+        <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
+          {kindLabel} 기도 중…
+        </ThemedText>
       )}
+
+      <PrayerFocusModal
+        visible={startedAt !== null}
+        display={display}
+        kindLabel={kindLabel}
+        todaySeconds={active.todayMinutes}
+        topics={topics.data ?? []}
+        onStop={() => void stop()}
+      />
 
       <PrayerResultModal
         seconds={resultSeconds}
@@ -656,6 +668,94 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
         kind={kind}
       />
     </Card>
+  );
+}
+
+/** 전체 화면 기도 모드 — 큰 타이머 + 나의 기도제목을 보며 집중해서 기도합니다. */
+function PrayerFocusModal({
+  visible,
+  display,
+  kindLabel,
+  todaySeconds,
+  topics,
+  onStop,
+}: {
+  visible: boolean;
+  display: string;
+  kindLabel: string;
+  todaySeconds: number;
+  topics: PrayerRequest[];
+  onStop: () => void;
+}) {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  // 기도 중인(응답 전) 제목을 먼저, 응답된 제목을 뒤에 둡니다.
+  const ordered = [...topics.filter((t) => !t.answered), ...topics.filter((t) => t.answered)];
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onStop}>
+      <View
+        style={[
+          styles.focusRoot,
+          {
+            backgroundColor: theme.background,
+            paddingTop: insets.top + Spacing.three,
+            paddingBottom: insets.bottom + Spacing.three,
+          },
+        ]}>
+        <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
+          {kindLabel} 기도 중
+        </ThemedText>
+        <ThemedText style={[styles.focusTimer, { color: theme.text }]}>{display}</ThemedText>
+        {todaySeconds > 0 ? (
+          <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
+            오늘 누적 {durationLabel(todaySeconds)}
+          </ThemedText>
+        ) : null}
+
+        <View style={styles.focusTopicsHead}>
+          <Ionicons name="flower-outline" size={16} color={theme.primary} />
+          <ThemedText type="smallBold" themeColor="primary">
+            나의 기도제목
+          </ThemedText>
+        </View>
+
+        <ScrollView style={styles.focusScroll} contentContainerStyle={styles.focusScrollInner} showsVerticalScrollIndicator={false}>
+          {ordered.length === 0 ? (
+            <View style={[styles.focusEmpty, { borderColor: theme.border }]}>
+              <ThemedText type="small" themeColor="textMuted" style={styles.center}>
+                기도제목을 추가하면{'\n'}이곳에서 함께 기도할 수 있어요.
+              </ThemedText>
+            </View>
+          ) : (
+            ordered.map((t) => (
+              <View key={t.id} style={[styles.focusTopic, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.focusTopicHead}>
+                  <ThemedText type="smallBold" style={[styles.flex, t.answered && styles.focusAnswered]} numberOfLines={2}>
+                    {t.title}
+                  </ThemedText>
+                  {t.answered ? <Ionicons name="checkmark-circle" size={16} color={theme.success} /> : null}
+                </View>
+                {t.body ? (
+                  <ThemedText type="small" themeColor="textSecondary" style={t.answered ? styles.focusAnswered : undefined}>
+                    {t.body}
+                  </ThemedText>
+                ) : null}
+              </View>
+            ))
+          )}
+        </ScrollView>
+
+        <Pressable
+          onPress={onStop}
+          style={({ pressed }) => [styles.bigStop, { backgroundColor: theme.accent, opacity: pressed ? 0.9 : 1 }]}>
+          <Ionicons name="stop" size={26} color="#fff" />
+          <ThemedText type="subtitle" style={{ color: '#fff' }}>
+            마치고 기록하기
+          </ThemedText>
+        </Pressable>
+      </View>
+    </Modal>
   );
 }
 
@@ -940,6 +1040,31 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   bigTimer: { fontSize: 64, lineHeight: 72, fontWeight: '800', letterSpacing: 1, fontVariant: ['tabular-nums'] },
+
+  // 전체 화면 기도 모드
+  focusRoot: { flex: 1, paddingHorizontal: Spacing.four, gap: Spacing.two },
+  focusTimer: {
+    fontSize: 72,
+    lineHeight: 84,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+    marginTop: Spacing.one,
+  },
+  focusTopicsHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginTop: Spacing.two },
+  focusScroll: { flex: 1 },
+  focusScrollInner: { gap: Spacing.two, paddingVertical: Spacing.two },
+  focusEmpty: {
+    padding: Spacing.five,
+    borderRadius: Radius.medium,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  focusTopic: { padding: Spacing.three, borderRadius: Radius.medium, borderWidth: StyleSheet.hairlineWidth, gap: 4 },
+  focusTopicHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  focusAnswered: { textDecorationLine: 'line-through', opacity: 0.6 },
   manualBox: { width: '100%', gap: Spacing.two },
   unitToggle: {
     flexDirection: 'row',
