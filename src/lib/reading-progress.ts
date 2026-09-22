@@ -80,3 +80,57 @@ export function useReadingProgress() {
 
   return { done, ready, toggle, count: done.size, synced: server };
 }
+
+/**
+ * 본문(챕터)별 읽기 표시 — 하루 4곳을 각각 체크합니다. (이 기기에만 저장)
+ * 하루 4곳을 모두 읽으면 화면에서 그 날을 useReadingProgress 의 '완료'로 올려,
+ * 진도/달력/여러 기기 공유는 기존 '일자 단위' 저장을 그대로 씁니다.
+ * 키는 `${일차인덱스}:${본문번호 0~3}` 형태입니다.
+ */
+const CHAPTER_KEY = 'church-app/mccheyne-chapters';
+
+export function useChapterReads() {
+  const [set, setSet] = useState<Set<string>>(new Set());
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(CHAPTER_KEY);
+        if (raw && active) setSet(new Set(JSON.parse(raw) as string[]));
+      } catch {
+        /* 무시 */
+      }
+      if (active) setReady(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const persist = (next: Set<string>) => {
+    void AsyncStorage.setItem(CHAPTER_KEY, JSON.stringify([...next])).catch(() => {});
+  };
+
+  /** 그 날의 체크된 본문 번호들을 통째로 교체합니다. */
+  const replaceDay = useCallback((dayIdx: number, chapters: Set<number>) => {
+    setSet((prev) => {
+      const next = new Set([...prev].filter((k) => !k.startsWith(`${dayIdx}:`)));
+      chapters.forEach((p) => next.add(`${dayIdx}:${p}`));
+      persist(next);
+      return next;
+    });
+  }, []);
+
+  /** 그 날의 본문 체크를 모두 지웁니다. */
+  const clearDay = useCallback((dayIdx: number) => {
+    setSet((prev) => {
+      const next = new Set([...prev].filter((k) => !k.startsWith(`${dayIdx}:`)));
+      persist(next);
+      return next;
+    });
+  }, []);
+
+  return { set, ready, replaceDay, clearDay };
+}

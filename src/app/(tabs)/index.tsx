@@ -87,12 +87,25 @@ export default function HomeScreen() {
   const channelPending = channel.loading && !channel.data;
 
   // 최신 예배 영상들을 좌우로 넘겨 볼 수 있게 목록으로 만듭니다. 찬양대·쇼츠·실시간은 제외.
+  // 중복 방지: ① 같은 영상(videoId) 두 번 금지, ② 같은 예배 종류는 가장 최근 한 편만.
+  //   (분류기가 규칙에 안 걸리는 제목을 '청년예배'로 몰아넣어, 서로 다른 영상이 같은 배지로
+  //    겹쳐 보이던 문제를 종류별 대표 한 편만 노출해 해결합니다.)
+  const seenVideoId = new Set<string>();
+  const seenCategory = new Set<string>();
   const weeklyItems: WeeklyItem[] = [...(channel.data ?? [])]
     .filter((v) => {
       const c = classifyChurchVideo(v.title, v.isShort);
       return c !== '찬양' && c !== '쇼츠' && c !== '실시간';
     })
     .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))
+    .filter((v) => {
+      if (seenVideoId.has(v.videoId)) return false;
+      const c = classifyChurchVideo(v.title, v.isShort);
+      if (seenCategory.has(c)) return false;
+      seenVideoId.add(v.videoId);
+      seenCategory.add(c);
+      return true;
+    })
     .slice(0, 8)
     .map((v) => {
       // 이미 설교로 등록된 영상이면 그 설교 상세로, 아니면 인앱 재생 화면으로 연결합니다.
