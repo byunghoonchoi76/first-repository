@@ -526,12 +526,15 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [resultMinutes, setResultMinutes] = useState<number | null>(null);
   const [addText, setAddText] = useState('');
+  const [unit, setUnit] = useState<'min' | 'hour'>('min');
 
   const addManual = async () => {
-    const n = parseInt(addText.replace(/[^0-9]/g, ''), 10);
-    if (!Number.isFinite(n) || n <= 0) return;
+    const val = parseFloat(addText.replace(/[^0-9.]/g, ''));
+    if (!Number.isFinite(val) || val <= 0) return;
+    const minutes = unit === 'hour' ? Math.round(val * 60) : Math.round(val);
+    if (minutes <= 0) return;
     setAddText('');
-    await active.addMinutes(n);
+    await active.addMinutes(minutes);
   };
 
   useEffect(() => {
@@ -578,12 +581,26 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
             <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
               타이머 없이 시간 직접 입력
             </ThemedText>
+            {/* 단위 선택: 분 / 시간 */}
+            <View style={[styles.unitToggle, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+              {(['min', 'hour'] as const).map((u) => {
+                const on = unit === u;
+                return (
+                  <Pressable key={u} onPress={() => setUnit(u)} style={[styles.unitItem, on && { backgroundColor: theme.primary }]}>
+                    <ThemedText type="smallBold" style={{ color: on ? theme.onPrimary : theme.textSecondary }}>
+                      {u === 'min' ? '분' : '시간'}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {/* 입력 + 더하기 (한 줄, 화면 넘침 방지) */}
             <View style={styles.manualRow}>
               <View style={[styles.manualInputWrap, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
                 <TextInput
                   value={addText}
                   onChangeText={setAddText}
-                  keyboardType="numeric"
+                  keyboardType={unit === 'hour' ? 'decimal-pad' : 'numeric'}
                   placeholder="0"
                   placeholderTextColor={theme.textMuted}
                   style={[styles.manualInput, { color: theme.text }]}
@@ -591,13 +608,12 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
                   onSubmitEditing={() => void addManual()}
                 />
                 <ThemedText type="small" themeColor="textSecondary">
-                  분
+                  {unit === 'hour' ? '시간' : '분'}
                 </ThemedText>
               </View>
               <Pressable
                 onPress={() => void addManual()}
                 style={({ pressed }) => [styles.manualBtn, { backgroundColor: theme.primary, opacity: pressed || !addText ? 0.85 : 1 }]}>
-                <Ionicons name="add" size={18} color={theme.onPrimary} />
                 <ThemedText type="smallBold" style={{ color: theme.onPrimary }}>
                   더하기
                 </ThemedText>
@@ -916,26 +932,33 @@ const styles = StyleSheet.create({
   },
   bigTimer: { fontSize: 64, lineHeight: 72, fontWeight: '800', letterSpacing: 1, fontVariant: ['tabular-nums'] },
   manualBox: { width: '100%', gap: Spacing.two },
+  unitToggle: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    padding: 3,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 3,
+  },
+  unitItem: { paddingVertical: Spacing.one + 1, paddingHorizontal: Spacing.four, borderRadius: Radius.pill, minWidth: 68, alignItems: 'center' },
   manualRow: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.two },
   manualInputWrap: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: Spacing.two,
     minHeight: 52,
     paddingHorizontal: Spacing.three,
     borderRadius: Radius.medium,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  manualInput: { flex: 1, fontSize: 22, fontWeight: '700', textAlign: 'right', paddingVertical: 0 },
+  manualInput: { flex: 1, minWidth: 0, fontSize: 22, fontWeight: '700', textAlign: 'right', paddingVertical: 0 },
   manualBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.one,
     minHeight: 52,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.three,
     borderRadius: Radius.medium,
   },
 
