@@ -94,7 +94,7 @@ export default function NewsScreen() {
             <Card key={item.id} onPress={() => router.push(`/news/${item.id}`)}>
               <View style={styles.rowBetween}>
                 <View style={styles.metaRow}>
-                  {isWithinDays(item.publishedAt, 3) ? <Badge label="새 소식" tone="danger" /> : null}
+                  {isWithinDays(item.publishedAt, 7) ? <Badge label="새 소식" tone="danger" /> : null}
                   <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
                   {item.subCategory ? <Badge label={item.subCategory} tone="textSecondary" /> : null}
                 </View>
