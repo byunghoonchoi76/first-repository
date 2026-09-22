@@ -188,23 +188,36 @@ export default function ReadingPlanScreen() {
         </Card>
       </View>
 
-      {/* 월별(연간) 진도 — 한 해 전체를 한눈에 */}
+      {/* 월별 진도 — 선택한 달만 표시 (◀▶ 로 달 이동) */}
       <View>
-        <SectionHeader title={`${date.getFullYear()}년 월별 진도`} accent />
+        <SectionHeader title="월별 진도" accent />
         <Card elevated>
-          <View style={styles.yearGrid}>
-            {Array.from({ length: 12 }, (_, m) => (
-              <MonthBlock
-                key={m}
-                monthDate={new Date(date.getFullYear(), m, 1)}
-                selected={date}
-                today={today}
-                done={done}
-                onSelect={setDate}
-                theme={theme}
-              />
-            ))}
+          <View style={styles.navRow}>
+            <Pressable
+              onPress={() => setDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+              hitSlop={10}
+              style={styles.navBtn}>
+              <Ionicons name="chevron-back" size={22} color={theme.primary} />
+            </Pressable>
+            <ThemedText type="smallBold">
+              {date.getFullYear()}년 {date.getMonth() + 1}월
+            </ThemedText>
+            <Pressable
+              onPress={() => setDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+              hitSlop={10}
+              style={styles.navBtn}>
+              <Ionicons name="chevron-forward" size={22} color={theme.primary} />
+            </Pressable>
           </View>
+          <MonthBlock
+            full
+            monthDate={new Date(date.getFullYear(), date.getMonth(), 1)}
+            selected={date}
+            today={today}
+            done={done}
+            onSelect={setDate}
+            theme={theme}
+          />
           <ThemedText type="caption" themeColor="textMuted" style={styles.gridHint}>
             날짜를 누르면 그 날 본문이 위에 표시됩니다. 초록색은 읽기 완료한 날이에요.
           </ThemedText>
@@ -333,7 +346,7 @@ function WeekGrid({
   );
 }
 
-/** 한 달 미니 달력 (연간 보기용) */
+/** 한 달 달력. full 이면 화면 전체 폭·큰 날짜로 그립니다. */
 function MonthBlock({
   monthDate,
   selected,
@@ -341,6 +354,7 @@ function MonthBlock({
   done,
   onSelect,
   theme,
+  full = false,
 }: {
   monthDate: Date;
   selected: Date;
@@ -348,6 +362,7 @@ function MonthBlock({
   done: Set<number>;
   onSelect: (d: Date) => void;
   theme: ReturnType<typeof useTheme>;
+  full?: boolean;
 }) {
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
@@ -360,10 +375,12 @@ function MonthBlock({
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <View style={styles.monthBlock}>
-      <ThemedText type="smallBold" style={styles.monthTitle}>
-        {month + 1}월
-      </ThemedText>
+    <View style={full ? styles.monthBlockFull : styles.monthBlock}>
+      {full ? null : (
+        <ThemedText type="smallBold" style={styles.monthTitle}>
+          {month + 1}월
+        </ThemedText>
+      )}
       <View style={styles.monthHeadRow}>
         {WEEKDAYS.map((w) => (
           <ThemedText key={w} type="caption" themeColor="textMuted" style={styles.miniCell}>
@@ -374,11 +391,11 @@ function MonthBlock({
       <View style={styles.monthGrid}>
         {cells.map((d, i) =>
           d ? (
-            <View key={d.toISOString()} style={styles.miniCell}>
-              <DayDot d={d} selectedDate={selected} today={today} done={done} onSelect={onSelect} theme={theme} size={26} small />
+            <View key={d.toISOString()} style={[styles.miniCell, full && styles.monthCellFull]}>
+              <DayDot d={d} selectedDate={selected} today={today} done={done} onSelect={onSelect} theme={theme} size={full ? 38 : 26} small={!full} />
             </View>
           ) : (
-            <View key={`b${i}`} style={styles.miniCell} />
+            <View key={`b${i}`} style={[styles.miniCell, full && styles.monthCellFull]} />
           ),
         )}
       </View>
@@ -431,6 +448,8 @@ const styles = StyleSheet.create({
   weekCell: { alignItems: 'center', gap: 4, flex: 1 },
   yearGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   monthBlock: { width: '48%', marginBottom: Spacing.three },
+  monthBlockFull: { width: '100%', marginTop: Spacing.two },
+  monthCellFull: { paddingVertical: Spacing.one },
   monthTitle: { textAlign: 'center', marginBottom: 4 },
   monthHeadRow: { flexDirection: 'row' },
   monthGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 2 },
