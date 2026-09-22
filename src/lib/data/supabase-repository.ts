@@ -313,7 +313,14 @@ export const supabaseRepository: ChurchRepository = {
   async createAnnouncement(input) {
     const sb = requireSupabase();
     const res = await sb.from('announcements').insert(fromAnnouncement(input)).select().single();
-    return toAnnouncement(unwrap(res));
+    const created = toAnnouncement(unwrap(res));
+    // 알림을 켜 둔 성도들에게 새 소식 푸시(실패해도 등록은 성공 처리).
+    try {
+      await sb.functions.invoke('notify-announcement', { body: { announcementId: created.id } });
+    } catch {
+      /* 알림 실패는 무시 */
+    }
+    return created;
   },
 
   async updateAnnouncement(id, input) {

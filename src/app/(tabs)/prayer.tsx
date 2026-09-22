@@ -526,7 +526,7 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [resultMinutes, setResultMinutes] = useState<number | null>(null);
   const [addText, setAddText] = useState('');
-  const [unit, setUnit] = useState<'min' | 'hour'>('min');
+  const [unit, setUnit] = useState<'min' | 'hour'>('hour');
 
   const addManual = async () => {
     const val = parseFloat(addText.replace(/[^0-9.]/g, ''));
