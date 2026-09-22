@@ -18,7 +18,6 @@ import { GOAL_CONFIG, useCommunalGoal, useWeeklyGoal } from '@/lib/prayer-goal';
 import { recentDays, usePrayerTime } from '@/lib/prayer-log';
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
-const QUICK_MINUTES = [5, 10, 30];
 
 type PrayerTime = ReturnType<typeof usePrayerTime>;
 
@@ -526,6 +525,14 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [resultMinutes, setResultMinutes] = useState<number | null>(null);
+  const [addText, setAddText] = useState('');
+
+  const addManual = async () => {
+    const n = parseInt(addText.replace(/[^0-9]/g, ''), 10);
+    if (!Number.isFinite(n) || n <= 0) return;
+    setAddText('');
+    await active.addMinutes(n);
+  };
 
   useEffect(() => {
     if (startedAt === null) return;
@@ -567,20 +574,35 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
               기도 시작
             </ThemedText>
           </Pressable>
-          <View style={styles.addRow}>
-            <ThemedText type="caption" themeColor="textMuted">
-              타이머 없이 더하기
+          <View style={styles.manualBox}>
+            <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
+              타이머 없이 시간 직접 입력
             </ThemedText>
-            {QUICK_MINUTES.map((m) => (
+            <View style={styles.manualRow}>
+              <View style={[styles.manualInputWrap, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                <TextInput
+                  value={addText}
+                  onChangeText={setAddText}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor={theme.textMuted}
+                  style={[styles.manualInput, { color: theme.text }]}
+                  returnKeyType="done"
+                  onSubmitEditing={() => void addManual()}
+                />
+                <ThemedText type="small" themeColor="textSecondary">
+                  분
+                </ThemedText>
+              </View>
               <Pressable
-                key={m}
-                onPress={() => void active.addMinutes(m)}
-                style={[styles.addChip, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-                <ThemedText type="smallBold" themeColor="primary">
-                  +{m}분
+                onPress={() => void addManual()}
+                style={({ pressed }) => [styles.manualBtn, { backgroundColor: theme.primary, opacity: pressed || !addText ? 0.85 : 1 }]}>
+                <Ionicons name="add" size={18} color={theme.onPrimary} />
+                <ThemedText type="smallBold" style={{ color: theme.onPrimary }}>
+                  더하기
                 </ThemedText>
               </Pressable>
-            ))}
+            </View>
           </View>
           {active.todayMinutes > 0 ? (
             <Pressable onPress={() => void active.clearToday()} hitSlop={6}>
@@ -893,12 +915,28 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   bigTimer: { fontSize: 64, lineHeight: 72, fontWeight: '800', letterSpacing: 1, fontVariant: ['tabular-nums'] },
-  addRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: Spacing.two },
-  addChip: {
+  manualBox: { width: '100%', gap: Spacing.two },
+  manualRow: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.two },
+  manualInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    minHeight: 52,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.medium,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  manualInput: { flex: 1, fontSize: 22, fontWeight: '700', textAlign: 'right', paddingVertical: 0 },
+  manualBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    minHeight: 52,
+    paddingHorizontal: Spacing.four,
+    borderRadius: Radius.medium,
   },
 
   // 결과 모달
