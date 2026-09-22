@@ -702,9 +702,12 @@ function PrayerResultModal({
 
           {/* 목표 달성률 */}
           <View style={[styles.resultGoalBox, { backgroundColor: theme.backgroundSelected }]}>
+            <ThemedText type="caption" themeColor="textMuted">
+              이번 주 목표
+            </ThemedText>
             <View style={styles.rowBetween}>
-              <ThemedText type="small" themeColor="textSecondary">
-                이번 주 목표 {goalLabel(goal)} 대비
+              <ThemedText type="small" themeColor="textSecondary" style={styles.flex}>
+                {goalLabel(goal)} 대비
               </ThemedText>
               <ThemedText type="subtitle" themeColor="primary">
                 {pct}%
@@ -717,10 +720,10 @@ function PrayerResultModal({
 
           {/* 기간별 합계 */}
           <View style={styles.resultStats}>
-            <ResultStat label="오늘" value={minutesLabel(active.todayMinutes)} theme={theme} />
-            <ResultStat label="이번 주" value={minutesLabel(week)} theme={theme} />
-            <ResultStat label="이번 달" value={minutesLabel(month)} theme={theme} />
-            <ResultStat label="전체" value={minutesLabel(total)} theme={theme} />
+            <ResultStat label="오늘" value={stackedMinutes(active.todayMinutes)} theme={theme} />
+            <ResultStat label="이번 주" value={stackedMinutes(week)} theme={theme} />
+            <ResultStat label="이번 달" value={stackedMinutes(month)} theme={theme} />
+            <ResultStat label="전체" value={stackedMinutes(total)} theme={theme} />
           </View>
 
           <Button label="확인" icon="checkmark-circle-outline" onPress={onClose} />
@@ -733,13 +736,21 @@ function PrayerResultModal({
   );
 }
 
+/** 통계 칸용: 시간과 분을 각각 다른 줄로 쌓아 '분'만 홀로 줄바꿈되지 않게 합니다. */
+function stackedMinutes(minutes: number): string {
+  if (minutes < 60) return `${minutes}분`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}시간` : `${h}시간\n${m}분`;
+}
+
 function ResultStat({ label, value, theme }: { label: string; value: string; theme: ReturnType<typeof useTheme> }) {
   return (
     <View style={[styles.resultStat, { borderColor: theme.border }]}>
       <ThemedText type="caption" themeColor="textMuted">
         {label}
       </ThemedText>
-      <ThemedText type="smallBold" themeColor="primary" style={styles.mt4}>
+      <ThemedText type="smallBold" themeColor="primary" style={[styles.mt4, styles.center]}>
         {value}
       </ThemedText>
     </View>
