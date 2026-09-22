@@ -6,10 +6,12 @@ import { dataMode, repository } from '@/lib/data';
 import { toDateKey } from '@/lib/format';
 import type { PrayerKind, PrayerLogEntry } from '@/lib/data/types';
 
+// 저장 값의 단위는 '초'입니다. (예전에는 '분'이었으나 초 단위 카운팅으로 바뀌면서
+// 키를 -v2 로 올려, 옛 분(minute) 값이 초로 잘못 읽히지 않게 했습니다.)
 /** 개인(나의) 기도시간 저장 키 */
-export const PERSONAL_PRAYER_KEY = 'church-app/prayer-log';
+export const PERSONAL_PRAYER_KEY = 'church-app/prayer-log-v2';
 /** 공동 기도에 내가 참여한 시간 저장 키 (기기 로컬, 나의 몫) */
-export const COMMUNAL_PRAYER_KEY = 'church-app/communal-prayer-log';
+export const COMMUNAL_PRAYER_KEY = 'church-app/communal-prayer-log-v2';
 
 const KEY_BY_KIND: Record<PrayerKind, string> = {
   personal: PERSONAL_PRAYER_KEY,

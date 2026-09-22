@@ -12,7 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData } from '@/lib/data';
 import type { CommunalPrayer, PrayerKind, PrayerLogEntry } from '@/lib/data/types';
-import { minutesLabel } from '@/lib/format';
+import { durationLabel, stackedDuration } from '@/lib/format';
 import { toDateKey } from '@/lib/format';
 import { GOAL_CONFIG, useCommunalGoal, useWeeklyGoal } from '@/lib/prayer-goal';
 import { recentDays, usePrayerTime } from '@/lib/prayer-log';
@@ -86,10 +86,10 @@ export default function PrayerScreen() {
               온 성도가 함께 기도한 시간
             </ThemedText>
             <ThemedText type="title" themeColor="primary">
-              {minutesLabel(communalTotalAll)}
+              {durationLabel(communalTotalAll)}
             </ThemedText>
             <ThemedText type="caption" themeColor="textMuted">
-              이 중 나의 공동 기도 {communalTime.totalMinutes > 0 ? minutesLabel(communalTime.totalMinutes) : '0분'}
+              이 중 나의 공동 기도 {communalTime.totalMinutes > 0 ? durationLabel(communalTime.totalMinutes) : '0분'}
             </ThemedText>
           </Card>
 
@@ -166,7 +166,8 @@ function arcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: nu
   return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
 }
 
-/** 이번 주(일요일부터 오늘까지) 합계 분 */
+// 아래 합계 함수들이 반환하는 값의 단위는 '초'입니다. (entries[].minutes 필드가 이제 초를 담습니다)
+/** 이번 주(일요일부터 오늘까지) 합계 초 */
 function thisWeekMinutes(entries: PrayerLogEntry[]): number {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -175,13 +176,13 @@ function thisWeekMinutes(entries: PrayerLogEntry[]): number {
   return entries.reduce((sum, e) => (e.date >= startKey ? sum + e.minutes : sum), 0);
 }
 
-/** 이번 달 합계 분 */
+/** 이번 달 합계 초 */
 function thisMonthMinutes(entries: PrayerLogEntry[]): number {
   const prefix = toDateKey(new Date()).slice(0, 7); // 'YYYY-MM'
   return entries.reduce((sum, e) => (e.date.startsWith(prefix) ? sum + e.minutes : sum), 0);
 }
 
-/** 전체 누적 분 */
+/** 전체 누적 초 */
 function allTimeMinutes(entries: PrayerLogEntry[]): number {
   return entries.reduce((sum, e) => sum + e.minutes, 0);
 }
@@ -201,8 +202,8 @@ function GaugeCard({
 }) {
   const theme = useTheme();
   const cfg = GOAL_CONFIG[kind];
-  const week = thisWeekMinutes(active.entries);
-  const pct = goal > 0 ? Math.min(1, week / goal) : 0;
+  const week = thisWeekMinutes(active.entries); // 초
+  const pct = goal > 0 ? Math.min(1, week / (goal * 60)) : 0; // goal 은 '분', week 는 '초'
   const pct100 = Math.round(pct * 100);
 
   const W = 210;
@@ -247,7 +248,7 @@ function GaugeCard({
         <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
           {kind === 'communal' && !canEdit
             ? '공동 기도 목표는 관리자가 설정합니다.'
-            : `이번 주 ${minutesLabel(week)} 기도했어요.`}
+            : `이번 주 ${durationLabel(week)} 기도했어요.`}
         </ThemedText>
       </Card>
     </View>
@@ -349,11 +350,11 @@ function GoalPicker({ kind, goal, onGoal }: { kind: PrayerKind; goal: number; on
 }
 
 // ── 기도 잔디 ──────────────────────────────────────────────────
-function grassColor(minutes: number, emptyColor: string): string {
-  if (minutes <= 0) return emptyColor;
-  if (minutes < 15) return '#BFE3B4';
-  if (minutes < 30) return '#8AD07A';
-  if (minutes < 60) return '#57B547';
+function grassColor(seconds: number, emptyColor: string): string {
+  if (seconds <= 0) return emptyColor;
+  if (seconds < 15 * 60) return '#BFE3B4';
+  if (seconds < 30 * 60) return '#8AD07A';
+  if (seconds < 60 * 60) return '#57B547';
   return '#2F8F2A';
 }
 
@@ -456,17 +457,17 @@ function CalendarCard({ active }: { active: PrayerTime }) {
 // ── 최근 10일 하루 평균 ──────────────────────────────────────────
 function AverageCard({ active }: { active: PrayerTime }) {
   const theme = useTheme();
-  const days = recentDays(active.entries, 10);
+  const days = recentDays(active.entries, 10); // d.minutes 는 '초'
   const total = days.reduce((s, d) => s + d.minutes, 0);
   const avg = Math.round(total / days.length);
-  const max = Math.max(30, ...days.map((d) => d.minutes));
+  const max = Math.max(30 * 60, ...days.map((d) => d.minutes)); // 최소 30분 기준으로 막대 높이 정규화
 
   return (
     <View>
       <View style={styles.grassHead}>
         <SectionHeader title="최근 10일 하루 평균 기도 시간" />
         <ThemedText type="smallBold" themeColor="primary">
-          평균 {minutesLabel(avg)}
+          평균 {durationLabel(avg)}
         </ThemedText>
       </View>
       <Card>
@@ -477,7 +478,7 @@ function AverageCard({ active }: { active: PrayerTime }) {
             return (
               <View key={d.date} style={styles.barCol}>
                 <ThemedText type="caption" themeColor="textMuted" style={styles.barValue}>
-                  {d.minutes > 0 ? d.minutes : ''}
+                  {d.minutes >= 60 ? Math.round(d.minutes / 60) : ''}
                 </ThemedText>
                 <View style={[styles.bar, { height: h, backgroundColor: d.minutes > 0 ? theme.accent : theme.border }]} />
                 <ThemedText type="caption" themeColor="textMuted" style={styles.barLabel}>
@@ -524,17 +525,18 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [resultMinutes, setResultMinutes] = useState<number | null>(null);
+  const [resultSeconds, setResultSeconds] = useState<number | null>(null);
   const [addText, setAddText] = useState('');
   const [unit, setUnit] = useState<'min' | 'hour'>('hour');
 
   const addManual = async () => {
     const val = parseFloat(addText.replace(/[^0-9.]/g, ''));
     if (!Number.isFinite(val) || val <= 0) return;
-    const minutes = unit === 'hour' ? Math.round(val * 60) : Math.round(val);
-    if (minutes <= 0) return;
+    // 저장 단위는 '초'. 직접 입력값(시간/분)을 초로 환산합니다.
+    const secs = Math.round(unit === 'hour' ? val * 3600 : val * 60);
+    if (secs <= 0) return;
     setAddText('');
-    await active.addMinutes(minutes);
+    await active.addMinutes(secs);
   };
 
   useEffect(() => {
@@ -546,14 +548,13 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
   }, [startedAt]);
 
   const stop = async () => {
-    // 실제 경과 시간을 분으로 기록합니다. 1초라도 기도했다면 최소 1분으로 올려,
-    // 30초 미만 짧은 기도가 0분으로 사라지지 않게 합니다.
-    const minutes = elapsed >= 1000 ? Math.max(1, Math.round(elapsed / 60000)) : 0;
+    // 실제 경과 시간을 '초' 단위 그대로 기록합니다. (3초 기도하면 3초로 저장)
+    const secs = Math.round(elapsed / 1000);
     setStartedAt(null);
     setElapsed(0);
-    if (minutes > 0) {
-      await active.addMinutes(minutes);
-      setResultMinutes(minutes); // 마치면 결과 모달 표시
+    if (secs > 0) {
+      await active.addMinutes(secs);
+      setResultSeconds(secs); // 마치면 결과 모달 표시
     }
   };
 
@@ -568,7 +569,7 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
           <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
             오늘 {kindLabel} 기도{' '}
             <ThemedText type="smallBold" themeColor="primary">
-              {active.todayMinutes > 0 ? minutesLabel(active.todayMinutes) : '0분'}
+              {active.todayMinutes > 0 ? durationLabel(active.todayMinutes) : '0분'}
             </ThemedText>
           </ThemedText>
           <Pressable
@@ -648,8 +649,8 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
       )}
 
       <PrayerResultModal
-        minutes={resultMinutes}
-        onClose={() => setResultMinutes(null)}
+        seconds={resultSeconds}
+        onClose={() => setResultSeconds(null)}
         active={active}
         goal={goal}
         kind={kind}
@@ -660,13 +661,13 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
 
 /** 기도를 마치면 바로 뜨는 결과 — 이번 기도·오늘·주간·월간·목표 달성률 */
 function PrayerResultModal({
-  minutes,
+  seconds,
   onClose,
   active,
   goal,
   kind,
 }: {
-  minutes: number | null;
+  seconds: number | null;
   onClose: () => void;
   active: PrayerTime;
   goal: number;
@@ -674,14 +675,14 @@ function PrayerResultModal({
 }) {
   const theme = useTheme();
   const { user } = useAuth();
-  if (minutes === null) return null;
+  if (seconds === null) return null;
 
   // 로그인한 분은 이름을, 손님은 '성도'로 표시합니다.
   const who = user?.name ? `${user.name}님의` : '성도의';
-  const week = thisWeekMinutes(active.entries);
-  const month = thisMonthMinutes(active.entries);
-  const total = allTimeMinutes(active.entries);
-  const pct = goal > 0 ? Math.min(100, Math.round((week / goal) * 100)) : 0;
+  const week = thisWeekMinutes(active.entries); // 초
+  const month = thisMonthMinutes(active.entries); // 초
+  const total = allTimeMinutes(active.entries); // 초
+  const pct = goal > 0 ? Math.min(100, Math.round((week / (goal * 60)) * 100)) : 0; // goal 분 → 초
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -697,7 +698,7 @@ function PrayerResultModal({
             결코 헛되지 않습니다
           </ThemedText>
           <ThemedText type="caption" themeColor="textSecondary" style={[styles.center, styles.mt4]}>
-            이번에 {minutesLabel(minutes)} 기도했어요. 하나님이 기억하십니다 🙏
+            이번에 {durationLabel(seconds)} 기도했어요. 하나님이 기억하십니다 🙏
           </ThemedText>
 
           {/* 목표 달성률 */}
@@ -720,10 +721,10 @@ function PrayerResultModal({
 
           {/* 기간별 합계 */}
           <View style={styles.resultStats}>
-            <ResultStat label="오늘" value={stackedMinutes(active.todayMinutes)} theme={theme} />
-            <ResultStat label="이번 주" value={stackedMinutes(week)} theme={theme} />
-            <ResultStat label="이번 달" value={stackedMinutes(month)} theme={theme} />
-            <ResultStat label="전체" value={stackedMinutes(total)} theme={theme} />
+            <ResultStat label="오늘" value={stackedDuration(active.todayMinutes)} theme={theme} />
+            <ResultStat label="이번 주" value={stackedDuration(week)} theme={theme} />
+            <ResultStat label="이번 달" value={stackedDuration(month)} theme={theme} />
+            <ResultStat label="전체" value={stackedDuration(total)} theme={theme} />
           </View>
 
           <Button label="확인" icon="checkmark-circle-outline" onPress={onClose} />
@@ -734,14 +735,6 @@ function PrayerResultModal({
       </Pressable>
     </Modal>
   );
-}
-
-/** 통계 칸용: 시간과 분을 각각 다른 줄로 쌓아 '분'만 홀로 줄바꿈되지 않게 합니다. */
-function stackedMinutes(minutes: number): string {
-  if (minutes < 60) return `${minutes}분`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m === 0 ? `${h}시간` : `${h}시간\n${m}분`;
 }
 
 function ResultStat({ label, value, theme }: { label: string; value: string; theme: ReturnType<typeof useTheme> }) {
@@ -793,7 +786,7 @@ function CommunalCard({
           함께 기도한 시간
         </ThemedText>
         <ThemedText type="smallBold" themeColor="primary" style={styles.flexEnd}>
-          {minutesLabel(item.totalMinutes)}
+          {durationLabel(item.totalMinutes)}
         </ThemedText>
       </View>
       <PrayerTimer onSave={async (minutes) => onPray(minutes)} startLabel="이 제목으로 기도" />
@@ -801,12 +794,12 @@ function CommunalCard({
   );
 }
 
-/** 기도 시작 → 정지 시 경과 시간을 분 단위로 기록합니다. */
+/** 기도 시작 → 정지 시 경과 시간을 '초' 단위로 기록합니다. */
 function PrayerTimer({
   onSave,
   startLabel = '기도 시작',
 }: {
-  onSave: (minutes: number) => Promise<void> | void;
+  onSave: (seconds: number) => Promise<void> | void;
   startLabel?: string;
 }) {
   const theme = useTheme();
@@ -823,12 +816,11 @@ function PrayerTimer({
   }, [startedAt]);
 
   const stop = async () => {
-    // 실제 경과 시간을 분으로 기록합니다. 1초라도 기도했다면 최소 1분으로 올려,
-    // 30초 미만 짧은 기도가 0분으로 사라지지 않게 합니다.
-    const minutes = elapsed >= 1000 ? Math.max(1, Math.round(elapsed / 60000)) : 0;
+    // 실제 경과 시간을 '초' 단위 그대로 기록합니다.
+    const secs = Math.round(elapsed / 1000);
     setStartedAt(null);
     setElapsed(0);
-    if (minutes > 0) await onSave(minutes);
+    if (secs > 0) await onSave(secs);
   };
 
   const seconds = Math.floor(elapsed / 1000);
