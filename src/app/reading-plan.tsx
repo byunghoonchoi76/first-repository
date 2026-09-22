@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
@@ -12,7 +12,7 @@ import { LocalPhotos } from '@/constants/photos';
 import { Radius, Spacing } from '@/constants/theme';
 import { bskoreaUrl, mccheyneForDate, mccheyneIndex } from '@/constants/mccheyne';
 import { formatFullDate, toDateKey } from '@/lib/format';
-import { useReadingProgress } from '@/lib/reading-progress';
+import { useChapterReads, useReadingProgress } from '@/lib/reading-progress';
 import { useTheme } from '@/hooks/use-theme';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -30,10 +30,42 @@ export default function ReadingPlanScreen() {
   const theme = useTheme();
   const [date, setDate] = useState(new Date());
   const { done, toggle, count, synced } = useReadingProgress();
+  const chapters = useChapterReads();
 
+  const readings = useMemo(() => mccheyneForDate(date), [date]);
+  const idx = mccheyneIndex(date);
+  const dayNo = idx + 1;
   const today = new Date();
   const isToday = sameYMD(date, today);
   const percent = Math.round((count / 365) * 100);
+
+  // 각 본문(챕터)별 읽기 상태. 하루 4곳을 모두 읽으면 그 날이 '완료'로 기록됩니다.
+  const isChapterRead = (p: number) => done.has(idx) || chapters.set.has(`${idx}:${p}`);
+  const readCount = [0, 1, 2, 3].filter(isChapterRead).length;
+  const allRead = readCount === 4;
+
+  const toggleChapter = (p: number) => {
+    const checked = new Set<number>();
+    for (let i = 0; i < 4; i += 1) if (isChapterRead(i)) checked.add(i);
+    if (checked.has(p)) checked.delete(p);
+    else checked.add(p);
+    if (checked.size === 4) {
+      if (!done.has(idx)) toggle(idx); // 4곳 다 읽으면 그 날 '완료'
+      chapters.clearDay(idx);
+    } else {
+      if (done.has(idx)) toggle(idx); // 하나라도 빠지면 '완료' 해제
+      chapters.replaceDay(idx, checked);
+    }
+  };
+
+  const toggleAll = () => {
+    if (allRead) {
+      if (done.has(idx)) toggle(idx);
+    } else if (!done.has(idx)) {
+      toggle(idx);
+    }
+    chapters.clearDay(idx); // 모두 완료/해제 시 부분 체크는 정리 (완료 상태가 4곳을 대신함)
+  };
 
   const openPassage = (ref: string) => {
     const url = bskoreaUrl(ref);
@@ -58,56 +90,102 @@ export default function ReadingPlanScreen() {
         </ThemedText>
       </HeroBanner>
 
-      {/* 전체 진도 */}
+      {/* 날짜 이동 + 진도 */}
       <Card elevated>
-        <View style={styles.progressMeta}>
-          <ThemedText type="smallBold">1년 성경통독</ThemedText>
-          <View style={styles.syncTag}>
-            <Ionicons name={synced ? 'cloud-done-outline' : 'phone-portrait-outline'} size={12} color={theme.textMuted} />
+        <View style={styles.navRow}>
+          <Pressable onPress={() => setDate((d) => addDays(d, -1))} hitSlop={10} style={styles.navBtn}>
+            <Ionicons name="chevron-back" size={22} color={theme.primary} />
+          </Pressable>
+          <View style={styles.navCenter}>
+            <ThemedText type="smallBold">{formatFullDate(toDateKey(date))}</ThemedText>
             <ThemedText type="caption" themeColor="textMuted">
-              {synced ? '여러 기기 공유' : '이 기기에 저장'}
+              맥체인 성경읽기표 · {dayNo}일차 / 365
             </ThemedText>
           </View>
+          <Pressable onPress={() => setDate((d) => addDays(d, 1))} hitSlop={10} style={styles.navBtn}>
+            <Ionicons name="chevron-forward" size={22} color={theme.primary} />
+          </Pressable>
         </View>
-        <View style={[styles.progressTrack, { backgroundColor: theme.backgroundSelected }]}>
-          <View style={[styles.progressFill, { backgroundColor: theme.primary, width: `${percent}%` }]} />
+
+        <View style={styles.progressWrap}>
+          <View style={[styles.progressTrack, { backgroundColor: theme.backgroundSelected }]}>
+            <View style={[styles.progressFill, { backgroundColor: theme.primary, width: `${percent}%` }]} />
+          </View>
+          <View style={styles.progressMeta}>
+            <ThemedText type="caption" themeColor="textSecondary">
+              {count} / 365 완료 · {percent}%
+            </ThemedText>
+            <View style={styles.syncTag}>
+              <Ionicons
+                name={synced ? 'cloud-done-outline' : 'phone-portrait-outline'}
+                size={12}
+                color={theme.textMuted}
+              />
+              <ThemedText type="caption" themeColor="textMuted">
+                {synced ? '여러 기기 공유' : '이 기기에 저장'}
+              </ThemedText>
+            </View>
+          </View>
         </View>
-        <ThemedText type="caption" themeColor="textSecondary">
-          {count} / 365 완료 · {percent}%
-        </ThemedText>
+
+        {!isToday ? (
+          <Pressable onPress={() => setDate(new Date())} style={styles.todayBtn}>
+            <Ionicons name="today-outline" size={14} color={theme.primary} />
+            <ThemedText type="caption" style={{ color: theme.primary, fontWeight: '700' }}>
+              오늘로
+            </ThemedText>
+          </Pressable>
+        ) : null}
       </Card>
 
-      {/* 이번 주 말씀 — 좌우로 넘기며 일자별 본문 보기 */}
+      {/* 오늘의 말씀 — 가정예배·개인묵상을 하나로 묶고, 본문마다 읽기 체크 */}
       <View>
-        <View style={styles.weekHead}>
-          <SectionHeader title="이번 주 말씀" accent />
-          {!isToday ? (
-            <Pressable onPress={() => setDate(new Date())} style={styles.todayBtn} hitSlop={6}>
-              <Ionicons name="today-outline" size={14} color={theme.primary} />
-              <ThemedText type="caption" style={{ color: theme.primary, fontWeight: '700' }}>
-                오늘로
-              </ThemedText>
-            </Pressable>
-          ) : null}
+        <View style={styles.readHead}>
+          <SectionHeader title="오늘의 말씀" accent />
+          <ThemedText type="caption" themeColor="textMuted">
+            {readCount} / 4 읽음
+          </ThemedText>
         </View>
+        <Card elevated>
+          {readings.map((ref, p) => (
+            <View key={p}>
+              {p > 0 ? <Divider color={theme.border} /> : null}
+              <ChapterRow
+                reference={ref}
+                read={isChapterRead(p)}
+                onToggle={() => toggleChapter(p)}
+                onOpen={() => openPassage(ref)}
+                theme={theme}
+              />
+            </View>
+          ))}
+          <Pressable
+            onPress={toggleAll}
+            style={[
+              styles.doneBtn,
+              {
+                backgroundColor: allRead ? theme.success : theme.backgroundElement,
+                borderColor: allRead ? theme.success : theme.border,
+              },
+            ]}>
+            <Ionicons
+              name={allRead ? 'checkmark-circle' : 'checkmark-done-outline'}
+              size={18}
+              color={allRead ? theme.onPrimary : theme.textSecondary}
+            />
+            <ThemedText type="smallBold" style={{ color: allRead ? theme.onPrimary : theme.text }}>
+              {allRead ? '오늘 말씀 모두 읽음' : '4곳 모두 읽음으로'}
+            </ThemedText>
+          </Pressable>
+        </Card>
+      </View>
 
-        <WeekPager
-          date={date}
-          today={today}
-          done={done}
-          onSelect={setDate}
-          onToggle={toggle}
-          onOpen={openPassage}
-          theme={theme}
-        />
-
-        {/* 요일 인디케이터 (초록 = 읽기 완료) */}
-        <Card>
+      {/* 이번 주 진도 */}
+      <View>
+        <SectionHeader title="이번 주" accent />
+        <Card elevated>
           <WeekGrid date={date} today={today} done={done} onSelect={setDate} theme={theme} />
         </Card>
-        <ThemedText type="caption" themeColor="textMuted" style={styles.swipeHint}>
-          카드를 좌우로 넘기면 그 주의 다른 요일 말씀을 볼 수 있어요.
-        </ThemedText>
       </View>
 
       {/* 월별(연간) 진도 — 한 해 전체를 한눈에 */}
@@ -128,7 +206,7 @@ export default function ReadingPlanScreen() {
             ))}
           </View>
           <ThemedText type="caption" themeColor="textMuted" style={styles.gridHint}>
-            날짜를 누르면 그 날 본문이 위 카드에 표시됩니다. 초록색은 읽기 완료한 날이에요.
+            날짜를 누르면 그 날 본문이 위에 표시됩니다. 초록색은 읽기 완료한 날이에요.
           </ThemedText>
         </Card>
       </View>
@@ -141,156 +219,43 @@ export default function ReadingPlanScreen() {
   );
 }
 
-/** 이번 주(일~토)를 좌우로 넘기는 페이지 캐러셀. 넘기면 선택 날짜가 바뀝니다. */
-function WeekPager({
-  date,
-  today,
-  done,
-  onSelect,
+/** 본문 한 곳 — 왼쪽 체크로 읽음 표시, 본문을 누르면 성경이 열립니다. */
+function ChapterRow({
+  reference,
+  read,
   onToggle,
   onOpen,
   theme,
 }: {
-  date: Date;
-  today: Date;
-  done: Set<number>;
-  onSelect: (d: Date) => void;
-  onToggle: (idx: number) => void;
-  onOpen: (ref: string) => void;
+  reference: string;
+  read: boolean;
+  onToggle: () => void;
+  onOpen: () => void;
   theme: ReturnType<typeof useTheme>;
 }) {
-  const start = addDays(date, -date.getDay()); // 그 주 일요일
-  const startKey = toDateKey(start);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(start, i)), [startKey]);
-  const selectedIndex = date.getDay();
-
-  const [pageW, setPageW] = useState(0);
-  const listRef = useRef<FlatList<Date>>(null);
-
-  // 주가 바뀌거나(월별 이동) 폭이 정해지면 선택된 요일 카드로 맞춥니다.
-  useEffect(() => {
-    if (pageW > 0 && listRef.current) {
-      try {
-        listRef.current.scrollToOffset({ offset: selectedIndex * pageW, animated: false });
-      } catch {
-        /* 레이아웃 전이면 무시 */
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startKey, pageW]);
-
   return (
-    <View onLayout={(e) => setPageW(e.nativeEvent.layout.width)}>
-      {pageW > 0 ? (
-        <FlatList
-          ref={listRef}
-          data={days}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(d) => d.toISOString()}
-          getItemLayout={(_, i) => ({ length: pageW, offset: pageW * i, index: i })}
-          initialScrollIndex={selectedIndex}
-          onMomentumScrollEnd={(e) => {
-            const i = Math.round(e.nativeEvent.contentOffset.x / pageW);
-            const d = days[i];
-            if (d && !sameYMD(d, date)) onSelect(d);
-          }}
-          renderItem={({ item }) => (
-            <DayMessageCard width={pageW} d={item} today={today} done={done} onToggle={onToggle} onOpen={onOpen} theme={theme} />
-          )}
-        />
-      ) : null}
-    </View>
-  );
-}
-
-/** 하루치 말씀 카드 — 날짜·진도·본문 4곳·읽기 완료 */
-function DayMessageCard({
-  width,
-  d,
-  today,
-  done,
-  onToggle,
-  onOpen,
-  theme,
-}: {
-  width: number;
-  d: Date;
-  today: Date;
-  done: Set<number>;
-  onToggle: (idx: number) => void;
-  onOpen: (ref: string) => void;
-  theme: ReturnType<typeof useTheme>;
-}) {
-  const readings = mccheyneForDate(d);
-  const idx = mccheyneIndex(d);
-  const isDone = done.has(idx);
-  const isToday = sameYMD(d, today);
-
-  return (
-    <View style={{ width }}>
-      <Card elevated style={styles.dayCard}>
-        <View style={styles.dayHead}>
-          <View style={styles.flex}>
-            <ThemedText type="smallBold">{formatFullDate(toDateKey(d))}</ThemedText>
-            <ThemedText type="caption" themeColor="textMuted">
-              맥체인 성경읽기표 · {idx + 1}일차 / 365
-            </ThemedText>
-          </View>
-          {isToday ? (
-            <View style={[styles.todayChip, { backgroundColor: theme.accent }]}>
-              <ThemedText type="caption" style={styles.todayChipText}>
-                오늘
-              </ThemedText>
-            </View>
-          ) : null}
-        </View>
-
-        <ThemedText type="caption" themeColor="primary" style={styles.groupLabel}>
-          가정예배
-        </ThemedText>
-        <PassageRow reference={readings[0]} onPress={() => onOpen(readings[0])} theme={theme} />
-        <Divider color={theme.border} />
-        <PassageRow reference={readings[1]} onPress={() => onOpen(readings[1])} theme={theme} />
-
-        <ThemedText type="caption" themeColor="primary" style={styles.groupLabel}>
-          개인묵상
-        </ThemedText>
-        <PassageRow reference={readings[2]} onPress={() => onOpen(readings[2])} theme={theme} />
-        <Divider color={theme.border} />
-        <PassageRow reference={readings[3]} onPress={() => onOpen(readings[3])} theme={theme} />
-
-        <Pressable
-          onPress={() => onToggle(idx)}
+    <View style={styles.row}>
+      <Pressable onPress={onToggle} hitSlop={8} accessibilityLabel={read ? '읽음 해제' : '읽음 표시'}>
+        <View
           style={[
-            styles.doneBtn,
+            styles.check,
             {
-              backgroundColor: isDone ? theme.success : theme.backgroundElement,
-              borderColor: isDone ? theme.success : theme.border,
+              backgroundColor: read ? theme.success : 'transparent',
+              borderColor: read ? theme.success : theme.border,
             },
           ]}>
-          <Ionicons name={isDone ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={isDone ? theme.onPrimary : theme.textSecondary} />
-          <ThemedText type="smallBold" style={{ color: isDone ? theme.onPrimary : theme.text }}>
-            {isDone ? '읽기 완료됨' : '읽기 완료'}
-          </ThemedText>
-        </Pressable>
-      </Card>
+          {read ? <Ionicons name="checkmark" size={16} color={theme.onPrimary} /> : null}
+        </View>
+      </Pressable>
+      <Pressable onPress={onOpen} style={({ pressed }) => [styles.chapterMain, pressed && { opacity: 0.7 }]}>
+        <ThemedText
+          type="heading"
+          style={[styles.flex, read && { color: theme.textMuted, textDecorationLine: 'line-through' }]}>
+          {reference}
+        </ThemedText>
+        <Ionicons name="open-outline" size={16} color={theme.textMuted} />
+      </Pressable>
     </View>
-  );
-}
-
-function PassageRow({ reference, onPress, theme }: { reference: string; onPress: () => void; theme: ReturnType<typeof useTheme> }) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
-      <View style={[styles.rowIcon, { backgroundColor: theme.backgroundSelected }]}>
-        <Ionicons name="book-outline" size={18} color={theme.primary} />
-      </View>
-      <ThemedText type="heading" style={styles.flex}>
-        {reference}
-      </ThemedText>
-      <Ionicons name="open-outline" size={16} color={theme.textMuted} />
-    </Pressable>
   );
 }
 
@@ -431,22 +396,14 @@ const styles = StyleSheet.create({
   heroTag: { color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
   heroTitle: { color: '#fff', marginTop: Spacing.one },
   heroVerse: { color: 'rgba(255,255,255,0.92)', marginTop: Spacing.one, fontWeight: '600' },
-
-  progressTrack: { height: 8, borderRadius: Radius.pill, overflow: 'hidden', marginVertical: Spacing.one },
+  navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  navBtn: { padding: Spacing.one },
+  navCenter: { alignItems: 'center', gap: 2 },
+  progressWrap: { gap: Spacing.one, marginTop: Spacing.two },
+  progressTrack: { height: 8, borderRadius: Radius.pill, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: Radius.pill },
   progressMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   syncTag: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-
-  weekHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  todayBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: Spacing.one },
-  swipeHint: { textAlign: 'center', marginTop: Spacing.one },
-
-  dayCard: { gap: 2 },
-  dayHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: Spacing.one },
-  todayChip: { paddingHorizontal: Spacing.two, paddingVertical: 3, borderRadius: Radius.pill },
-  todayChipText: { color: '#fff', fontWeight: '800' },
-  groupLabel: { fontWeight: '800', marginTop: Spacing.two },
-
   doneBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -457,8 +414,19 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: Spacing.three,
   },
+  todayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: Spacing.two },
+  readHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two + 2 },
   rowIcon: { width: 34, height: 34, borderRadius: Radius.small, alignItems: 'center', justifyContent: 'center' },
+  check: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chapterMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
   weekCell: { alignItems: 'center', gap: 4, flex: 1 },
   yearGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
