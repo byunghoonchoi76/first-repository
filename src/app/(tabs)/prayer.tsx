@@ -546,7 +546,9 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
   }, [startedAt]);
 
   const stop = async () => {
-    const minutes = Math.round(elapsed / 60000); // 가장 가까운 분 (30초 미만은 0분)
+    // 실제 경과 시간을 분으로 기록합니다. 1초라도 기도했다면 최소 1분으로 올려,
+    // 30초 미만 짧은 기도가 0분으로 사라지지 않게 합니다.
+    const minutes = elapsed >= 1000 ? Math.max(1, Math.round(elapsed / 60000)) : 0;
     setStartedAt(null);
     setElapsed(0);
     if (minutes > 0) {
@@ -810,8 +812,9 @@ function PrayerTimer({
   }, [startedAt]);
 
   const stop = async () => {
-    // 실제 경과 시간을 가장 가까운 분으로 기록합니다. (30초 미만은 0분 → 기록하지 않음)
-    const minutes = Math.round(elapsed / 60000);
+    // 실제 경과 시간을 분으로 기록합니다. 1초라도 기도했다면 최소 1분으로 올려,
+    // 30초 미만 짧은 기도가 0분으로 사라지지 않게 합니다.
+    const minutes = elapsed >= 1000 ? Math.max(1, Math.round(elapsed / 60000)) : 0;
     setStartedAt(null);
     setElapsed(0);
     if (minutes > 0) await onSave(minutes);
