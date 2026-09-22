@@ -223,7 +223,7 @@ export default function HomeScreen() {
                   height={100}
                   base="navy"
                   style={styles.newsImage}>
-                  {isWithinDays(item.publishedAt, 3) ? (
+                  {isWithinDays(item.publishedAt, 7) ? (
                     <View style={styles.newTag}>
                       <ThemedText type="caption" style={styles.newTagText}>
                         새 소식
