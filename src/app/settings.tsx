@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Linking, Platform, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -12,8 +12,6 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user, isAdmin, signOut } = useAuth();
   const profile = useAsyncData(() => repository.getChurchProfile());
-
-  const church = profile.data;
 
   return (
     <Screen>
@@ -61,82 +59,13 @@ export default function SettingsScreen() {
       ) : null}
 
       <View>
-        <SectionHeader title="교회 정보" />
+        <SectionHeader title="교회 안내" />
         <Card>
-          {church?.pastor ? (
-            <ListRow icon="person-outline" title="담임목사" subtitle={church.pastor} />
-          ) : null}
           <ListRow
-            icon="location-outline"
-            title="주소"
-            subtitle={church?.address}
-            onPress={
-              church?.address
-                ? () =>
-                    void Linking.openURL(
-                      Platform.select({
-                        ios: `http://maps.apple.com/?q=${encodeURIComponent(church.address)}`,
-                        default: `https://maps.google.com/?q=${encodeURIComponent(church.address)}`,
-                      }),
-                    )
-                : undefined
-            }
-          />
-          {church?.phone ? (
-            <ListRow
-              icon="call-outline"
-              title="전화"
-              subtitle={church.phone}
-              onPress={() => void Linking.openURL(`tel:${church.phone}`)}
-            />
-          ) : null}
-          {church?.email ? (
-            <ListRow
-              icon="mail-outline"
-              title="이메일"
-              subtitle={church.email}
-              onPress={() => void Linking.openURL(`mailto:${church.email}`)}
-            />
-          ) : null}
-          {church?.offeringAccount ? (
-            <ListRow
-              icon="card-outline"
-              title="헌금 안내"
-              subtitle={church.offeringAccount}
-              onPress={() => router.push('/giving')}
-            />
-          ) : null}
-          {church?.youtubeUrl ? (
-            <ListRow
-              icon="logo-youtube"
-              title="유튜브 채널"
-              subtitle="예배와 설교 영상 보기"
-              onPress={() => void Linking.openURL(church.youtubeUrl)}
-            />
-          ) : null}
-          <ListRow
-            icon="time-outline"
-            title="예배 안내"
-            subtitle="주일예배 · 새벽예배 · 교육부서"
-            onPress={() => router.push('/services')}
-          />
-          <ListRow
-            icon="people-outline"
-            title="섬기는 사람들"
-            subtitle="교역자와 직분자 소개"
-            onPress={() => router.push('/staff')}
-          />
-          <ListRow
-            icon="location-outline"
-            title="교회 주소"
-            subtitle="지도 · 내비게이션"
-            onPress={() => router.push('/location')}
-          />
-          <ListRow
-            icon="person-add-outline"
-            title="새가족 등록"
-            subtitle="처음 오신 분을 환영합니다"
-            onPress={() => router.push('/new-family')}
+            icon="information-circle-outline"
+            title="교회 안내 보기"
+            subtitle="예배 안내 · 섬기는 사람들 · 오시는 길 · 헌금"
+            onPress={() => router.push('/guide')}
           />
         </Card>
       </View>

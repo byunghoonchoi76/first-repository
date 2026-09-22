@@ -82,6 +82,14 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="guide"
+        options={{
+          title: '안내',
+          tabBarLabel: tabLabel('안내'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="information-circle-outline" size={size} color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
