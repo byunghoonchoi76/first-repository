@@ -67,7 +67,8 @@ export default function GivingScreen() {
   const account = accounts[accIdx] ?? accounts[0] ?? null;
   const type = OFFERING_TYPES[typeIdx];
 
-  const depositor = name.trim() ? `${name.trim()}${birth.trim()}${type.abbr}` : '';
+  // 입금자명 순서: 헌금종류 앞글자 → 이름 → 생년 (예: 십최병훈850312)
+  const depositor = name.trim() ? `${type.abbr}${name.trim()}${birth.trim()}` : '';
 
   const flash = (msg: string) => {
     setToast(msg);
@@ -274,10 +275,10 @@ export default function GivingScreen() {
       <Card style={[styles.guideCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
         <ThemedText type="smallBold">알려드립니다</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.mt}>
-          · 입금자란에 <ThemedText type="small" themeColor="primary" style={styles.bold}>이름 · 생년월일 · 헌금종류</ThemedText>를 꼭
-          기록해 주세요. 기록이 없으면 헌금 내역 확인이 어렵습니다. (예: {name.trim() || '홍길동'}
-          {birth.trim() || '901231'}
-          {type.abbr})
+          · 입금자란에 <ThemedText type="small" themeColor="primary" style={styles.bold}>헌금종류 · 이름 · 생년</ThemedText>을 꼭
+          기록해 주세요. 기록이 없으면 헌금 내역 확인이 어렵습니다. (예: {type.abbr}
+          {name.trim() || '홍길동'}
+          {birth.trim() || '901231'})
         </ThemedText>
         <ThemedText type="caption" themeColor="textMuted" style={styles.mt}>
           · 문의는 교회 사무실로 연락해 주세요.
