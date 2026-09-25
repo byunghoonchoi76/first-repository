@@ -11,7 +11,8 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type AnnouncementCategory } from '@/lib/data';
-import { formatRelative, isWithinDays } from '@/lib/format';
+import { formatRelative } from '@/lib/format';
+import { isUnread, useNewsSeenAt } from '@/lib/news-seen';
 
 const FILTERS: ('전체' | AnnouncementCategory)[] = ['전체', '공지', '행사', '소식'];
 
@@ -23,6 +24,7 @@ export default function NewsScreen() {
 
   const announcements = useAsyncData(() => repository.listAnnouncements());
   const { reload } = announcements;
+  const seenAt = useNewsSeenAt(true); // 소식 목록을 보면 '새 소식' 기준을 갱신합니다.
 
   // 관리자 화면에서 글을 쓰고 돌아오면 목록을 새로 불러옵니다.
   useFocusEffect(
@@ -94,7 +96,7 @@ export default function NewsScreen() {
             <Card key={item.id} onPress={() => router.push(`/news/${item.id}`)}>
               <View style={styles.rowBetween}>
                 <View style={styles.metaRow}>
-                  {isWithinDays(item.publishedAt, 7) ? <Badge label="새 소식" tone="danger" /> : null}
+                  {isUnread(item.publishedAt, seenAt) ? <Badge label="새 소식" tone="danger" /> : null}
                   <Badge label={item.category} tone={item.category === '행사' ? 'accent' : 'primary'} />
                   {item.subCategory ? <Badge label={item.subCategory} tone="textSecondary" /> : null}
                 </View>
