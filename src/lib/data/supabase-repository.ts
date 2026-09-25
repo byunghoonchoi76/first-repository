@@ -86,6 +86,8 @@ const toAnnouncement = (row: Row): Announcement => ({
   publishedAt: row.published_at,
 });
 
+// 공통 필드만 만듭니다. published_at 은 '작성 시각'이라 수정 때는 건드리지 않습니다.
+// (수정할 때마다 now 로 덮으면 '새 소식' 배지가 다시 떠 버립니다.)
 const fromAnnouncement = (input: AnnouncementInput) => ({
   title: input.title,
   body: input.body,
@@ -94,7 +96,6 @@ const fromAnnouncement = (input: AnnouncementInput) => ({
   author: input.author,
   pinned: input.pinned,
   images: input.images ?? [],
-  published_at: input.publishedAt ?? new Date().toISOString(),
 });
 
 const toSermon = (row: Row): Sermon => ({
@@ -312,7 +313,11 @@ export const supabaseRepository: ChurchRepository = {
 
   async createAnnouncement(input) {
     const sb = requireSupabase();
-    const res = await sb.from('announcements').insert(fromAnnouncement(input)).select().single();
+    const res = await sb
+      .from('announcements')
+      .insert({ ...fromAnnouncement(input), published_at: input.publishedAt ?? new Date().toISOString() })
+      .select()
+      .single();
     const created = toAnnouncement(unwrap(res));
     // 알림을 켜 둔 성도들에게 새 소식 푸시(실패해도 등록은 성공 처리).
     try {
@@ -327,7 +332,8 @@ export const supabaseRepository: ChurchRepository = {
     const sb = requireSupabase();
     const res = await sb
       .from('announcements')
-      .update(fromAnnouncement(input))
+      // published_at 은 그대로 두어 '작성 시각'을 유지합니다. (명시적으로 넘길 때만 변경)
+      .update(input.publishedAt ? { ...fromAnnouncement(input), published_at: input.publishedAt } : fromAnnouncement(input))
       .eq('id', id)
       .select()
       .single();

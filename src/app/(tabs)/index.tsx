@@ -16,7 +16,8 @@ import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
-import { durationLabel, formatDate, formatFullDate, isWithinDays, toDateKey } from '@/lib/format';
+import { durationLabel, formatDate, formatFullDate, toDateKey } from '@/lib/format';
+import { isUnread, useNewsSeenAt } from '@/lib/news-seen';
 import { useLiveStatus } from '@/lib/live-status';
 import { usePrayerTime } from '@/lib/prayer-log';
 import { classifyChurchVideo, parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
@@ -42,6 +43,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const prayerLog = usePrayerTime('personal');
   const live = useLiveStatus();
+  const newsSeenAt = useNewsSeenAt(); // 홈에서는 기준만 읽고, 소식 탭을 열 때 갱신됩니다.
 
   const profile = useAsyncData(() => repository.getChurchProfile());
   const bulletin = useAsyncData(() => repository.getLatestBulletin());
@@ -231,7 +233,7 @@ export default function HomeScreen() {
                   height={100}
                   base="navy"
                   style={styles.newsImage}>
-                  {isWithinDays(item.publishedAt, 7) ? (
+                  {isUnread(item.publishedAt, newsSeenAt) ? (
                     <View style={styles.newTag}>
                       <ThemedText type="caption" style={styles.newTagText}>
                         새 소식
