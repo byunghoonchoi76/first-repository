@@ -209,15 +209,15 @@ export default function GivingScreen() {
           returnKeyType="done"
         />
         <ThemedText type="caption" themeColor="textSecondary" style={styles.mt}>
-          생년월일 6자리
+          생년 2자리
         </ThemedText>
         <TextInput
           value={birth}
-          onChangeText={(v) => setBirth(v.replace(/\D/g, '').slice(0, 6))}
-          placeholder="901231"
+          onChangeText={(v) => setBirth(v.replace(/\D/g, '').slice(0, 2))}
+          placeholder="76"
           placeholderTextColor={theme.textMuted}
           keyboardType="number-pad"
-          maxLength={6}
+          maxLength={2}
           style={[styles.input, { borderColor: theme.border, backgroundColor: theme.backgroundElement, color: theme.text }]}
         />
 
@@ -278,7 +278,7 @@ export default function GivingScreen() {
           · 입금자란에 <ThemedText type="small" themeColor="primary" style={styles.bold}>헌금종류 · 이름 · 생년</ThemedText>을 꼭
           기록해 주세요. 기록이 없으면 헌금 내역 확인이 어렵습니다. (예: {type.abbr}
           {name.trim() || '홍길동'}
-          {birth.trim() || '901231'})
+          {birth.trim() || '76'})
         </ThemedText>
         <ThemedText type="caption" themeColor="textMuted" style={styles.mt}>
           · 문의는 교회 사무실로 연락해 주세요.
