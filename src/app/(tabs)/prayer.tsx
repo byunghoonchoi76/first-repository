@@ -415,8 +415,6 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [resultSeconds, setResultSeconds] = useState<number | null>(null);
-  const [addText, setAddText] = useState('');
-  const [unit, setUnit] = useState<'min' | 'hour'>('hour');
 
   // 전체 화면 기도 중에 함께 볼 '나의 기도제목' (로그인 안 하면 비움)
   const topics = useAsyncData<PrayerRequest[]>(
@@ -427,16 +425,6 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   const begin = () => {
     topics.reload(); // 시작할 때 최신 기도제목을 불러옵니다.
     setStartedAt(Date.now());
-  };
-
-  const addManual = async () => {
-    const val = parseFloat(addText.replace(/[^0-9.]/g, ''));
-    if (!Number.isFinite(val) || val <= 0) return;
-    // 저장 단위는 '초'. 직접 입력값(시간/분)을 초로 환산합니다.
-    const secs = Math.round(unit === 'hour' ? val * 3600 : val * 60);
-    if (secs <= 0) return;
-    setAddText('');
-    await active.addMinutes(secs);
   };
 
   useEffect(() => {
@@ -478,49 +466,6 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
               기도 시작
             </ThemedText>
           </Pressable>
-          <View style={styles.manualBox}>
-            <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-              타이머 없이 시간 직접 입력
-            </ThemedText>
-            {/* 단위 선택: 분 / 시간 */}
-            <View style={[styles.unitToggle, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-              {(['min', 'hour'] as const).map((u) => {
-                const on = unit === u;
-                return (
-                  <Pressable key={u} onPress={() => setUnit(u)} style={[styles.unitItem, on && { backgroundColor: theme.primary }]}>
-                    <ThemedText type="smallBold" style={{ color: on ? theme.onPrimary : theme.textSecondary }}>
-                      {u === 'min' ? '분' : '시간'}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {/* 입력 + 더하기 (한 줄, 화면 넘침 방지) */}
-            <View style={styles.manualRow}>
-              <View style={[styles.manualInputWrap, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-                <TextInput
-                  value={addText}
-                  onChangeText={setAddText}
-                  keyboardType={unit === 'hour' ? 'decimal-pad' : 'numeric'}
-                  placeholder="0"
-                  placeholderTextColor={theme.textMuted}
-                  style={[styles.manualInput, { color: theme.text }]}
-                  returnKeyType="done"
-                  onSubmitEditing={() => void addManual()}
-                />
-                <ThemedText type="small" themeColor="textSecondary">
-                  {unit === 'hour' ? '시간' : '분'}
-                </ThemedText>
-              </View>
-              <Pressable
-                onPress={() => void addManual()}
-                style={({ pressed }) => [styles.manualBtn, { backgroundColor: theme.primary, opacity: pressed || !addText ? 0.85 : 1 }]}>
-                <ThemedText type="smallBold" style={{ color: theme.onPrimary }}>
-                  더하기
-                </ThemedText>
-              </Pressable>
-            </View>
-          </View>
           {active.todayMinutes > 0 ? (
             <Pressable onPress={() => void active.clearToday()} hitSlop={6}>
               <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
@@ -856,36 +801,6 @@ const styles = StyleSheet.create({
   focusTopic: { padding: Spacing.three, borderRadius: Radius.medium, borderWidth: StyleSheet.hairlineWidth, gap: 4 },
   focusTopicHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   focusAnswered: { textDecorationLine: 'line-through', opacity: 0.6 },
-  manualBox: { width: '100%', gap: Spacing.two },
-  unitToggle: {
-    flexDirection: 'row',
-    alignSelf: 'center',
-    padding: 3,
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 3,
-  },
-  unitItem: { paddingVertical: Spacing.one + 1, paddingHorizontal: Spacing.four, borderRadius: Radius.pill, minWidth: 68, alignItems: 'center' },
-  manualRow: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.two },
-  manualInputWrap: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    minHeight: 52,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Radius.medium,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  manualInput: { flex: 1, minWidth: 0, fontSize: 22, fontWeight: '700', textAlign: 'right', paddingVertical: 0 },
-  manualBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Radius.medium,
-  },
 
   // 결과 모달
   resultBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: Spacing.five },
