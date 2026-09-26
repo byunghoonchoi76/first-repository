@@ -113,6 +113,9 @@ function RootNavigator() {
       <Stack.Screen name="prayer/new" options={{ title: '기도제목 나누기', presentation: 'modal' }} />
       <Stack.Screen name="prayer/edit/[id]" options={{ title: '기도제목 수정', presentation: 'modal' }} />
       <Stack.Screen name="settings" options={{ title: '더보기' }} />
+      <Stack.Screen name="privacy" options={{ title: '개인정보처리방침' }} />
+      <Stack.Screen name="terms" options={{ title: '이용약관' }} />
+      <Stack.Screen name="email-refusal" options={{ title: '이메일무단수집거부' }} />
       <Stack.Screen name="reminders" options={{ title: '기도 알림' }} />
       <Stack.Screen name="sign-in" options={{ title: '로그인', presentation: 'modal' }} />
       <Stack.Screen name="admin/index" options={{ title: '관리자' }} />

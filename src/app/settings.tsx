@@ -71,6 +71,23 @@ export default function SettingsScreen() {
       </View>
 
       <View>
+        <SectionHeader title="약관 · 정책" />
+        <Card>
+          <ListRow
+            icon="shield-checkmark-outline"
+            title="개인정보처리방침"
+            onPress={() => router.push('/privacy')}
+          />
+          <ListRow icon="document-text-outline" title="이용약관" onPress={() => router.push('/terms')} />
+          <ListRow
+            icon="mail-unread-outline"
+            title="이메일무단수집거부"
+            onPress={() => router.push('/email-refusal')}
+          />
+        </Card>
+      </View>
+
+      <View>
         <SectionHeader title="앱 정보" />
         <Card>
           <ListRow
