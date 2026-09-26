@@ -83,8 +83,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="guide"
         options={{
-          title: '안내',
-          tabBarLabel: tabLabel('안내'),
+          title: '교회 안내',
+          tabBarLabel: tabLabel('교회 안내'),
           tabBarIcon: ({ color, size }) => <Ionicons name="information-circle-outline" size={size} color={color} />,
         }}
       />

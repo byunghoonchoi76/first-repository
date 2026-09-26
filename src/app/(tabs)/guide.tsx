@@ -71,8 +71,6 @@ export default function GuideScreen() {
       <View>
         <SectionHeader title="함께하기" accent />
         <Card>
-          <ListRow icon="card-outline" title="온라인 헌금" subtitle={church?.offeringAccount || '헌금으로 함께 섬겨요'} onPress={() => router.push('/giving')} />
-          <Divider />
           <ListRow icon="person-add-outline" title="새가족 등록" subtitle="처음 오신 분을 환영합니다" onPress={() => router.push('/new-family')} />
           {church?.youtubeUrl ? (
             <>
