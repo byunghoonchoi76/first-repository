@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,16 +7,16 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
+import { Button, Card, ListRow, SectionHeader } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
-import type { CommunalPrayer, PrayerKind, PrayerLogEntry, PrayerRequest } from '@/lib/data/types';
+import type { PrayerLogEntry, PrayerRequest } from '@/lib/data/types';
 import { durationLabel, stackedDuration } from '@/lib/format';
 import { toDateKey } from '@/lib/format';
-import { GOAL_CONFIG, useCommunalGoal, useWeeklyGoal } from '@/lib/prayer-goal';
-import { recentDays, usePrayerTime } from '@/lib/prayer-log';
+import { GOAL_CONFIG, useWeeklyGoal } from '@/lib/prayer-goal';
+import { recentDays, useAllPrayerTime, usePrayerTime } from '@/lib/prayer-log';
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -24,47 +24,16 @@ type PrayerTime = ReturnType<typeof usePrayerTime>;
 
 export default function PrayerScreen() {
   const router = useRouter();
-  const personalTime = usePrayerTime('personal');
-  const communalTime = usePrayerTime('communal');
-  const { isAdmin } = useAuth();
-
-  const [kind, setKind] = useState<PrayerKind>('personal');
-  const active = kind === 'personal' ? personalTime : communalTime;
-  const personalGoal = useWeeklyGoal('personal');
-  const communalGoal = useCommunalGoal();
-  const goal = kind === 'personal' ? personalGoal.goal : communalGoal.goal;
-  const setGoal = kind === 'personal' ? personalGoal.setGoal : communalGoal.setGoal;
-  const canEditGoal = kind === 'personal' || isAdmin; // 공동 목표는 관리자만 변경
-
-  const communal = useAsyncData(() => repository.listCommunalPrayers());
-  const reloadCommunal = communal.reload;
-
-  useFocusEffect(reloadCommunal);
-
-  const prayCommunal = async (id: string, minutes: number) => {
-    communal.setData((cur) =>
-      cur?.map((item) => (item.id === id ? { ...item, totalMinutes: item.totalMinutes + minutes } : item)),
-    );
-    await communalTime.addMinutes(minutes);
-    try {
-      const updated = await repository.prayCommunal(id, minutes);
-      communal.setData((cur) => cur?.map((item) => (item.id === id ? updated : item)));
-    } catch {
-      communal.reload();
-    }
-  };
-
-  const communalItems = communal.data ?? [];
-  const communalTotalAll = communalItems.reduce((sum, item) => sum + item.totalMinutes, 0);
+  // 개인 + 공동 참여 시간을 하나로 합쳐 봅니다.
+  const active = useAllPrayerTime();
+  const { goal, setGoal } = useWeeklyGoal('personal');
 
   return (
-    <Screen onRefresh={reloadCommunal}>
-      <KindToggle value={kind} onChange={setKind} />
-
+    <Screen>
       {/* 큰 기도 타이머 — 화면 맨 위, 마치면 결과가 바로 나옵니다 */}
-      <TimerCard active={active} kind={kind} goal={goal} />
+      <TimerCard active={active} goal={goal} />
 
-      <GaugeCard active={active} kind={kind} goal={goal} onGoal={setGoal} canEdit={canEditGoal} />
+      <GaugeCard active={active} goal={goal} onGoal={setGoal} />
       <CalendarCard active={active} />
       <AverageCard active={active} />
 
@@ -78,80 +47,7 @@ export default function PrayerScreen() {
           onPress={() => router.push('/reminders')}
         />
       </Card>
-
-      {kind === 'communal' ? (
-        <View>
-          <SectionHeader title="공동 기도제목" />
-          <Card style={styles.communalHero}>
-            <ThemedText type="caption" themeColor="textSecondary">
-              온 성도가 함께 기도한 시간
-            </ThemedText>
-            <ThemedText type="title" themeColor="primary">
-              {durationLabel(communalTotalAll)}
-            </ThemedText>
-            <ThemedText type="caption" themeColor="textMuted">
-              이 중 나의 공동 기도 {communalTime.totalMinutes > 0 ? durationLabel(communalTime.totalMinutes) : '0분'}
-            </ThemedText>
-          </Card>
-
-          {isAdmin ? (
-            <Button
-              label="공동 기도제목 추가"
-              icon="add-circle-outline"
-              variant="secondary"
-              onPress={() => router.push('/admin/communal/new')}
-            />
-          ) : null}
-
-          {communal.loading && !communal.data ? (
-            <LoadingState />
-          ) : communal.error ? (
-            <ErrorState message={communal.error} onRetry={communal.reload} />
-          ) : communalItems.length === 0 ? (
-            <EmptyState icon="people-outline" message="등록된 공동 기도제목이 없습니다." />
-          ) : (
-            <View style={styles.stack}>
-              {communalItems.map((item) => (
-                <CommunalCard
-                  key={item.id}
-                  item={item}
-                  isAdmin={isAdmin}
-                  onPray={(minutes) => prayCommunal(item.id, minutes)}
-                  onEdit={() => router.push(`/admin/communal/${item.id}`)}
-                />
-              ))}
-            </View>
-          )}
-        </View>
-      ) : null}
     </Screen>
-  );
-}
-
-/** 개인 / 공동 전환 세그먼트 */
-function KindToggle({ value, onChange }: { value: PrayerKind; onChange: (k: PrayerKind) => void }) {
-  const theme = useTheme();
-  const options: { key: PrayerKind; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
-    { key: 'personal', label: '개인 기도', icon: 'flower-outline' },
-    { key: 'communal', label: '공동 기도', icon: 'people-outline' },
-  ];
-  return (
-    <View style={[styles.toggle, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      {options.map((opt) => {
-        const on = value === opt.key;
-        return (
-          <Pressable
-            key={opt.key}
-            onPress={() => onChange(opt.key)}
-            style={[styles.toggleItem, on && { backgroundColor: theme.primary }]}>
-            <Ionicons name={opt.icon} size={16} color={on ? theme.onPrimary : theme.textSecondary} />
-            <ThemedText type="smallBold" style={{ color: on ? theme.onPrimary : theme.textSecondary }}>
-              {opt.label}
-            </ThemedText>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 
@@ -190,19 +86,15 @@ function allTimeMinutes(entries: PrayerLogEntry[]): number {
 
 function GaugeCard({
   active,
-  kind,
   goal,
   onGoal,
-  canEdit,
 }: {
   active: PrayerTime;
-  kind: PrayerKind;
   goal: number;
   onGoal: (n: number) => void | Promise<void>;
-  canEdit: boolean;
 }) {
   const theme = useTheme();
-  const cfg = GOAL_CONFIG[kind];
+  const cfg = GOAL_CONFIG.personal;
   const week = thisWeekMinutes(active.entries); // 초
   const pct = goal > 0 ? Math.min(1, week / (goal * 60)) : 0; // goal 은 '분', week 는 '초'
   const pct100 = Math.round(pct * 100);
@@ -215,7 +107,7 @@ function GaugeCard({
 
   return (
     <View>
-      <SectionHeader title={`이번 주 ${kind === 'personal' ? '개인' : '공동'} 기도 시간 달성률`} />
+      <SectionHeader title="이번 주 기도 시간 달성률" />
       <Card style={styles.center}>
         <View style={{ width: W, height: 118 }}>
           <Svg width={W} height={118} viewBox={`0 0 ${W} 118`}>
@@ -229,27 +121,17 @@ function GaugeCard({
           </View>
         </View>
 
-        {canEdit ? (
-          <View style={styles.goalRow}>
-            <Pressable onPress={() => void onGoal(goal - cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
-              <Ionicons name="remove" size={16} color={theme.textSecondary} />
-            </Pressable>
-            <GoalPicker kind={kind} goal={goal} onGoal={onGoal} />
-            <Pressable onPress={() => void onGoal(goal + cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
-              <Ionicons name="add" size={16} color={theme.textSecondary} />
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.goalRow}>
-            <ThemedText type="caption" themeColor="textMuted">
-              목표 <ThemedText type="smallBold" themeColor="primary">{goalLabel(goal)}</ThemedText>
-            </ThemedText>
-          </View>
-        )}
+        <View style={styles.goalRow}>
+          <Pressable onPress={() => void onGoal(goal - cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
+            <Ionicons name="remove" size={16} color={theme.textSecondary} />
+          </Pressable>
+          <GoalPicker goal={goal} onGoal={onGoal} />
+          <Pressable onPress={() => void onGoal(goal + cfg.step)} hitSlop={8} style={[styles.goalStep, { borderColor: theme.border }]}>
+            <Ionicons name="add" size={16} color={theme.textSecondary} />
+          </Pressable>
+        </View>
         <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-          {kind === 'communal' && !canEdit
-            ? '공동 기도 목표는 관리자가 설정합니다.'
-            : `이번 주 ${durationLabel(week)} 기도했어요.`}
+          이번 주 {durationLabel(week)} 기도했어요.
         </ThemedText>
       </Card>
     </View>
@@ -266,9 +148,9 @@ function goalLabel(min: number): string {
 }
 
 /** 목표를 눌러 '시간'으로 직접 입력합니다. (공동은 최대 730,000시간까지) */
-function GoalPicker({ kind, goal, onGoal }: { kind: PrayerKind; goal: number; onGoal: (n: number) => void | Promise<void> }) {
+function GoalPicker({ goal, onGoal }: { goal: number; onGoal: (n: number) => void | Promise<void> }) {
   const theme = useTheme();
-  const cfg = GOAL_CONFIG[kind];
+  const cfg = GOAL_CONFIG.personal;
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | undefined>();
@@ -312,12 +194,10 @@ function GoalPicker({ kind, goal, onGoal }: { kind: PrayerKind; goal: number; on
         <Pressable style={styles.goalBackdrop} onPress={() => setOpen(false)}>
           <Pressable style={[styles.goalSheet, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => {}}>
             <ThemedText type="smallBold" style={styles.center}>
-              {kind === 'personal' ? '개인' : '공동'} 기도 목표 시간
+              기도 목표 시간
             </ThemedText>
             <ThemedText type="caption" themeColor="textMuted" style={[styles.center, styles.mt4]}>
-              {kind === 'communal'
-                ? '온 성도가 함께 채울 목표예요. 예) 2,000명 × 365일 = 730,000시간'
-                : '나의 주간 기도 목표예요.'}
+              나의 주간 기도 목표예요.
             </ThemedText>
             <View style={[styles.goalInputRow, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
               <TextInput
@@ -503,6 +383,13 @@ function TopicsCard() {
       <SectionHeader title="기도제목" />
       <Card>
         <ListRow
+          icon="people-outline"
+          title="공동 기도"
+          subtitle="온 성도가 함께 기도제목을 놓고 기도해요"
+          onPress={() => router.push('/prayer/communal')}
+        />
+        <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
+        <ListRow
           icon="flower-outline"
           title="개인 기도제목"
           subtitle="나만의 기도제목을 적고 관리해요"
@@ -521,7 +408,7 @@ function TopicsCard() {
 }
 
 // ── 큰 기도 타이머 (맨 위) ───────────────────────────────────────
-function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKind; goal: number }) {
+function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   const theme = useTheme();
   const { user } = useAuth();
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -573,14 +460,12 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
 
   const seconds = Math.floor(elapsed / 1000);
   const display = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-  const kindLabel = kind === 'personal' ? '개인' : '공동';
-
   return (
     <Card elevated style={styles.timerCard}>
       {startedAt === null ? (
         <>
           <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-            오늘 {kindLabel} 기도{' '}
+            오늘 기도{' '}
             <ThemedText type="smallBold" themeColor="primary">
               {active.todayMinutes > 0 ? durationLabel(active.todayMinutes) : '0분'}
             </ThemedText>
@@ -647,14 +532,13 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
       ) : (
         // 전체 화면 기도 모드가 위에 뜨는 동안, 카드 자리에는 간단한 안내만 둡니다.
         <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-          {kindLabel} 기도 중…
+          기도 중…
         </ThemedText>
       )}
 
       <PrayerFocusModal
         visible={startedAt !== null}
         display={display}
-        kindLabel={kindLabel}
         todaySeconds={active.todayMinutes}
         topics={topics.data ?? []}
         onStop={() => void stop()}
@@ -665,7 +549,6 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
         onClose={() => setResultSeconds(null)}
         active={active}
         goal={goal}
-        kind={kind}
       />
     </Card>
   );
@@ -675,14 +558,12 @@ function TimerCard({ active, kind, goal }: { active: PrayerTime; kind: PrayerKin
 function PrayerFocusModal({
   visible,
   display,
-  kindLabel,
   todaySeconds,
   topics,
   onStop,
 }: {
   visible: boolean;
   display: string;
-  kindLabel: string;
   todaySeconds: number;
   topics: PrayerRequest[];
   onStop: () => void;
@@ -704,7 +585,7 @@ function PrayerFocusModal({
           },
         ]}>
         <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-          {kindLabel} 기도 중
+          기도 중
         </ThemedText>
         <ThemedText style={[styles.focusTimer, { color: theme.text }]}>{display}</ThemedText>
         {todaySeconds > 0 ? (
@@ -765,13 +646,11 @@ function PrayerResultModal({
   onClose,
   active,
   goal,
-  kind,
 }: {
   seconds: number | null;
   onClose: () => void;
   active: PrayerTime;
   goal: number;
-  kind: PrayerKind;
 }) {
   const theme = useTheme();
   const { user } = useAuth();
@@ -829,7 +708,7 @@ function PrayerResultModal({
 
           <Button label="확인" icon="checkmark-circle-outline" onPress={onClose} />
           <ThemedText type="caption" themeColor="textMuted" style={[styles.center, styles.mt4]}>
-            {kind === 'personal' ? '개인' : '공동'} 기도 기록에 저장되었습니다.
+            기도 기록에 저장되었습니다.
           </ThemedText>
         </Pressable>
       </Pressable>
@@ -846,94 +725,6 @@ function ResultStat({ label, value, theme }: { label: string; value: string; the
       <ThemedText type="smallBold" themeColor="primary" style={[styles.mt4, styles.center]}>
         {value}
       </ThemedText>
-    </View>
-  );
-}
-
-/** 공동 기도제목 카드 — 전체 누적 시간 표시 + 함께 기도 타이머 */
-function CommunalCard({
-  item,
-  isAdmin,
-  onPray,
-  onEdit,
-}: {
-  item: CommunalPrayer;
-  isAdmin: boolean;
-  onPray: (minutes: number) => void;
-  onEdit: () => void;
-}) {
-  const theme = useTheme();
-  return (
-    <Card>
-      <View style={styles.rowBetween}>
-        <ThemedText type="smallBold" style={styles.flex}>
-          {item.title}
-        </ThemedText>
-        {isAdmin ? (
-          <Pressable onPress={onEdit} hitSlop={8}>
-            <Ionicons name="create-outline" size={18} color={theme.textMuted} />
-          </Pressable>
-        ) : null}
-      </View>
-      {item.body ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {item.body}
-        </ThemedText>
-      ) : null}
-      <View style={[styles.communalTotal, { backgroundColor: theme.backgroundSelected }]}>
-        <Ionicons name="time-outline" size={15} color={theme.primary} />
-        <ThemedText type="caption" themeColor="textSecondary">
-          함께 기도한 시간
-        </ThemedText>
-        <ThemedText type="smallBold" themeColor="primary" style={styles.flexEnd}>
-          {durationLabel(item.totalMinutes)}
-        </ThemedText>
-      </View>
-      <PrayerTimer onSave={async (minutes) => onPray(minutes)} startLabel="이 제목으로 기도" />
-    </Card>
-  );
-}
-
-/** 기도 시작 → 정지 시 경과 시간을 '초' 단위로 기록합니다. */
-function PrayerTimer({
-  onSave,
-  startLabel = '기도 시작',
-}: {
-  onSave: (seconds: number) => Promise<void> | void;
-  startLabel?: string;
-}) {
-  const theme = useTheme();
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (startedAt === null) return;
-    intervalRef.current = setInterval(() => setElapsed(Date.now() - startedAt), 1000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [startedAt]);
-
-  const stop = async () => {
-    // 실제 경과 시간을 '초' 단위 그대로 기록합니다.
-    const secs = Math.round(elapsed / 1000);
-    setStartedAt(null);
-    setElapsed(0);
-    if (secs > 0) await onSave(secs);
-  };
-
-  const seconds = Math.floor(elapsed / 1000);
-  const display = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-
-  if (startedAt === null) {
-    return <Button label={startLabel} icon="play" onPress={() => setStartedAt(Date.now())} />;
-  }
-
-  return (
-    <View style={[styles.timerBox, { backgroundColor: theme.backgroundSelected }]}>
-      <ThemedText type="title">{display}</ThemedText>
-      <Button label="마치고 기록하기" icon="stop" onPress={() => void stop()} />
     </View>
   );
 }
