@@ -151,9 +151,12 @@ export default function HomeScreen() {
     <Screen onRefresh={reloadAll} refreshing={false}>
       {/* 히어로 — 오늘의 말씀 (매일 자동으로 바뀝니다) */}
       <HeroBanner imageUrl={Photos.heroWorship} base="warm" height={216} style={styles.heroShadow}>
+        <ThemedText type="small" style={styles.heroDate}>
+          {formatFullDate(toDateKey())}
+        </ThemedText>
         <ThemedText type="small" style={styles.heroLabel}>
           {greeting()}
-          {user ? `, ${user.name}님` : ''} · {formatFullDate(toDateKey())}
+          {user ? `, ${user.name}님` : ''}
         </ThemedText>
         <View style={styles.heroTagRow}>
           <Ionicons name="book-outline" size={12} color="#fff" />
@@ -471,7 +474,8 @@ const styles = StyleSheet.create({
   collapseBody: { marginTop: Spacing.two },
 
   heroShadow: Shadow.card,
-  heroLabel: { color: 'rgba(255,255,255,0.95)', fontSize: 15, fontWeight: '600' },
+  heroDate: { color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
+  heroLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600', marginTop: 1 },
   heroTagRow: {
     flexDirection: 'row',
     alignItems: 'center',
