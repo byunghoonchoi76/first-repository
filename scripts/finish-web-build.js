@@ -33,9 +33,10 @@ html = html.replace(
 
 const tags = [
   `<link rel="manifest" href="${base}/manifest.json" />`,
-  // 모던 한글 UI 폰트(Pretendard) — 한국어·영문·숫자를 통일감 있게 렌더합니다.
-  `<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />`,
-  `<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />`,
+  // 한글 UI 폰트(Noto Sans KR) — 한국어·영문·숫자를 통일감 있게 렌더합니다.
+  `<link rel="preconnect" href="https://fonts.googleapis.com" />`,
+  `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />`,
+  `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" />`,
   `<meta name="theme-color" content="#104C6E" />`,
   `<meta name="apple-mobile-web-app-capable" content="yes" />`,
   `<meta name="mobile-web-app-capable" content="yes" />`,
