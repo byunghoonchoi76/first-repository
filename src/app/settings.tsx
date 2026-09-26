@@ -23,6 +23,7 @@ export default function SettingsScreen() {
               {user.email ?? (isAdmin ? '관리자 계정' : '성도 계정')}
             </ThemedText>
             {isAdmin ? <Badge label="관리자" tone="accent" /> : null}
+            <Button label="내 정보 수정" variant="secondary" icon="create-outline" onPress={() => router.push('/profile')} />
             <Button label="로그아웃" variant="ghost" icon="log-out-outline" onPress={() => void signOut()} />
           </>
         ) : (

@@ -7,6 +7,14 @@ export interface AppUser {
   name: string;
   email?: string;
   role: Role;
+  /** 생년월일 (선택) — 'YYYY-MM-DD' 또는 자유 입력 */
+  birthDate?: string;
+  /** 양력 / 음력 (선택) */
+  birthCalendar?: '양력' | '음력';
+  /** 직분 (선택) — 예: 집사, 권사, 장로, 성도 */
+  position?: string;
+  /** 소속 (선택) — 예: 1교구, OO목장 */
+  affiliation?: string;
 }
 
 /** 예배 안내 화면에서 묶어 보여 주는 분류 */

@@ -33,6 +33,8 @@ interface AuthContextValue {
     email: string;
     password: string;
   }) => Promise<{ needsEmailConfirmation: boolean }>;
+  /** 내 프로필(이름·생년월일·직분·소속) 수정. */
+  updateProfile: (patch: Partial<Pick<AppUser, 'name' | 'birthDate' | 'birthCalendar' | 'position' | 'affiliation'>>) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -44,18 +46,29 @@ async function loadSupabaseUser(): Promise<AppUser | null> {
   const authUser = data.user;
   if (!authUser) return null;
 
-  // 역할은 profiles 테이블에서 읽습니다. 행이 없으면 일반 성도로 처리합니다.
-  const { data: profile } = await supabase
+  // 역할·프로필 항목은 profiles 테이블에서 읽습니다. 행이 없으면 일반 성도로 처리합니다.
+  // 선택 항목(생년월일·직분·소속) 마이그레이션 전이라도 로그인이 깨지지 않도록,
+  // 확장 컬럼 조회가 실패하면 기본 컬럼만 다시 읽습니다.
+  const ext = await supabase
     .from('profiles')
-    .select('name, role')
+    .select('name, role, birth_date, birth_calendar, position, affiliation')
     .eq('id', authUser.id)
     .maybeSingle();
+  let profile = ext.data as Record<string, string | null> | null;
+  if (ext.error) {
+    const base = await supabase.from('profiles').select('name, role').eq('id', authUser.id).maybeSingle();
+    profile = base.data as Record<string, string | null> | null;
+  }
 
   return {
     id: authUser.id,
     email: authUser.email ?? undefined,
     name: profile?.name ?? authUser.email?.split('@')[0] ?? '성도',
     role: (profile?.role as Role) ?? 'member',
+    birthDate: profile?.birth_date ?? undefined,
+    birthCalendar: (profile?.birth_calendar as AppUser['birthCalendar']) ?? undefined,
+    position: profile?.position ?? undefined,
+    affiliation: profile?.affiliation ?? undefined,
   };
 }
 
@@ -139,6 +152,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setGuestAck(true);
   }, []);
 
+  const updateProfile = useCallback<AuthContextValue['updateProfile']>(async (patch) => {
+    if (hasSupabaseConfig && supabase) {
+      const { data: auth } = await supabase.auth.getUser();
+      const id = auth.user?.id;
+      if (!id) throw new Error('로그인이 필요합니다.');
+      // camelCase → DB 컬럼(snake_case) 로 변환. undefined 항목은 보내지 않습니다.
+      const row: Record<string, string> = { id };
+      if (patch.name !== undefined) row.name = patch.name;
+      if (patch.birthDate !== undefined) row.birth_date = patch.birthDate;
+      if (patch.birthCalendar !== undefined) row.birth_calendar = patch.birthCalendar;
+      if (patch.position !== undefined) row.position = patch.position;
+      if (patch.affiliation !== undefined) row.affiliation = patch.affiliation;
+      const { error } = await supabase.from('profiles').upsert(row);
+      if (error) throw new Error(error.message);
+      setUser(await loadSupabaseUser());
+      return;
+    }
+    // 샘플 모드: 로컬 저장 사용자에 병합합니다.
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const signOut = useCallback(async () => {
     if (hasSupabaseConfig && supabase) {
       await supabase.auth.signOut();
@@ -151,8 +190,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, isAdmin: user?.role === 'admin', guestAck, chooseGuest, signIn, signUp, signOut }),
-    [user, loading, guestAck, chooseGuest, signIn, signUp, signOut],
+    () => ({ user, loading, isAdmin: user?.role === 'admin', guestAck, chooseGuest, signIn, signUp, updateProfile, signOut }),
+    [user, loading, guestAck, chooseGuest, signIn, signUp, updateProfile, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
