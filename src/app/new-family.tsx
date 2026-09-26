@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { ConsentCheck } from '@/components/consent-check';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Field } from '@/components/ui';
@@ -22,6 +23,7 @@ export default function NewFamilyScreen() {
   const [address, setAddress] = useState('');
   const [referrer, setReferrer] = useState('');
   const [note, setNote] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const [done, setDone] = useState(false);
@@ -29,6 +31,10 @@ export default function NewFamilyScreen() {
   const submit = async () => {
     if (!name.trim() || !phone.trim()) {
       setError('이름과 연락처는 꼭 남겨 주세요.');
+      return;
+    }
+    if (!agreed) {
+      setError('개인정보 수집·이용에 동의해 주세요.');
       return;
     }
     setSaving(true);
@@ -123,6 +129,8 @@ export default function NewFamilyScreen() {
           placeholder="궁금한 점이나 기도제목을 자유롭게 남겨 주세요."
           multiline
         />
+
+        <ConsentCheck checked={agreed} onChange={setAgreed} />
 
         {error ? (
           <ThemedText type="small" themeColor="danger">

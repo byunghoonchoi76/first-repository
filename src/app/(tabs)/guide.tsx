@@ -80,6 +80,18 @@ export default function GuideScreen() {
           ) : null}
         </Card>
       </View>
+
+      {/* 약관 · 정책 */}
+      <View>
+        <SectionHeader title="약관 · 정책" accent />
+        <Card>
+          <ListRow icon="shield-checkmark-outline" title="개인정보처리방침" onPress={() => router.push('/privacy')} />
+          <Divider />
+          <ListRow icon="document-text-outline" title="이용약관" onPress={() => router.push('/terms')} />
+          <Divider />
+          <ListRow icon="mail-unread-outline" title="이메일무단수집거부" onPress={() => router.push('/email-refusal')} />
+        </Card>
+      </View>
     </Screen>
   );
 }

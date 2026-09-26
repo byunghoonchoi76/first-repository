@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ChurchLogo } from '@/components/church-logo';
+import { ConsentCheck } from '@/components/consent-check';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Field } from '@/components/ui';
@@ -21,6 +22,7 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signIn' | 'signUp'>(params.mode === 'signUp' ? 'signUp' : 'signIn');
+  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
@@ -39,6 +41,10 @@ export default function SignInScreen() {
   };
 
   const submitSupabase = async () => {
+    if (mode === 'signUp' && !agreed) {
+      setError('이용약관 및 개인정보처리방침에 동의해 주세요.');
+      return;
+    }
     setBusy(true);
     setError(undefined);
     try {
@@ -80,6 +86,7 @@ export default function SignInScreen() {
             keyboardType="email-address"
           />
           <Field label="비밀번호" value={password} onChangeText={setPassword} secureTextEntry />
+          {mode === 'signUp' ? <ConsentCheck checked={agreed} onChange={setAgreed} withTerms /> : null}
           {notice ? (
             <ThemedText type="small" themeColor="success">
               {notice}
