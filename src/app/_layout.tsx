@@ -109,7 +109,7 @@ function RootNavigator() {
       <Stack.Screen name="groups/[id]" options={{ title: '소통방' }} />
       <Stack.Screen name="group-members/[id]" options={{ title: '소통방 멤버' }} />
       <Stack.Screen name="prayer/personal" options={{ title: '개인 기도제목' }} />
-      <Stack.Screen name="prayer/requests" options={{ title: '기도 요청' }} />
+      <Stack.Screen name="prayer/requests" options={{ title: '중보기도제목' }} />
       <Stack.Screen name="prayer/new" options={{ title: '기도제목 나누기', presentation: 'modal' }} />
       <Stack.Screen name="prayer/edit/[id]" options={{ title: '기도제목 수정', presentation: 'modal' }} />
       <Stack.Screen name="settings" options={{ title: '더보기' }} />

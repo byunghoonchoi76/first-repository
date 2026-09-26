@@ -20,7 +20,7 @@ export default function CommunalPrayerScreen() {
 
   return (
     <Screen onRefresh={communal.reload}>
-      <Stack.Screen options={{ title: '공동 기도' }} />
+      <Stack.Screen options={{ title: '공동 기도제목' }} />
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
         온 성도가 함께 마음을 모아 기도하는 제목입니다.

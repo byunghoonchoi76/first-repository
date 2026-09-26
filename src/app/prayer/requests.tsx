@@ -54,14 +54,14 @@ export default function PrayerRequestsScreen() {
     <Screen onRefresh={reloadShared}>
       {needsSignIn ? (
         <Card>
-          <EmptyState icon="lock-closed-outline" message="기도 요청은 로그인한 성도만 볼 수 있습니다." />
+          <EmptyState icon="lock-closed-outline" message="중보기도제목은 로그인한 성도만 볼 수 있습니다." />
         </Card>
       ) : sharedRequests.loading && !sharedRequests.data ? (
         <LoadingState />
       ) : sharedRequests.error ? (
         <ErrorState message={sharedRequests.error} onRetry={sharedRequests.reload} />
       ) : sharedItems.length === 0 ? (
-        <EmptyState icon="hand-right-outline" message="아직 올라온 기도 요청이 없습니다." />
+        <EmptyState icon="hand-right-outline" message="아직 올라온 중보기도제목이 없습니다." />
       ) : (
         <View style={styles.stack}>
           <StatusCounter
