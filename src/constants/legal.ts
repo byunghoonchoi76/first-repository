@@ -5,7 +5,6 @@
  * 교회 사정에 맞게 이 파일만 고치면 앱 전체(/privacy · /terms · /email-refusal)에 반영됩니다.
  *
  * ⚠️ 법적 효력을 위해 시행 전 교회에서 최종 검토하시기를 권합니다.
- *    특히 아래 PRIVACY_OFFICER(개인정보관리책임자) 정보는 반드시 실제 담당자로 확인해 주세요.
  */
 import { ChurchInfo } from './church';
 
@@ -14,11 +13,11 @@ export const LEGAL_EFFECTIVE = '2025-01-01';
 export const LEGAL_UPDATED = '2025-01-01';
 
 /**
- * 개인정보관리책임자 — 교회에서 실제 담당자로 확인해 주세요.
- * (기본값은 교회 대표 연락처로 채워 두었습니다.)
+ * 개인정보관리책임자 — 교회 대표(담임목사) 정보로 지정되어 있습니다.
+ * 담당자가 바뀌면 이 값만 고치면 방침에 반영됩니다.
  */
 export const PRIVACY_OFFICER = {
-  name: ChurchInfo.pastor || '개인정보관리책임자',
+  name: '공진수',
   position: '담임목사',
   email: ChurchInfo.email,
   phone: ChurchInfo.phone,
