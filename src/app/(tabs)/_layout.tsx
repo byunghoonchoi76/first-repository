@@ -48,14 +48,12 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />
+      {/* 소식은 하단 탭에서 숨깁니다(홈의 '교회 소식 · 더보기'로 들어갑니다). 라우트는 유지 */}
       <Tabs.Screen
         name="news"
         options={{
+          href: null,
           title: '소식',
-          tabBarLabel: tabLabel('소식'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="megaphone-outline" size={size} color={color} />
-          ),
         }}
       />
       <Tabs.Screen

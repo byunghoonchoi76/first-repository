@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Linking, Platform, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -14,23 +14,6 @@ export default function GuideScreen() {
   const theme = useTheme();
   const profile = useAsyncData(() => repository.getChurchProfile());
   const church = profile.data;
-
-  const openMap = () => {
-    if (church?.mapUrl) {
-      void Linking.openURL(church.mapUrl);
-      return;
-    }
-    if (!church?.address) {
-      router.push('/location');
-      return;
-    }
-    void Linking.openURL(
-      Platform.select({
-        ios: `http://maps.apple.com/?q=${encodeURIComponent(church.address)}`,
-        default: `https://maps.google.com/?q=${encodeURIComponent(church.address)}`,
-      }),
-    );
-  };
 
   const Divider = () => <View style={[styles.divider, { backgroundColor: theme.border }]} />;
 
@@ -68,9 +51,7 @@ export default function GuideScreen() {
       <View>
         <SectionHeader title="오시는 길 · 연락" accent />
         <Card>
-          <ListRow icon="location-outline" title="교회 주소" subtitle={church?.address || '지도 · 내비게이션'} onPress={() => router.push('/location')} />
-          <Divider />
-          <ListRow icon="navigate-outline" title="지도로 길찾기" subtitle="지도 앱에서 바로 열기" onPress={openMap} />
+          <ListRow icon="location-outline" title="오시는 길" subtitle={church?.address || '지도 · 내비게이션'} onPress={() => router.push('/location')} />
           {church?.phone ? (
             <>
               <Divider />

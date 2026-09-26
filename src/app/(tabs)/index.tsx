@@ -183,7 +183,7 @@ export default function HomeScreen() {
         />
         <QuickAction icon="book-outline" label="성경 읽기표" onPress={() => router.push('/reading-plan')} />
         <QuickAction icon="card-outline" label="온라인 헌금" onPress={() => router.push('/giving')} />
-        <QuickAction icon="hand-right-outline" label="기도 요청" onPress={() => router.push('/prayer')} />
+        <QuickAction icon="hand-right-outline" label="중보 기도" onPress={() => router.push('/prayer/requests')} />
         <QuickAction icon="person-add-outline" label="새가족 등록" onPress={() => router.push('/new-family')} />
       </View>
 
