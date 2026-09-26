@@ -8,7 +8,7 @@ import { ActivityIndicator, Animated, FlatList, Linking, Platform, Pressable, Sc
 import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Badge, Button, Card, EmptyState, ErrorState, ListRow, LoadingState, SectionHeader } from '@/components/ui';
+import { Badge, Card, EmptyState, ErrorState, LoadingState, SectionHeader } from '@/components/ui';
 import { ChurchInfo } from '@/constants/church';
 import { todaysVerse } from '@/constants/daily-verses';
 import { LocalPhotos, Photos } from '@/constants/photos';
@@ -16,10 +16,9 @@ import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData, type Sermon } from '@/lib/data';
-import { durationLabel, formatDate, formatFullDate, toDateKey } from '@/lib/format';
+import { formatDate, formatFullDate, toDateKey } from '@/lib/format';
 import { isUnread, useNewsSeenAt } from '@/lib/news-seen';
 import { useLiveStatus } from '@/lib/live-status';
-import { useAllPrayerTime } from '@/lib/prayer-log';
 import { classifyChurchVideo, parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 
 function greeting(): string {
@@ -41,7 +40,6 @@ export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const prayerLog = useAllPrayerTime();
   const live = useLiveStatus();
   const newsSeenAt = useNewsSeenAt(); // 홈에서는 기준만 읽고, 소식 탭을 열 때 갱신됩니다.
 
@@ -260,47 +258,6 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* 우리의 기도 */}
-      <View>
-        <SectionHeader title="우리의 기도" actionLabel="기도하기" accent onAction={() => router.push('/prayer')} />
-        <Card elevated>
-          <View style={styles.prayerRow}>
-            <View style={styles.flex}>
-              <ThemedText type="caption" themeColor="textSecondary">
-                오늘 기도시간
-              </ThemedText>
-              <ThemedText type="subtitle">
-                {prayerLog.todayMinutes > 0 ? durationLabel(prayerLog.todayMinutes) : '아직 없음'}
-              </ThemedText>
-            </View>
-            <View style={[styles.streakBox, { backgroundColor: theme.backgroundSelected }]}>
-              <Ionicons name="flame-outline" size={18} color={theme.accent} />
-              <ThemedText type="smallBold">{prayerLog.streak}일 연속</ThemedText>
-            </View>
-          </View>
-          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow
-            icon="people-circle-outline"
-            title="공동 기도제목"
-            subtitle="온 성도가 함께 기도하며 시간을 쌓아가요"
-            onPress={() => router.push('/prayer')}
-          />
-          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow
-            icon="flower-outline"
-            title="개인 기도제목"
-            subtitle="나만의 기도제목을 적고 관리해요"
-            onPress={() => router.push('/prayer/personal')}
-          />
-          <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
-          <ListRow
-            icon="hand-right-outline"
-            title="기도 요청"
-            subtitle="성도들과 나누고 함께 기도해요"
-            onPress={() => router.push('/prayer/requests')}
-          />
-        </Card>
-      </View>
     </Screen>
   );
 }
@@ -467,7 +424,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   pressed: { opacity: 0.8 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  menuDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
   collapseCard: { gap: 0 },
   collapseHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   collapseBar: { width: 3, height: 16, borderRadius: 2 },
@@ -572,13 +528,4 @@ const styles = StyleSheet.create({
     gap: 2,
   },
 
-  prayerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  streakBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.pill,
-  },
 });
