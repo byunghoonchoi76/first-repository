@@ -384,8 +384,8 @@ function TopicsCard() {
       <Card>
         <ListRow
           icon="people-outline"
-          title="공동 기도"
-          subtitle="온 성도가 함께 기도제목을 놓고 기도해요"
+          title="공동 기도제목"
+          subtitle="온 성도가 함께 기도하는 제목이에요"
           onPress={() => router.push('/prayer/communal')}
         />
         <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
@@ -398,8 +398,8 @@ function TopicsCard() {
         <View style={[styles.menuDivider, { backgroundColor: theme.border }]} />
         <ListRow
           icon="hand-right-outline"
-          title="기도 요청"
-          subtitle="성도들과 나누고 함께 기도해요"
+          title="중보기도제목"
+          subtitle="성도들과 나누고 함께 중보해요"
           onPress={() => router.push('/prayer/requests')}
         />
       </Card>
