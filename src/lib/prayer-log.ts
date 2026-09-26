@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository } from '@/lib/data';
@@ -157,6 +157,50 @@ export function usePrayerTime(kind: PrayerKind) {
     week: recentDays(entries, 7),
     totalMinutes,
     addMinutes,
+    clearToday,
+  };
+}
+
+/**
+ * 개인 + 공동 참여 시간을 하나로 합친 '나의 기도 시간'.
+ * 화면(타이머·달성률·달력·평균)은 이 통합값 하나만 봅니다.
+ * 타이머로 쌓는 시간은 개인(personal) 기록에 누적하고, 공동 기도제목에서 쌓는 시간은
+ * 공동(communal) 기록에 누적되지만, 여기서 둘을 합쳐 보여 줍니다.
+ */
+export function useAllPrayerTime() {
+  const personal = usePrayerTime('personal');
+  const communal = usePrayerTime('communal');
+
+  const entries = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of [...personal.entries, ...communal.entries]) {
+      map.set(e.date, (map.get(e.date) ?? 0) + e.minutes);
+    }
+    return [...map.entries()]
+      .map(([date, minutes]) => ({ date, minutes }))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [personal.entries, communal.entries]);
+
+  const reload = useCallback(() => {
+    personal.reload();
+    communal.reload();
+  }, [personal.reload, communal.reload]);
+
+  const clearToday = useCallback(async () => {
+    await personal.clearToday();
+    await communal.clearToday();
+  }, [personal.clearToday, communal.clearToday]);
+
+  return {
+    entries,
+    loading: personal.loading || communal.loading,
+    server: personal.server,
+    reload,
+    todayMinutes: personal.todayMinutes + communal.todayMinutes,
+    streak: calculateStreak(entries),
+    week: recentDays(entries, 7),
+    totalMinutes: personal.totalMinutes + communal.totalMinutes,
+    addMinutes: personal.addMinutes, // 통합 타이머 → 개인 기록에 누적
     clearToday,
   };
 }

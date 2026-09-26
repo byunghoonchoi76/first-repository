@@ -19,7 +19,7 @@ import { repository, useAsyncData, type Sermon } from '@/lib/data';
 import { durationLabel, formatDate, formatFullDate, toDateKey } from '@/lib/format';
 import { isUnread, useNewsSeenAt } from '@/lib/news-seen';
 import { useLiveStatus } from '@/lib/live-status';
-import { usePrayerTime } from '@/lib/prayer-log';
+import { useAllPrayerTime } from '@/lib/prayer-log';
 import { classifyChurchVideo, parseYouTubeUrl, youtubeThumbnail } from '@/lib/youtube';
 
 function greeting(): string {
@@ -41,7 +41,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const prayerLog = usePrayerTime('personal');
+  const prayerLog = useAllPrayerTime();
   const live = useLiveStatus();
   const newsSeenAt = useNewsSeenAt(); // 홈에서는 기준만 읽고, 소식 탭을 열 때 갱신됩니다.
 
