@@ -18,9 +18,9 @@ export const ChurchInfo = {
   givingUrl: '',
   // 네이버 플레이스(정확한 위치) 링크
   mapUrl: 'https://naver.me/5CCocDC6',
-  // 기도 타이머 배경음. 유튜브 링크(공식 플레이어로 재생) 또는 mp3 링크를 넣을 수 있습니다.
-  // 비워 두면 앱이 합성하는 잔잔한 배경음이 재생됩니다.
-  prayerBgmUrl: 'https://youtu.be/1b0mmbfcOls',
+  // 기도 타이머 배경음. 유튜브 링크(여러 개면 번갈아·반복) 또는 mp3 링크를 넣을 수 있습니다.
+  // 비워 두면(빈 배열) 앱이 합성하는 잔잔한 배경음이 재생됩니다.
+  prayerBgmUrls: ['https://youtu.be/1b0mmbfcOls', 'https://youtu.be/yyZK94kA1R0'],
 } as const;
 
 /**

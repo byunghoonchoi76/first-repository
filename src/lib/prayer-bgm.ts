@@ -8,9 +8,9 @@ import { parseYouTubeUrl } from '@/lib/youtube';
 /**
  * 기도 타이머 배경음(BGM).
  *
- * ChurchInfo.prayerBgmUrl 값에 따라 재생 방식이 정해집니다.
- * - 유튜브 링크(youtu.be/…, youtube.com/watch?…): 공식 IFrame 플레이어를 화면 밖에 띄워 소리만 재생(반복).
- * - mp3 등 오디오 파일 링크: <audio> 로 직접 재생.
+ * ChurchInfo.prayerBgmUrls(여러 개) 값에 따라 재생 방식이 정해집니다.
+ * - 유튜브 링크가 하나 이상: 공식 IFrame 플레이어로 재생목록을 만들어 번갈아·반복 재생(소리만).
+ * - 유튜브가 아닌 오디오 파일 링크: 첫 링크를 <audio> 로 직접 재생.
  * - 비어 있으면: 앱이 직접 합성하는 잔잔한 패드음(저작권/파일 불필요, 오프라인 동작).
  *
  * 웹(PWA) 전용입니다. 네이티브에서는 조용히 아무 동작도 하지 않습니다.
@@ -82,11 +82,39 @@ function loadYouTubeApi(): Promise<{ Player: new (el: Element | string, opts: un
   return w.__prayerYtApi;
 }
 
-function createYouTubeEngine(videoId: string): BgmEngine {
+const YT_INDEX_KEY = 'church-app/prayer-bgm-idx';
+
+/**
+ * 여러 유튜브 음원을 재생목록으로 재생합니다.
+ * - 한 세션 안에서: 한 곡이 끝나면 다음 곡으로 이어지고, 목록 끝에서 처음으로 반복(setLoop).
+ * - 세션마다: 시작 곡을 번갈아(다음 인덱스로) 지정해, 짧은 기도라도 매번 다른 곡으로 시작합니다.
+ */
+function createYouTubePlaylistEngine(videoIds: string[]): BgmEngine {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let player: any = null;
   let ready = false;
   let wantPlay = false;
+  let startIndex = 0;
+
+  // 이전에 저장된 시작 인덱스를 불러와, 앱을 다시 열어도 번갈아 시작되도록 합니다.
+  AsyncStorage.getItem(YT_INDEX_KEY)
+    .then((v) => {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) startIndex = n % videoIds.length;
+    })
+    .catch(() => {});
+
+  const playFromStartIndex = () => {
+    if (!player) return;
+    try {
+      player.setLoop(true);
+      player.setVolume(35);
+      // 배열을 그대로 재생목록으로 로드하고 startIndex 곡부터 재생합니다.
+      player.loadPlaylist({ playlist: videoIds, index: startIndex % videoIds.length, startSeconds: 0 });
+    } catch {
+      /* noop */
+    }
+  };
 
   const ensure = () => {
     if (player) return;
@@ -101,46 +129,21 @@ function createYouTubeEngine(videoId: string): BgmEngine {
     void loadYouTubeApi().then((YT) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       player = new (YT as any).Player(host, {
-        videoId,
+        videoId: videoIds[0],
         playerVars: {
           autoplay: 0,
           controls: 0,
           disablekb: 1,
           fs: 0,
-          loop: 1,
-          playlist: videoId, // 단일 영상 반복에 필요
           playsinline: 1,
           modestbranding: 1,
           rel: 0,
         },
         events: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onReady: (e: any) => {
+          onReady: () => {
             ready = true;
-            try {
-              e.target.setVolume(35);
-            } catch {
-              /* noop */
-            }
-            if (wantPlay) {
-              try {
-                e.target.playVideo();
-              } catch {
-                /* noop */
-              }
-            }
-          },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onStateChange: (e: any) => {
-            // 0 = ENDED: 끝나면 처음부터 다시 재생(반복 보강).
-            if (e.data === 0 && wantPlay) {
-              try {
-                e.target.seekTo(0);
-                e.target.playVideo();
-              } catch {
-                /* noop */
-              }
-            }
+            if (wantPlay) playFromStartIndex();
           },
         },
       });
@@ -151,25 +154,20 @@ function createYouTubeEngine(videoId: string): BgmEngine {
     start() {
       wantPlay = true;
       ensure();
-      if (ready && player) {
-        try {
-          player.setVolume(35);
-          player.playVideo();
-        } catch {
-          /* noop */
-        }
-      }
+      if (ready && player) playFromStartIndex();
     },
     stop() {
       wantPlay = false;
       if (player) {
         try {
           player.pauseVideo();
-          player.seekTo(0, true); // 다음 재생은 처음부터 시작하도록 되감습니다.
         } catch {
           /* noop */
         }
       }
+      // 다음 기도는 다른 곡으로 시작하도록 인덱스를 넘깁니다.
+      startIndex = (startIndex + 1) % videoIds.length;
+      void AsyncStorage.setItem(YT_INDEX_KEY, String(startIndex)).catch(() => {});
     },
   };
 }
@@ -274,9 +272,12 @@ let engine: BgmEngine | null = null;
 function getEngine(): BgmEngine | null {
   if (Platform.OS !== 'web') return null;
   if (!engine) {
-    const yt = parseYouTubeUrl(ChurchInfo.prayerBgmUrl);
-    if (yt) engine = createYouTubeEngine(yt.videoId);
-    else if (ChurchInfo.prayerBgmUrl) engine = createTrackEngine(ChurchInfo.prayerBgmUrl);
+    const urls = (ChurchInfo.prayerBgmUrls ?? []).filter(Boolean);
+    const ytIds = urls
+      .map((u) => parseYouTubeUrl(u)?.videoId)
+      .filter((id): id is string => !!id);
+    if (ytIds.length) engine = createYouTubePlaylistEngine(ytIds);
+    else if (urls[0]) engine = createTrackEngine(urls[0]);
     else engine = createAmbientEngine();
   }
   return engine;
