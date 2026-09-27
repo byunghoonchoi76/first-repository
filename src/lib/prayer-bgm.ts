@@ -10,7 +10,7 @@ import { parseYouTubeUrl } from '@/lib/youtube';
  *
  * ChurchInfo.prayerBgmUrls(여러 개) 값에 따라 재생 방식이 정해집니다.
  * - 유튜브 링크가 하나 이상: 공식 IFrame 플레이어로 재생목록을 만들어 번갈아·반복 재생(소리만).
- * - 유튜브가 아닌 오디오 파일 링크: 첫 링크를 <audio> 로 직접 재생.
+ * - mp3 등 오디오 파일 링크(유튜브 아님): <audio> 로 직접 재생(광고 없음, 여러 곡이면 번갈아·반복).
  * - 비어 있으면: 앱이 직접 합성하는 잔잔한 패드음(저작권/파일 불필요, 오프라인 동작).
  *
  * 웹(PWA) 전용입니다. 네이티브에서는 조용히 아무 동작도 하지 않습니다.
@@ -21,23 +21,55 @@ const PREF_KEY = 'church-app/prayer-bgm';
 
 type BgmEngine = { start: () => void; stop: () => void };
 
-// ── 교회 음원(URL) 재생 ───────────────────────────────────────────
-function createTrackEngine(url: string): BgmEngine {
+// ── 오디오 파일(mp3 등) 재생 ──────────────────────────────────────
+const AUDIO_INDEX_KEY = 'church-app/prayer-bgm-audio-idx';
+
+/**
+ * mp3 등 오디오 파일을 재생합니다. (광고 없음)
+ * - 여러 곡이면: 한 곡이 끝나면 다음 곡으로 이어지고 목록 끝에서 처음으로 반복.
+ * - 세션마다: 시작 곡을 번갈아(다음 인덱스) 지정해, 짧은 기도라도 매번 다른 곡으로 시작합니다.
+ */
+function createAudioPlaylistEngine(urls: string[]): BgmEngine {
   let audio: HTMLAudioElement | null = null;
+  let idx = 0;
+  let wantPlay = false;
+
+  AsyncStorage.getItem(AUDIO_INDEX_KEY)
+    .then((v) => {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) idx = n % urls.length;
+    })
+    .catch(() => {});
+
+  const ensure = () => {
+    if (audio) return;
+    audio = new (globalThis as { Audio: typeof Audio }).Audio();
+    audio.volume = 0.4;
+    // 한 곡이 끝나면 다음 곡으로 이어서 재생(목록 반복).
+    audio.addEventListener('ended', () => {
+      if (!audio) return;
+      idx = (idx + 1) % urls.length;
+      audio.src = urls[idx];
+      if (wantPlay) void audio.play().catch(() => {});
+    });
+  };
+
   return {
     start() {
       try {
-        if (!audio) {
-          audio = new (globalThis as { Audio: typeof Audio }).Audio(url);
-          audio.loop = true;
-          audio.volume = 0.4;
-        }
+        wantPlay = true;
+        ensure();
+        if (!audio) return;
+        // 시작 곡을 처음부터 재생합니다.
+        audio.src = urls[idx % urls.length];
+        audio.currentTime = 0;
         void audio.play().catch(() => {});
       } catch {
         /* 재생 실패는 조용히 무시합니다. */
       }
     },
     stop() {
+      wantPlay = false;
       try {
         if (audio) {
           audio.pause();
@@ -46,6 +78,9 @@ function createTrackEngine(url: string): BgmEngine {
       } catch {
         /* noop */
       }
+      // 다음 기도는 다른 곡으로 시작하도록 인덱스를 넘깁니다.
+      idx = (idx + 1) % urls.length;
+      void AsyncStorage.setItem(AUDIO_INDEX_KEY, String(idx)).catch(() => {});
     },
   };
 }
@@ -273,11 +308,13 @@ function getEngine(): BgmEngine | null {
   if (Platform.OS !== 'web') return null;
   if (!engine) {
     const urls = (ChurchInfo.prayerBgmUrls ?? []).filter(Boolean);
+    // 유튜브가 아닌 링크(mp3 등 오디오 파일)를 우선합니다 — 광고가 없습니다.
+    const audioUrls = urls.filter((u) => !parseYouTubeUrl(u));
     const ytIds = urls
       .map((u) => parseYouTubeUrl(u)?.videoId)
       .filter((id): id is string => !!id);
-    if (ytIds.length) engine = createYouTubePlaylistEngine(ytIds);
-    else if (urls[0]) engine = createTrackEngine(urls[0]);
+    if (audioUrls.length) engine = createAudioPlaylistEngine(audioUrls);
+    else if (ytIds.length) engine = createYouTubePlaylistEngine(ytIds);
     else engine = createAmbientEngine();
   }
   return engine;
