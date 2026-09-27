@@ -18,9 +18,9 @@ export const ChurchInfo = {
   givingUrl: '',
   // 네이버 플레이스(정확한 위치) 링크
   mapUrl: 'https://naver.me/5CCocDC6',
-  // 기도 타이머 배경음. 교회가 권리를 가진(또는 저작권 free) mp3 링크를 넣으면 그 음원을 재생합니다.
+  // 기도 타이머 배경음. 유튜브 링크(공식 플레이어로 재생) 또는 mp3 링크를 넣을 수 있습니다.
   // 비워 두면 앱이 합성하는 잔잔한 배경음이 재생됩니다.
-  prayerBgmUrl: '',
+  prayerBgmUrl: 'https://youtu.be/1b0mmbfcOls',
 } as const;
 
 /**
