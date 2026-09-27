@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -445,6 +445,14 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [startedAt]);
+
+  // 기도 화면(탭)을 벗어나면 배경음을 멈춥니다. (뒤로가기·다른 탭 이동 등)
+  const stopBgm = bgm.stop;
+  useFocusEffect(
+    useCallback(() => {
+      return () => stopBgm();
+    }, [stopBgm]),
+  );
 
   const stop = async () => {
     // 실제 경과 시간을 '초' 단위 그대로 기록합니다. (3초 기도하면 3초로 저장)
