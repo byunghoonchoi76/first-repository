@@ -18,9 +18,14 @@ export const ChurchInfo = {
   givingUrl: '',
   // 네이버 플레이스(정확한 위치) 링크
   mapUrl: 'https://naver.me/5CCocDC6',
-  // 기도 타이머 배경음. 유튜브 링크(여러 개면 번갈아·반복) 또는 mp3 링크를 넣을 수 있습니다.
+  // 기도 타이머 배경음. mp3 등 오디오 파일 링크(광고 없음, 여러 개면 번갈아·반복) 또는 유튜브 링크.
+  // 아래는 Supabase Storage 공개 버킷(prayer-bgm)의 mp3 주소입니다.
+  // create-prayer-bgm-bucket.sql 실행 후 prayer-1.mp3 · prayer-2.mp3 를 업로드하면 재생됩니다.
   // 비워 두면(빈 배열) 앱이 합성하는 잔잔한 배경음이 재생됩니다.
-  prayerBgmUrls: ['https://youtu.be/1b0mmbfcOls', 'https://youtu.be/yyZK94kA1R0'],
+  prayerBgmUrls: [
+    'https://jwfbmsmasgmbstjizfab.supabase.co/storage/v1/object/public/prayer-bgm/prayer-1.mp3',
+    'https://jwfbmsmasgmbstjizfab.supabase.co/storage/v1/object/public/prayer-bgm/prayer-2.mp3',
+  ],
 } as const;
 
 /**
