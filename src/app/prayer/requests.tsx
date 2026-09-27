@@ -1,5 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
@@ -10,6 +12,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth';
 import { dataMode, repository, useAsyncData } from '@/lib/data';
 import { formatRelative } from '@/lib/format';
+
+/** '함께 기도'를 이미 누른 기도제목 ID 목록(이 기기 기준) 저장 키 */
+const PRAYED_KEY = 'church-app/prayed-requests';
 
 /** 기도 요청 — 성도들이 함께 기도하도록 공개된 기도제목 목록. */
 export default function PrayerRequestsScreen() {
@@ -24,6 +29,24 @@ export default function PrayerRequestsScreen() {
   const reloadShared = sharedRequests.reload;
   useFocusEffect(reloadShared);
 
+  // 이미 '함께 기도'를 누른 기도제목(이 기기 기준) — 한 번만 누르도록 막습니다.
+  const [prayedIds, setPrayedIds] = useState<Set<string>>(new Set());
+  const prayedRef = useRef<Set<string>>(new Set()); // 연속 탭 즉시 차단용
+  useEffect(() => {
+    AsyncStorage.getItem(PRAYED_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        try {
+          const ids = JSON.parse(raw) as string[];
+          prayedRef.current = new Set(ids);
+          setPrayedIds(new Set(ids));
+        } catch {
+          /* noop */
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const toggleAnswered = async (id: string, answered: boolean) => {
     sharedRequests.setData((cur) => cur?.map((item) => (item.id === id ? { ...item, answered } : item)));
     try {
@@ -34,6 +57,13 @@ export default function PrayerRequestsScreen() {
   };
 
   const pray = async (id: string) => {
+    // 이미 누른 기도제목이면 무시합니다. (연속 탭도 ref 로 즉시 차단)
+    if (prayedRef.current.has(id)) return;
+    prayedRef.current.add(id);
+    const next = new Set(prayedRef.current);
+    setPrayedIds(next);
+    void AsyncStorage.setItem(PRAYED_KEY, JSON.stringify([...next])).catch(() => {});
+
     sharedRequests.setData((cur) =>
       cur?.map((item) => (item.id === id ? { ...item, prayCount: item.prayCount + 1 } : item)),
     );
@@ -86,17 +116,31 @@ export default function PrayerRequestsScreen() {
                 <ThemedText type="caption" themeColor="textMuted">
                   {item.author}
                 </ThemedText>
-                <Pressable
-                  onPress={() => void pray(item.id)}
-                  style={({ pressed }) => [
-                    styles.prayButton,
-                    { borderColor: theme.border, opacity: pressed ? 0.6 : 1 },
-                  ]}>
-                  <Ionicons name="hand-right-outline" size={14} color={theme.primary} />
-                  <ThemedText type="caption" style={{ color: theme.primary, fontWeight: '700' }}>
-                    함께 기도 {item.prayCount}
-                  </ThemedText>
-                </Pressable>
+                {(() => {
+                  const prayed = prayedIds.has(item.id);
+                  return (
+                    <Pressable
+                      onPress={() => void pray(item.id)}
+                      disabled={prayed}
+                      style={({ pressed }) => [
+                        styles.prayButton,
+                        {
+                          borderColor: prayed ? theme.success : theme.border,
+                          backgroundColor: prayed ? theme.backgroundSelected : 'transparent',
+                          opacity: pressed ? 0.6 : 1,
+                        },
+                      ]}>
+                      <Ionicons
+                        name={prayed ? 'checkmark-circle' : 'hand-right-outline'}
+                        size={14}
+                        color={prayed ? theme.success : theme.primary}
+                      />
+                      <ThemedText type="caption" style={{ color: prayed ? theme.success : theme.primary, fontWeight: '700' }}>
+                        {prayed ? '기도했어요' : '함께 기도'} {item.prayCount}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })()}
               </View>
 
               {isAdmin || (user && item.authorId && item.authorId === user.id) ? (
