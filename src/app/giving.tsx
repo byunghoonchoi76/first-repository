@@ -23,22 +23,67 @@ const OFFERING_TYPES: { key: string; abbr: string; desc: string }[] = [
   { key: '주정헌금', abbr: '주정', desc: '주일을 정하여 정기적으로 드리는 헌금입니다.' },
 ];
 
-/** 은행 앱 — 계좌번호를 복사한 뒤 앱을 엽니다. 토스는 계좌 자동입력을 시도합니다. */
-const BANK_APPS: { key: string; label: string; short: string; badge?: string; color: string; text: string; scheme: (a: ParsedAccount) => string | null }[] = [
+/**
+ * 은행 앱 — 계좌번호를 복사한 뒤 앱을 엽니다. 토스는 계좌 자동입력을 시도합니다.
+ *
+ * 안드로이드 브라우저에서는 커스텀 스킴(kbbank:// 등)이 무시되는 경우가 많아,
+ * 앱을 확실히 여는 intent:// (패키지명 기반, 미설치 시 플레이스토어로 이동)를 사용합니다.
+ * iOS 는 패키지 실행이 불가하므로 커스텀 스킴을 사용합니다.
+ *
+ * pkg: 안드로이드 패키지명(플레이스토어에서 확인), scheme: iOS 커스텀 스킴 이름.
+ * send: 토스처럼 앱 화면·계좌를 자동 입력할 때 쓰는 경로/쿼리(scheme:// 뒤에 붙는 부분).
+ */
+type BankApp = {
+  key: string;
+  label: string;
+  short: string;
+  badge?: string;
+  color: string;
+  text: string;
+  pkg?: string;
+  scheme?: string;
+  send?: (a: ParsedAccount) => string;
+};
+
+const BANK_APPS: BankApp[] = [
   {
     key: 'toss', label: '토스', short: '토스', badge: '계좌 자동입력', color: '#0064FF', text: '#fff',
-    scheme: (a) => (a.number ? `supertoss://send?bank=${encodeURIComponent(a.bank || '')}&accountNo=${a.number.replace(/\D/g, '')}` : 'supertoss://'),
+    pkg: 'viva.republica.toss', scheme: 'supertoss',
+    send: (a) => (a.number ? `send?bank=${encodeURIComponent(a.bank || '')}&accountNo=${a.number.replace(/\D/g, '')}` : ''),
   },
-  { key: 'kakao', label: '카카오뱅크', short: '카카오', color: '#FFE300', text: '#3C1E1E', scheme: () => 'kakaobank://' },
-  { key: 'kb', label: '국민은행', short: '국민', color: '#6B5B4E', text: '#fff', scheme: () => 'kbbank://' },
-  { key: 'shinhan', label: '신한은행', short: '신한', color: '#0046FF', text: '#fff', scheme: () => 'shinhan-sr-ansimclick://' },
-  { key: 'woori', label: '우리은행', short: '우리', color: '#0067AC', text: '#fff', scheme: () => 'NewSmartPib://' },
-  { key: 'hana', label: '하나은행', short: '하나', color: '#008485', text: '#fff', scheme: () => 'hanabank://' },
-  { key: 'nh', label: '농협은행', short: '농협', color: '#12A54C', text: '#fff', scheme: () => 'nhallonebank://' },
-  { key: 'kbank', label: '케이뱅크', short: '케뱅', color: '#3300FF', text: '#fff', scheme: () => 'kbankwithme://' },
-  { key: 'ibk', label: '기업은행', short: '기업', color: '#0B3F8F', text: '#fff', scheme: () => 'ibkonebank://' },
-  { key: 'etc', label: '다른 은행', short: '기타', color: '#8A8F98', text: '#fff', scheme: () => null },
+  { key: 'kakao', label: '카카오뱅크', short: '카카오', color: '#FFE300', text: '#3C1E1E', pkg: 'com.kakaobank.channel', scheme: 'kakaobank' },
+  { key: 'kb', label: '국민은행', short: '국민', color: '#6B5B4E', text: '#fff', pkg: 'com.kbstar.kbbank', scheme: 'kbbank' },
+  { key: 'shinhan', label: '신한은행', short: '신한', color: '#0046FF', text: '#fff', pkg: 'com.shinhan.sbanking', scheme: 'shinhan-sr-ansimclick' },
+  { key: 'woori', label: '우리은행', short: '우리', color: '#0067AC', text: '#fff', pkg: 'com.wooribank.smart.npib', scheme: 'NewSmartPib' },
+  { key: 'hana', label: '하나은행', short: '하나', color: '#008485', text: '#fff', pkg: 'com.hanabank.oqf', scheme: 'hanabank' },
+  { key: 'nh', label: '농협은행', short: '농협', color: '#12A54C', text: '#fff', pkg: 'nh.smart.banking', scheme: 'nhsmartbanking' },
+  { key: 'kbank', label: '케이뱅크', short: '케뱅', color: '#3300FF', text: '#fff', pkg: 'com.kbankwith.smartbank', scheme: 'kbankwithme' },
+  { key: 'ibk', label: '기업은행', short: '기업', color: '#0B3F8F', text: '#fff', pkg: 'com.ibk.android.ionebank', scheme: 'ibkonebank' },
+  { key: 'etc', label: '다른 은행', short: '기타', color: '#8A8F98', text: '#fff' },
 ];
+
+/** 웹(PWA)에서 현재 브라우저가 안드로이드인지 판별합니다. */
+function isAndroidWeb(): boolean {
+  return (
+    Platform.OS === 'web' &&
+    typeof navigator !== 'undefined' &&
+    /android/i.test(navigator.userAgent || '')
+  );
+}
+
+/** 은행 앱을 여는 URL 을 만듭니다. (안드로이드: intent://, 그 외: 커스텀 스킴) */
+function buildBankUrl(bank: BankApp, path: string): string | null {
+  if (!bank.pkg && !bank.scheme) return null;
+  if (isAndroidWeb() && bank.pkg) {
+    const fallback = encodeURIComponent(`https://play.google.com/store/apps/details?id=${bank.pkg}`);
+    const head = path ? `intent://${path}` : 'intent://';
+    // 경로가 있으면(토스 자동입력 등) 해당 스킴으로, 없으면 패키지 실행만으로 앱을 엽니다.
+    const schemePart = path && bank.scheme ? `scheme=${bank.scheme};` : '';
+    return `${head}#Intent;${schemePart}package=${bank.pkg};S.browser_fallback_url=${fallback};end`;
+  }
+  if (!bank.scheme) return null;
+  return path ? `${bank.scheme}://${path}` : `${bank.scheme}://`;
+}
 
 export default function GivingScreen() {
   const theme = useTheme();
@@ -81,16 +126,18 @@ export default function GivingScreen() {
     flash(msg);
   };
 
-  const openBankApp = async (bank: (typeof BANK_APPS)[number]) => {
+  const openBankApp = async (bank: BankApp) => {
     if (account?.copyText) await Clipboard.setStringAsync(account.copyText);
-    const scheme = bank.scheme(account ?? ({ bank: '', number: '', holder: '', copyText: '' } as ParsedAccount));
-    if (!scheme) {
+    const acc = account ?? ({ bank: '', number: '', holder: '', copyText: '' } as ParsedAccount);
+    const path = bank.send ? bank.send(acc) : '';
+    const url = buildBankUrl(bank, path);
+    if (!url) {
       flash('계좌번호가 복사되었어요. 쓰시는 은행 앱에서 붙여넣어 송금해 주세요.');
       return;
     }
     flash('계좌번호가 복사되었어요. 송금 화면에서 붙여넣어 주세요.');
     try {
-      await Linking.openURL(scheme);
+      await Linking.openURL(url);
     } catch {
       // 앱이 없거나 열 수 없으면 복사만으로 안내합니다.
     }
