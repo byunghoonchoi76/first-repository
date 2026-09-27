@@ -15,6 +15,7 @@ import { dataMode, repository, useAsyncData } from '@/lib/data';
 import type { PrayerLogEntry, PrayerRequest } from '@/lib/data/types';
 import { durationLabel, stackedDuration } from '@/lib/format';
 import { toDateKey } from '@/lib/format';
+import { usePrayerBgm } from '@/lib/prayer-bgm';
 import { GOAL_CONFIG, useWeeklyGoal } from '@/lib/prayer-goal';
 import { recentDays, useAllPrayerTime, usePrayerTime } from '@/lib/prayer-log';
 
@@ -411,6 +412,7 @@ function TopicsCard() {
 function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   const theme = useTheme();
   const { user } = useAuth();
+  const bgm = usePrayerBgm();
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -425,6 +427,15 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   const begin = () => {
     topics.reload(); // 시작할 때 최신 기도제목을 불러옵니다.
     setStartedAt(Date.now());
+    if (bgm.enabled) bgm.start(); // 배경음이 켜져 있으면 함께 재생합니다.
+  };
+
+  // 전체 화면에서 배경음 켜기/끄기 (즉시 반영).
+  const toggleBgm = () => {
+    const next = !bgm.enabled;
+    bgm.setEnabled(next);
+    if (next) bgm.start();
+    else bgm.stop();
   };
 
   useEffect(() => {
@@ -440,6 +451,7 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
     const secs = Math.round(elapsed / 1000);
     setStartedAt(null);
     setElapsed(0);
+    bgm.stop(); // 기도를 마치면 배경음을 멈춥니다.
     if (secs > 0) {
       await active.addMinutes(secs);
       setResultSeconds(secs); // 마치면 결과 모달 표시
@@ -487,6 +499,9 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
         todaySeconds={active.todayMinutes}
         topics={topics.data ?? []}
         onStop={() => void stop()}
+        bgmAvailable={bgm.available}
+        bgmEnabled={bgm.enabled}
+        onToggleBgm={toggleBgm}
       />
 
       <PrayerResultModal
@@ -506,12 +521,18 @@ function PrayerFocusModal({
   todaySeconds,
   topics,
   onStop,
+  bgmAvailable,
+  bgmEnabled,
+  onToggleBgm,
 }: {
   visible: boolean;
   display: string;
   todaySeconds: number;
   topics: PrayerRequest[];
   onStop: () => void;
+  bgmAvailable: boolean;
+  bgmEnabled: boolean;
+  onToggleBgm: () => void;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -529,6 +550,22 @@ function PrayerFocusModal({
             paddingBottom: insets.bottom + Spacing.three,
           },
         ]}>
+        {bgmAvailable ? (
+          <Pressable
+            onPress={onToggleBgm}
+            hitSlop={8}
+            accessibilityLabel={bgmEnabled ? '배경음 끄기' : '배경음 켜기'}
+            style={[styles.bgmToggle, { top: insets.top + Spacing.three, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+            <Ionicons
+              name={bgmEnabled ? 'musical-notes' : 'musical-notes-outline'}
+              size={16}
+              color={bgmEnabled ? theme.primary : theme.textMuted}
+            />
+            <ThemedText type="caption" themeColor={bgmEnabled ? 'primary' : 'textMuted'}>
+              배경음 {bgmEnabled ? '켜짐' : '꺼짐'}
+            </ThemedText>
+          </Pressable>
+        ) : null}
         <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
           기도 중
         </ThemedText>
@@ -779,6 +816,18 @@ const styles = StyleSheet.create({
 
   // 전체 화면 기도 모드
   focusRoot: { flex: 1, paddingHorizontal: Spacing.four, gap: Spacing.two },
+  bgmToggle: {
+    position: 'absolute',
+    right: Spacing.four,
+    zIndex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   focusTimer: {
     fontSize: 72,
     lineHeight: 84,
