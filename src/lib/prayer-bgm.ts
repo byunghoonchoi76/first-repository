@@ -3,14 +3,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { ChurchInfo } from '@/constants/church';
+import { parseYouTubeUrl } from '@/lib/youtube';
 
 /**
  * 기도 타이머 배경음(BGM).
  *
- * - 기본: 앱이 직접 합성하는 잔잔한 패드음(저작권/파일 불필요, 오프라인 동작).
- * - 교회 음원이 있으면 ChurchInfo.prayerBgmUrl 에 mp3 링크를 넣으면 그 음원을 대신 재생합니다.
- * - 웹(PWA) 전용입니다. 네이티브에서는 조용히 아무 동작도 하지 않습니다.
+ * ChurchInfo.prayerBgmUrl 값에 따라 재생 방식이 정해집니다.
+ * - 유튜브 링크(youtu.be/…, youtube.com/watch?…): 공식 IFrame 플레이어를 화면 밖에 띄워 소리만 재생(반복).
+ * - mp3 등 오디오 파일 링크: <audio> 로 직접 재생.
+ * - 비어 있으면: 앱이 직접 합성하는 잔잔한 패드음(저작권/파일 불필요, 오프라인 동작).
  *
+ * 웹(PWA) 전용입니다. 네이티브에서는 조용히 아무 동작도 하지 않습니다.
  * 재생은 반드시 사용자 동작(기도 시작·켜기 버튼) 안에서 호출해야 브라우저 자동재생 정책을 통과합니다.
  */
 
@@ -42,6 +45,129 @@ function createTrackEngine(url: string): BgmEngine {
         }
       } catch {
         /* noop */
+      }
+    },
+  };
+}
+
+// ── 유튜브 음원 재생(공식 IFrame 플레이어) ────────────────────────
+type YTGlobal = {
+  YT?: { Player: new (el: Element | string, opts: unknown) => unknown };
+  onYouTubeIframeAPIReady?: () => void;
+  __prayerYtApi?: Promise<{ Player: new (el: Element | string, opts: unknown) => unknown }>;
+};
+
+function loadYouTubeApi(): Promise<{ Player: new (el: Element | string, opts: unknown) => unknown }> {
+  const w = globalThis as unknown as YTGlobal;
+  if (w.YT?.Player) return Promise.resolve(w.YT);
+  if (!w.__prayerYtApi) {
+    w.__prayerYtApi = new Promise((resolve) => {
+      const prev = w.onYouTubeIframeAPIReady;
+      w.onYouTubeIframeAPIReady = () => {
+        prev?.();
+        if (w.YT?.Player) resolve(w.YT);
+      };
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+      // 콜백이 안 오는 경우를 대비한 폴링.
+      const timer = setInterval(() => {
+        if (w.YT?.Player) {
+          clearInterval(timer);
+          resolve(w.YT);
+        }
+      }, 300);
+    });
+  }
+  return w.__prayerYtApi;
+}
+
+function createYouTubeEngine(videoId: string): BgmEngine {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let player: any = null;
+  let ready = false;
+  let wantPlay = false;
+
+  const ensure = () => {
+    if (player) return;
+    let host = document.getElementById('prayer-bgm-yt');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'prayer-bgm-yt';
+      // 화면 밖에 두되 크기는 0 이 아니게 해 재생이 막히지 않도록 합니다.
+      host.style.cssText = 'position:fixed;left:-9999px;bottom:0;width:200px;height:120px;pointer-events:none;opacity:0;';
+      document.body.appendChild(host);
+    }
+    void loadYouTubeApi().then((YT) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      player = new (YT as any).Player(host, {
+        videoId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          loop: 1,
+          playlist: videoId, // 단일 영상 반복에 필요
+          playsinline: 1,
+          modestbranding: 1,
+          rel: 0,
+        },
+        events: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onReady: (e: any) => {
+            ready = true;
+            try {
+              e.target.setVolume(35);
+            } catch {
+              /* noop */
+            }
+            if (wantPlay) {
+              try {
+                e.target.playVideo();
+              } catch {
+                /* noop */
+              }
+            }
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onStateChange: (e: any) => {
+            // 0 = ENDED: 끝나면 처음부터 다시 재생(반복 보강).
+            if (e.data === 0 && wantPlay) {
+              try {
+                e.target.seekTo(0);
+                e.target.playVideo();
+              } catch {
+                /* noop */
+              }
+            }
+          },
+        },
+      });
+    });
+  };
+
+  return {
+    start() {
+      wantPlay = true;
+      ensure();
+      if (ready && player) {
+        try {
+          player.setVolume(35);
+          player.playVideo();
+        } catch {
+          /* noop */
+        }
+      }
+    },
+    stop() {
+      wantPlay = false;
+      if (player) {
+        try {
+          player.pauseVideo();
+        } catch {
+          /* noop */
+        }
       }
     },
   };
@@ -147,7 +273,10 @@ let engine: BgmEngine | null = null;
 function getEngine(): BgmEngine | null {
   if (Platform.OS !== 'web') return null;
   if (!engine) {
-    engine = ChurchInfo.prayerBgmUrl ? createTrackEngine(ChurchInfo.prayerBgmUrl) : createAmbientEngine();
+    const yt = parseYouTubeUrl(ChurchInfo.prayerBgmUrl);
+    if (yt) engine = createYouTubeEngine(yt.videoId);
+    else if (ChurchInfo.prayerBgmUrl) engine = createTrackEngine(ChurchInfo.prayerBgmUrl);
+    else engine = createAmbientEngine();
   }
   return engine;
 }
