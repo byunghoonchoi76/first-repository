@@ -165,6 +165,7 @@ function createYouTubeEngine(videoId: string): BgmEngine {
       if (player) {
         try {
           player.pauseVideo();
+          player.seekTo(0, true); // 다음 재생은 처음부터 시작하도록 되감습니다.
         } catch {
           /* noop */
         }
