@@ -24,10 +24,14 @@ type BgmEngine = { start: () => void; stop: () => void };
 // ── 오디오 파일(mp3 등) 재생 ──────────────────────────────────────
 const AUDIO_INDEX_KEY = 'church-app/prayer-bgm-audio-idx';
 
+// 시작 지점 후보(곡 길이의 비율) — 매번 다른 지점에서 시작해 같은 도입부 반복을 피합니다.
+const START_FRACTIONS = [1 / 3, 1 / 2, 2 / 3];
+
 /**
  * mp3 등 오디오 파일을 재생합니다. (광고 없음)
  * - 여러 곡이면: 한 곡이 끝나면 다음 곡으로 이어지고 목록 끝에서 처음으로 반복.
  * - 세션마다: 시작 곡을 번갈아(다음 인덱스) 지정해, 짧은 기도라도 매번 다른 곡으로 시작합니다.
+ * - 시작 지점도 1/3·1/2·2/3 중 무작위로 골라, 늘 같은 도입부로 시작하지 않게 합니다.
  */
 function createAudioPlaylistEngine(urls: string[]): BgmEngine {
   let audio: HTMLAudioElement | null = null;
@@ -45,7 +49,7 @@ function createAudioPlaylistEngine(urls: string[]): BgmEngine {
     if (audio) return;
     audio = new (globalThis as { Audio: typeof Audio }).Audio();
     audio.volume = 0.4;
-    // 한 곡이 끝나면 다음 곡으로 이어서 재생(목록 반복).
+    // 한 곡이 끝나면 다음 곡으로 이어서 재생(목록 반복). 이어지는 곡은 처음부터 재생합니다.
     audio.addEventListener('ended', () => {
       if (!audio) return;
       idx = (idx + 1) % urls.length;
@@ -54,16 +58,38 @@ function createAudioPlaylistEngine(urls: string[]): BgmEngine {
     });
   };
 
+  // 지정한 곡을, 곡 길이의 fraction 지점부터 재생합니다.
+  const playFrom = (i: number, fraction: number) => {
+    const a = audio;
+    if (!a) return;
+    const seekAndPlay = () => {
+      try {
+        if (Number.isFinite(a.duration) && a.duration > 0) a.currentTime = a.duration * fraction;
+      } catch {
+        /* noop */
+      }
+      if (wantPlay) void a.play().catch(() => {});
+    };
+    if (a.src !== urls[i]) {
+      a.src = urls[i];
+      a.addEventListener('loadedmetadata', seekAndPlay, { once: true });
+    } else if (a.readyState >= 1) {
+      // 이미 같은 곡의 길이를 알고 있으면 바로 이동해 재생합니다.
+      seekAndPlay();
+    } else {
+      a.addEventListener('loadedmetadata', seekAndPlay, { once: true });
+    }
+  };
+
   return {
     start() {
       try {
         wantPlay = true;
         ensure();
         if (!audio) return;
-        // 시작 곡을 처음부터 재생합니다.
-        audio.src = urls[idx % urls.length];
-        audio.currentTime = 0;
-        void audio.play().catch(() => {});
+        // 세션 시작 곡을, 1/3·1/2·2/3 중 무작위 지점부터 재생합니다.
+        const fraction = START_FRACTIONS[Math.floor(Math.random() * START_FRACTIONS.length)];
+        playFrom(idx % urls.length, fraction);
       } catch {
         /* 재생 실패는 조용히 무시합니다. */
       }
