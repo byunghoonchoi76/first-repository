@@ -22,9 +22,11 @@ export const ChurchInfo = {
   // 아래는 Supabase Storage 공개 버킷(prayer-bgm)의 mp3 주소입니다.
   // create-prayer-bgm-bucket.sql 실행 후 prayer-1.mp3 · prayer-2.mp3 를 업로드하면 재생됩니다.
   // 비워 두면(빈 배열) 앱이 합성하는 잔잔한 배경음이 재생됩니다.
+  // 주의: 스토리지는 대소문자를 구분합니다. 실제 업로드된 파일명(prayer-1.MP3 …)과 정확히 같아야 합니다.
   prayerBgmUrls: [
-    'https://jwfbmsmasgmbstjizfab.supabase.co/storage/v1/object/public/prayer-bgm/prayer-1.mp3',
-    'https://jwfbmsmasgmbstjizfab.supabase.co/storage/v1/object/public/prayer-bgm/prayer-2.mp3',
+    'https://jwfbmsmasgmbstjizfab.supabase.co/storage/v1/object/public/prayer-bgm/prayer-1.MP3',
+    'https://jwfbmsmasgmbstjizfab.supabase.co/storage/v1/object/public/prayer-bgm/prayer-2.MP3',
+    'https://jwfbmsmasgmbstjizfab.supabase.co/storage/v1/object/public/prayer-bgm/prayer-3.MP3',
   ],
 } as const;
 
