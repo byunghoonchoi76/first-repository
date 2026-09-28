@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -11,6 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { repository } from '@/lib/data';
 
 const GENDERS = ['형제', '자매'];
+const HERO_IMAGE = require('@/assets/images/new-family.jpg');
 
 /** 새가족 등록 — 방문하신 분이 직접 정보를 남깁니다. 로그인 없이도 가능합니다. */
 export default function NewFamilyScreen() {
@@ -72,6 +74,7 @@ export default function NewFamilyScreen() {
 
   return (
     <Screen>
+      <Image source={HERO_IMAGE} style={styles.hero} contentFit="cover" transition={200} />
       <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
         구리 목양교회에 오신 것을 환영합니다. 아래 정보를 남겨 주시면 담당자가 반갑게 연락드리겠습니다.
       </ThemedText>
@@ -148,6 +151,7 @@ export default function NewFamilyScreen() {
 }
 
 const styles = StyleSheet.create({
+  hero: { width: '100%', height: 160, borderRadius: Radius.large, marginBottom: Spacing.three },
   intro: { lineHeight: 20 },
   form: { gap: Spacing.three },
   field: { gap: Spacing.one },
