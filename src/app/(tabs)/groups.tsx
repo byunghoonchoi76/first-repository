@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, EmptyState, ErrorState, LoadingState } from '@/components/ui';
@@ -57,6 +58,10 @@ export default function GroupsScreen() {
 
   return (
     <Screen onRefresh={groups.reload}>
+      <HeroBanner imageSource={require('@/assets/images/groups.jpg')} height={170}>
+        <ThemedText style={styles.heroTitle}>소그룹</ThemedText>
+      </HeroBanner>
+
       <ThemedText type="small" themeColor="textSecondary">
         {isAdmin ? '모든 소통방이에요. 선택하면 대화방으로 들어갑니다.' : '내가 초대된 소통방이에요. 선택하면 대화방으로 들어갑니다.'}
       </ThemedText>
@@ -117,6 +122,15 @@ export default function GroupsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  heroTitle: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   stack: { gap: Spacing.two },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   avatar: { width: 44, height: 44, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
