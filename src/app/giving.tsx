@@ -115,6 +115,8 @@ export default function GivingScreen() {
     .map(parseAccount);
   const account = accounts[accIdx] ?? accounts[0] ?? null;
   const type = OFFERING_TYPES[typeIdx];
+  // 토스는 유일하게 '송금 화면 + 계좌 자동입력'으로 바로 들어가므로 눈에 띄게 따로 둡니다.
+  const toss = BANK_APPS.find((b) => b.key === 'toss');
 
   // 입금자명 순서: 헌금종류 앞글자 → 이름 → 생년 (예: 십최병훈850312)
   const depositor = name.trim() ? `${type.abbr}${name.trim()}${birth.trim()}` : '';
@@ -299,13 +301,36 @@ export default function GivingScreen() {
         </View>
       </Card>
 
-      {/* ④ 은행 앱 선택 */}
-      <StepHeader n={4} title="사용하시는 은행 앱을 선택하세요" theme={theme} />
+      {/* ④ 송금하기 */}
+      <StepHeader n={4} title="송금하기" theme={theme} />
+
+      {/* 토스: 계좌 자동입력으로 송금 화면에 바로 진입 */}
+      {toss ? (
+        <Pressable
+          onPress={() => void openBankApp(toss)}
+          style={({ pressed }) => [styles.tossBtn, { opacity: pressed ? 0.92 : 1 }]}>
+          <View style={[styles.bankLogo, { backgroundColor: toss.color }]}>
+            <ThemedText type="caption" style={{ color: toss.text, fontWeight: '800' }}>
+              {toss.short}
+            </ThemedText>
+          </View>
+          <View style={styles.flex}>
+            <ThemedText type="smallBold" style={{ color: '#fff' }}>
+              토스로 바로 송금
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: 'rgba(255,255,255,0.92)' }}>
+              은행·계좌가 자동 입력된 송금 화면으로 바로 들어가요
+            </ThemedText>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
+        </Pressable>
+      ) : null}
+
       <ThemedText type="small" themeColor="textSecondary" style={styles.desc}>
-        계좌번호가 자동으로 복사된 뒤 앱이 열립니다. 송금 화면에서 붙여넣기 해주세요.
+        또는 사용하시는 은행 앱을 선택하세요. 계좌번호가 자동으로 복사되어 앱이 열리며, 송금 화면에서 붙여넣기 하시면 됩니다.
       </ThemedText>
       <View style={styles.bankGrid}>
-        {BANK_APPS.map((b) => (
+        {BANK_APPS.filter((b) => b.key !== 'toss').map((b) => (
           <Pressable
             key={b.key}
             onPress={() => void openBankApp(b)}
@@ -446,6 +471,15 @@ const styles = StyleSheet.create({
   },
   smallBtn: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: Radius.pill },
 
+  tossBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    borderRadius: Radius.medium,
+    backgroundColor: '#0064FF',
+    marginTop: Spacing.two,
+  },
   bankGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.two },
   bankBtn: {
     width: '48%',
