@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -156,8 +157,14 @@ export default function GivingScreen() {
 
   return (
     <Screen>
-      <ThemedText type="title">온라인 헌금</ThemedText>
-      <Image source={HERO_IMAGE} style={styles.hero} contentFit="cover" transition={200} />
+      <View style={styles.hero}>
+        <Image source={HERO_IMAGE} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+        <LinearGradient
+          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']}
+          style={StyleSheet.absoluteFill}
+        />
+        <ThemedText style={styles.heroTitle}>온라인 헌금</ThemedText>
+      </View>
       <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
         정성으로 드리는 헌금에 감사드립니다.
       </ThemedText>
@@ -375,8 +382,24 @@ function StepHeader({ n, title, theme }: { n: number; title: string; theme: Retu
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  hero: { width: '100%', height: 150, borderRadius: Radius.large, marginTop: Spacing.two },
-  intro: { marginBottom: Spacing.two },
+  hero: {
+    width: '100%',
+    height: 170,
+    borderRadius: Radius.large,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  heroTitle: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    padding: Spacing.four,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  intro: { marginTop: Spacing.two, marginBottom: Spacing.two },
   bold: { fontWeight: '700' },
   mt: { marginTop: Spacing.two },
 
