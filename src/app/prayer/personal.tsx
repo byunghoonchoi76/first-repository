@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '@/components/ui';
@@ -47,6 +48,10 @@ export default function PersonalPrayerScreen() {
 
   return (
     <Screen onRefresh={reloadMy}>
+      <HeroBanner imageSource={require('@/assets/images/prayer-personal.jpg')} height={170}>
+        <ThemedText style={styles.heroTitle}>개인 기도제목</ThemedText>
+      </HeroBanner>
+
       {needsSignIn ? (
         <Card>
           <EmptyState icon="lock-closed-outline" message="로그인하면 나만의 기도제목을 적을 수 있어요." />
@@ -145,6 +150,15 @@ function MyPrayerCard({
 }
 
 const styles = StyleSheet.create({
+  heroTitle: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   stack: { gap: Spacing.two },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },

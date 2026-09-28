@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, EmptyState, ErrorState, LoadingState } from '@/components/ui';
@@ -21,6 +22,10 @@ export default function CommunalPrayerScreen() {
   return (
     <Screen onRefresh={communal.reload}>
       <Stack.Screen options={{ title: '공동 기도제목' }} />
+
+      <HeroBanner imageSource={require('@/assets/images/prayer-communal.jpg')} height={170}>
+        <ThemedText style={styles.heroTitle}>공동 기도제목</ThemedText>
+      </HeroBanner>
 
       <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
         온 성도가 함께 마음을 모아 기도하는 제목입니다.
@@ -78,6 +83,15 @@ function CommunalCard({ item, isAdmin, onEdit }: { item: CommunalPrayer; isAdmin
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  heroTitle: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   intro: { marginBottom: Spacing.one },
   stack: { gap: Spacing.two },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
