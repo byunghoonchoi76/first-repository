@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '@/components/ui';
@@ -82,6 +83,10 @@ export default function PrayerRequestsScreen() {
 
   return (
     <Screen onRefresh={reloadShared}>
+      <HeroBanner imageSource={require('@/assets/images/prayer-requests.jpg')} height={170}>
+        <ThemedText style={styles.heroTitle}>중보기도제목</ThemedText>
+      </HeroBanner>
+
       {needsSignIn ? (
         <Card>
           <EmptyState icon="lock-closed-outline" message="중보기도제목은 로그인한 성도만 볼 수 있습니다." />
@@ -214,6 +219,15 @@ function StatusCounter({
 }
 
 const styles = StyleSheet.create({
+  heroTitle: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   stack: { gap: Spacing.two },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   noteCard: { gap: Spacing.two },
