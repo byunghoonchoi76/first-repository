@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -11,6 +12,8 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { parseAccount, type ParsedAccount } from '@/lib/account';
 import { repository, useAsyncData } from '@/lib/data';
+
+const HERO_IMAGE = require('@/assets/images/giving.jpg');
 
 /** 헌금 종류 — 종류마다 입금자란에 붙일 약자와 짧은 안내. (교회 상황에 맞게 편집하세요) */
 const OFFERING_TYPES: { key: string; abbr: string; desc: string }[] = [
@@ -154,6 +157,7 @@ export default function GivingScreen() {
   return (
     <Screen>
       <ThemedText type="title">온라인 헌금</ThemedText>
+      <Image source={HERO_IMAGE} style={styles.hero} contentFit="cover" transition={200} />
       <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
         정성으로 드리는 헌금에 감사드립니다.
       </ThemedText>
@@ -371,6 +375,7 @@ function StepHeader({ n, title, theme }: { n: number; title: string; theme: Retu
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  hero: { width: '100%', height: 150, borderRadius: Radius.large, marginTop: Spacing.two },
   intro: { marginBottom: Spacing.two },
   bold: { fontWeight: '700' },
   mt: { marginTop: Spacing.two },
