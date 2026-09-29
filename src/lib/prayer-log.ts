@@ -73,6 +73,51 @@ export function recentDays(entries: PrayerLogEntry[], days = 7): PrayerLogEntry[
 }
 
 /**
+ * 오늘(로컬) 날짜 키(YYYY-MM-DD)를 '반응형'으로 제공합니다.
+ * 화면을 열어 둔 채 자정이 지나거나, 앱이 백그라운드에서 다시 활성화되면
+ * 값이 갱신되어 '오늘 기도시간' 등이 새 날짜 기준으로 리셋됩니다.
+ */
+export function useToday(): string {
+  const [today, setToday] = useState(() => toDateKey());
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const refresh = () => setToday((prev) => {
+      const now = toDateKey();
+      return prev === now ? prev : now;
+    });
+
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      const d = new Date();
+      // 다음 로컬 자정 + 5초 뒤에 날짜를 갱신하고 다시 예약합니다.
+      const nextMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 5).getTime();
+      timer = setTimeout(() => {
+        refresh();
+        schedule();
+      }, Math.max(1000, nextMidnight - d.getTime()));
+    };
+    schedule();
+
+    // 앱이 다시 보이거나 포커스를 받으면 즉시 날짜를 확인합니다.
+    const onWake = () => {
+      if (typeof document === 'undefined' || !document.hidden) refresh();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onWake);
+    if (typeof window !== 'undefined') window.addEventListener('focus', onWake);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onWake);
+      if (typeof window !== 'undefined') window.removeEventListener('focus', onWake);
+    };
+  }, []);
+
+  return today;
+}
+
+/**
  * 계정 인식 기도시간 훅.
  * - 로그인한 성도(Supabase): 서버에 계정별로 저장되어 기기를 바꿔도 유지됩니다.
  * - 비로그인/샘플 모드: 지금처럼 이 기기에만 저장됩니다.
@@ -144,7 +189,9 @@ export function usePrayerTime(kind: PrayerKind) {
     }
   }, [server, kind, entries, storageKey]);
 
-  const today = entries.find((e) => e.date === toDateKey());
+  // 반응형 오늘 날짜 — 자정이 지나면 갱신되어 '오늘 기도시간'이 리셋됩니다.
+  const todayKey = useToday();
+  const today = entries.find((e) => e.date === todayKey);
   const totalMinutes = entries.reduce((sum, e) => sum + e.minutes, 0);
 
   return {
