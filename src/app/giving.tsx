@@ -165,11 +165,11 @@ export default function GivingScreen() {
           colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']}
           style={StyleSheet.absoluteFill}
         />
-        <ThemedText style={styles.heroTitle}>온라인 헌금</ThemedText>
+        <View style={styles.heroText}>
+          <ThemedText style={styles.heroTitle}>온라인 헌금</ThemedText>
+          <ThemedText style={styles.heroSubtitle}>정성으로 드리는 헌금에 감사드립니다.</ThemedText>
+        </View>
       </View>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
-        정성으로 드리는 헌금에 감사드립니다.
-      </ThemedText>
 
       {/* ① 헌금 종류 */}
       <StepHeader n={1} title="헌금 종류를 선택하세요" theme={theme} />
@@ -414,17 +414,23 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'flex-end',
   },
+  heroText: { padding: Spacing.four, gap: 4 },
   heroTitle: {
     color: '#fff',
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: -0.4,
-    padding: Spacing.four,
     textShadowColor: 'rgba(0,0,0,0.35)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  intro: { marginTop: Spacing.two, marginBottom: Spacing.two },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   bold: { fontWeight: '700' },
   mt: { marginTop: Spacing.two },
 
