@@ -1,7 +1,12 @@
 /* 목양교회 앱 서비스워커 — 자동 갱신 + 웹 푸시(기도 알림) 처리 */
 
-// 캐시 이름. 전략을 바꿀 때 뒤 숫자를 올리면 이전 캐시가 정리됩니다.
-const CACHE = 'mokyang-runtime-v1';
+// 빌드마다 아래 값이 바뀝니다(finish-web-build.js 가 배포 시 치환).
+// 이 파일의 내용이 배포마다 달라져야 브라우저가 새 서비스워커를 설치하고,
+// 열려 있던 앱이 자동으로 한 번 새로고침되어 최신 코드를 받습니다.
+const BUILD_ID = '__BUILD_ID__';
+
+// 캐시 이름에 빌드 버전을 포함해, 배포마다 이전 캐시(옛 코드)를 정리합니다.
+const CACHE = `mokyang-runtime-${BUILD_ID}`;
 
 self.addEventListener('install', () => {
   // 새 서비스워커를 곧바로 대기 없이 활성화합니다.

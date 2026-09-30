@@ -58,4 +58,16 @@ fs.copyFileSync(indexPath, path.join(outDir, '404.html'));
 // _expo 처럼 밑줄로 시작하는 폴더가 무시되지 않도록 (GitHub Pages)
 fs.writeFileSync(path.join(outDir, '.nojekyll'), '');
 
-console.log(`[web] ${outDir}: PWA 태그 삽입 · 404.html · .nojekyll 생성 완료`);
+// 서비스워커에 이번 빌드의 고유 버전을 심습니다.
+// 이렇게 해야 sw.js 내용이 배포마다 달라져 브라우저가 새 서비스워커를 설치하고,
+// 열려 있던 앱이 자동으로 한 번 새로고침되어 최신 코드를 받습니다.
+const swPath = path.join(outDir, 'sw.js');
+if (fs.existsSync(swPath)) {
+  const buildId = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14); // 예: 20260930071530
+  let sw = fs.readFileSync(swPath, 'utf8');
+  sw = sw.replace(/__BUILD_ID__/g, buildId);
+  fs.writeFileSync(swPath, sw);
+  console.log(`[web] ${outDir}: PWA 태그 삽입 · 404.html · .nojekyll · sw.js(build ${buildId}) 생성 완료`);
+} else {
+  console.log(`[web] ${outDir}: PWA 태그 삽입 · 404.html · .nojekyll 생성 완료 (sw.js 없음)`);
+}
