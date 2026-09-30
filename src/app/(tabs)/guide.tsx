@@ -26,7 +26,7 @@ export default function GuideScreen() {
       <HeroBanner imageSource={CHURCH_IMAGE} height={200}>
         <ThemedText style={styles.heroTitle}>{church?.name ?? '교회 안내'}</ThemedText>
         {church?.slogan ? (
-          <ThemedText style={styles.heroSlogan}>
+          <ThemedText style={styles.heroSlogan} numberOfLines={1} adjustsFontSizeToFit>
             {church.slogan}
             {church.sloganVerse ? ` (${church.sloganVerse})` : ''}
           </ThemedText>
@@ -112,7 +112,8 @@ const styles = StyleSheet.create({
   },
   heroSlogan: {
     color: 'rgba(255,255,255,0.92)',
-    fontSize: 14,
+    fontSize: 13,
+    letterSpacing: -0.3,
     marginTop: 2,
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 1 },
