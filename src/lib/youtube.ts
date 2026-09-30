@@ -98,8 +98,9 @@ export const SERMON_CATEGORY_ORDER: SermonCategory[] = [
 export function classifyChurchVideo(title: string, isShorts = false): SermonCategory {
   const t = (title ?? '').replace(/\s/g, '');
   if (isShorts || /#?shorts|쇼츠/i.test(title ?? '')) return '쇼츠';
-  // 제목에 '실시간'이 들어간 영상(실시간 중계본)은 별도 카테고리로 분리합니다.
-  if (/실시간/.test(t)) return '실시간';
+  // 구체적인 예배 종류를 먼저 판별합니다.
+  // (실시간 중계본이라 제목에 '실시간'이 함께 있어도, 수요·새벽·주일 등 실제 예배로 봅니다.
+  //  그래야 홈 '이번 주 말씀'에서 실시간으로 올라온 수요예배 등이 정상적으로 노출됩니다.)
   if (/새벽/.test(t)) return '새벽예배';
   if (/수요/.test(t)) return '수요예배';
   if (/금요/.test(t)) return '금요집회';
@@ -110,6 +111,8 @@ export function classifyChurchVideo(title: string, isShorts = false): SermonCate
   // 4부예배·청년 관련은 청년예배로 (주일 판별보다 먼저).
   if (/(4부|사부|청년|only ?one|온리원)/i.test(t)) return '청년예배';
   if (/주일|주보|1부|2부|3부|오전예배/.test(t)) return '주일예배';
+  // 위 어떤 예배명도 없는 '순수 실시간 중계'만 별도 '실시간'으로 분리합니다.
+  if (/실시간/.test(t)) return '실시간';
   return '청년예배';
 }
 
