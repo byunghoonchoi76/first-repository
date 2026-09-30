@@ -3,7 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -504,6 +504,7 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
       <PrayerFocusModal
         visible={startedAt !== null}
         display={display}
+        elapsedSeconds={seconds}
         todaySeconds={active.todayMinutes}
         topics={topics.data ?? []}
         onStop={() => void stop()}
@@ -522,10 +523,69 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   );
 }
 
+/**
+ * 아날로그 기도 다이얼 — 파란 원판 위에 60개의 흰색 눈금이 시계처럼 둘려 있고,
+ * 초가 지날수록 눈금이 노란색으로 채워지며 초침이 함께 돕니다. 가운데에는
+ * 기존 디지털 시간(MM:SS)을 그대로 크게 표시합니다.
+ */
+const DIAL_GOLD = '#F7CE3C';
+
+function PrayerDial({ seconds, display }: { seconds: number; display: string }) {
+  const theme = useTheme();
+  const size = 268;
+  const c = size / 2;
+  const rDisc = c - 6; // 파란 원판 반지름
+  const rOuter = c - 16; // 눈금 바깥쪽
+  const rInner = rOuter - 15; // 짧은 눈금 안쪽
+  const rInnerLong = rOuter - 24; // 긴 눈금(5칸마다) 안쪽
+
+  const secOfMin = seconds % 60; // 이번 분 안에서의 초 (0~59)
+
+  const ticks = [];
+  for (let i = 0; i < 60; i += 1) {
+    const a = ((-90 + i * 6) * Math.PI) / 180; // 맨 위(12시)에서 시작
+    const long = i % 5 === 0;
+    const ri = long ? rInnerLong : rInner;
+    const passed = i <= secOfMin; // 초침이 지나온 눈금은 노랗게 채웁니다
+    ticks.push(
+      <Line
+        key={i}
+        x1={c + ri * Math.cos(a)}
+        y1={c + ri * Math.sin(a)}
+        x2={c + rOuter * Math.cos(a)}
+        y2={c + rOuter * Math.sin(a)}
+        stroke={passed ? DIAL_GOLD : 'rgba(255,255,255,0.4)'}
+        strokeWidth={long ? 3.5 : 2}
+        strokeLinecap="round"
+      />,
+    );
+  }
+
+  // 초침 — 가운데에서 현재 초 위치까지
+  const ha = ((-90 + secOfMin * 6) * Math.PI) / 180;
+  const handLen = rInnerLong - 4;
+
+  return (
+    <View style={styles.dialWrap}>
+      <Svg width={size} height={size}>
+        <Circle cx={c} cy={c} r={rDisc} fill={theme.primary} />
+        {ticks}
+        <Line x1={c} y1={c} x2={c + handLen * Math.cos(ha)} y2={c + handLen * Math.sin(ha)} stroke={DIAL_GOLD} strokeWidth={3} strokeLinecap="round" />
+        <Circle cx={c} cy={c} r={4.5} fill={DIAL_GOLD} />
+      </Svg>
+      <View style={[StyleSheet.absoluteFill, styles.dialCenter]} pointerEvents="none">
+        <ThemedText style={styles.dialTime}>{display}</ThemedText>
+        <ThemedText style={styles.dialLabel}>기도</ThemedText>
+      </View>
+    </View>
+  );
+}
+
 /** 전체 화면 기도 모드 — 큰 타이머 + 나의 기도제목을 보며 집중해서 기도합니다. */
 function PrayerFocusModal({
   visible,
   display,
+  elapsedSeconds,
   todaySeconds,
   topics,
   onStop,
@@ -535,6 +595,7 @@ function PrayerFocusModal({
 }: {
   visible: boolean;
   display: string;
+  elapsedSeconds: number;
   todaySeconds: number;
   topics: PrayerRequest[];
   onStop: () => void;
@@ -574,10 +635,7 @@ function PrayerFocusModal({
             </ThemedText>
           </Pressable>
         ) : null}
-        <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-          기도 중
-        </ThemedText>
-        <ThemedText style={[styles.focusTimer, { color: theme.text }]}>{display}</ThemedText>
+        <PrayerDial seconds={elapsedSeconds} display={display} />
         {todaySeconds > 0 ? (
           <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
             오늘 누적 {durationLabel(todaySeconds)}
@@ -836,14 +894,22 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  focusTimer: {
-    fontSize: 72,
-    lineHeight: 84,
+  dialWrap: { alignSelf: 'center', marginTop: Spacing.two },
+  dialCenter: { alignItems: 'center', justifyContent: 'center' },
+  dialTime: {
+    color: '#fff',
+    fontSize: 46,
+    lineHeight: 54,
     fontWeight: '800',
     letterSpacing: 1,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
-    marginTop: Spacing.one,
+  },
+  dialLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 15,
+    letterSpacing: 4,
+    marginTop: 2,
   },
   focusTopicsHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginTop: Spacing.two },
   focusScroll: { flex: 1 },
