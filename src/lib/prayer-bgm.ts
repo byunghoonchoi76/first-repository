@@ -24,14 +24,16 @@ type BgmEngine = { start: () => void; stop: () => void };
 // ── 오디오 파일(mp3 등) 재생 ──────────────────────────────────────
 const AUDIO_INDEX_KEY = 'church-app/prayer-bgm-audio-idx';
 
-// 시작 지점 후보(곡 길이의 비율) — 매번 다른 지점에서 시작해 같은 도입부 반복을 피합니다.
-const START_FRACTIONS = [1 / 3, 1 / 2, 2 / 3];
+/** 곡 안에서 무작위 시작 지점(비율)을 고릅니다 — 앞 5%~뒤 15%는 남겨 둬 도입/마무리를 피합니다. */
+function randomStartFraction(): number {
+  return 0.05 + Math.random() * 0.8; // 5% ~ 85%
+}
 
 /**
  * mp3 등 오디오 파일을 재생합니다. (광고 없음)
  * - 여러 곡이면: 한 곡이 끝나면 다음 곡으로 이어지고 목록 끝에서 처음으로 반복.
- * - 세션마다: 시작 곡을 번갈아(다음 인덱스) 지정해, 짧은 기도라도 매번 다른 곡으로 시작합니다.
- * - 시작 지점도 1/3·1/2·2/3 중 무작위로 골라, 늘 같은 도입부로 시작하지 않게 합니다.
+ * - 세션마다: 시작 곡을 무작위로(직전 곡과 다르게) 골라 매번 다른 곡으로 시작합니다.
+ * - 시작 지점도 곡 길이의 5~85% 중 무작위로 골라, 늘 같은 구간에서 시작하지 않게 합니다.
  */
 function createAudioPlaylistEngine(urls: string[]): BgmEngine {
   let audio: HTMLAudioElement | null = null;
@@ -87,9 +89,13 @@ function createAudioPlaylistEngine(urls: string[]): BgmEngine {
         wantPlay = true;
         ensure();
         if (!audio) return;
-        // 세션 시작 곡을, 1/3·1/2·2/3 중 무작위 지점부터 재생합니다.
-        const fraction = START_FRACTIONS[Math.floor(Math.random() * START_FRACTIONS.length)];
-        playFrom(idx % urls.length, fraction);
+        // 시작 곡을 무작위로 고르고(곡이 여러 개면 직전 곡과 다르게), 곡 안의 시작 지점도 무작위로 정합니다.
+        if (urls.length > 1) {
+          let next = Math.floor(Math.random() * urls.length);
+          if (next === idx) next = (next + 1) % urls.length;
+          idx = next;
+        }
+        playFrom(idx % urls.length, randomStartFraction());
       } catch {
         /* 재생 실패는 조용히 무시합니다. */
       }
