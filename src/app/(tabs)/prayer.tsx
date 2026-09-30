@@ -417,10 +417,16 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   const theme = useTheme();
   const { user } = useAuth();
   const bgm = usePrayerBgm();
-  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const baseRef = useRef(0); // 일시정지까지 누적된 시간(ms)
+  const segStartRef = useRef<number | null>(null); // 현재 진행 세그먼트 시작 시각
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [resultSeconds, setResultSeconds] = useState<number | null>(null);
+
+  // 현재까지의 총 경과(ms) — 누적된 시간 + 진행 중인 세그먼트
+  const currentMs = () => baseRef.current + (segStartRef.current !== null ? Date.now() - segStartRef.current : 0);
 
   // 전체 화면 기도 중에 함께 볼 '나의 기도제목' (로그인 안 하면 비움)
   const topics = useAsyncData<PrayerRequest[]>(
@@ -430,8 +436,29 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
 
   const begin = () => {
     topics.reload(); // 시작할 때 최신 기도제목을 불러옵니다.
-    setStartedAt(Date.now());
-    if (bgm.enabled) bgm.start(); // 배경음이 켜져 있으면 함께 재생합니다.
+    baseRef.current = 0;
+    segStartRef.current = Date.now();
+    setElapsed(0);
+    setPaused(false);
+    setRunning(true);
+    if (bgm.enabled) bgm.start(); // 배경음악이 켜져 있으면 함께 재생합니다.
+  };
+
+  // 일시정지 — 시간을 멈추고 배경음악도 멈춥니다.
+  const pause = () => {
+    if (segStartRef.current !== null) {
+      baseRef.current += Date.now() - segStartRef.current;
+      segStartRef.current = null;
+    }
+    setElapsed(baseRef.current);
+    setPaused(true);
+    bgm.stop();
+  };
+  // 이어서 기도 — 멈춘 지점부터 다시 셉니다.
+  const resume = () => {
+    segStartRef.current = Date.now();
+    setPaused(false);
+    if (bgm.enabled) bgm.start();
   };
 
   // 전체 화면에서 배경음 켜기/끄기 (즉시 반영).
@@ -443,12 +470,13 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   };
 
   useEffect(() => {
-    if (startedAt === null) return;
-    intervalRef.current = setInterval(() => setElapsed(Date.now() - startedAt), 1000);
+    if (!running || paused) return;
+    intervalRef.current = setInterval(() => setElapsed(currentMs()), 500);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [startedAt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, paused]);
 
   // 기도 화면(탭)을 벗어나면 배경음을 멈춥니다. (뒤로가기·다른 탭 이동 등)
   const stopBgm = bgm.stop;
@@ -460,10 +488,13 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
 
   const stop = async () => {
     // 실제 경과 시간을 '초' 단위 그대로 기록합니다. (3초 기도하면 3초로 저장)
-    const secs = Math.round(elapsed / 1000);
-    setStartedAt(null);
+    const secs = Math.round(currentMs() / 1000);
+    setRunning(false);
+    setPaused(false);
+    baseRef.current = 0;
+    segStartRef.current = null;
     setElapsed(0);
-    bgm.stop(); // 기도를 마치면 배경음을 멈춥니다.
+    bgm.stop(); // 기도를 마치면 배경음악을 멈춥니다.
     if (secs > 0) {
       await active.addMinutes(secs);
       setResultSeconds(secs); // 마치면 결과 모달 표시
@@ -474,7 +505,7 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
   const display = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   return (
     <Card elevated style={styles.timerCard}>
-      {startedAt === null ? (
+      {!running ? (
         <>
           <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
             오늘 기도{' '}
@@ -501,9 +532,11 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
       )}
 
       <PrayerFocusModal
-        visible={startedAt !== null}
+        visible={running}
         display={display}
         elapsedSeconds={seconds}
+        paused={paused}
+        onPauseToggle={paused ? resume : pause}
         todaySeconds={active.todayMinutes}
         topics={topics.data ?? []}
         onStop={() => void stop()}
@@ -531,7 +564,7 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
 const DIAL_BLUE = '#1B498E';
 const DIAL_GOLD = '#EADB4E';
 
-function PrayerDial({ seconds, display }: { seconds: number; display: string }) {
+function PrayerDial({ seconds, display, paused }: { seconds: number; display: string; paused?: boolean }) {
   const size = 268;
   const c = size / 2;
   const rDisc = c - 6; // 파란 원판 반지름
@@ -575,7 +608,7 @@ function PrayerDial({ seconds, display }: { seconds: number; display: string }) 
       </Svg>
       <View style={[StyleSheet.absoluteFill, styles.dialCenter]} pointerEvents="none">
         <ThemedText style={styles.dialTime}>{display}</ThemedText>
-        <ThemedText style={styles.dialLabel}>기도</ThemedText>
+        <ThemedText style={styles.dialLabel}>{paused ? '일시정지' : '기도중'}</ThemedText>
       </View>
     </View>
   );
@@ -586,6 +619,8 @@ function PrayerFocusModal({
   visible,
   display,
   elapsedSeconds,
+  paused,
+  onPauseToggle,
   todaySeconds,
   topics,
   onStop,
@@ -596,6 +631,8 @@ function PrayerFocusModal({
   visible: boolean;
   display: string;
   elapsedSeconds: number;
+  paused: boolean;
+  onPauseToggle: () => void;
   todaySeconds: number;
   topics: PrayerRequest[];
   onStop: () => void;
@@ -619,23 +656,7 @@ function PrayerFocusModal({
             paddingBottom: insets.bottom + Spacing.three,
           },
         ]}>
-        {bgmAvailable ? (
-          <Pressable
-            onPress={onToggleBgm}
-            hitSlop={8}
-            accessibilityLabel={bgmEnabled ? '배경음악 끄기' : '배경음악 켜기'}
-            style={[styles.bgmToggle, { top: insets.top + Spacing.three, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-            <Ionicons
-              name={bgmEnabled ? 'musical-notes' : 'musical-notes-outline'}
-              size={16}
-              color={bgmEnabled ? theme.primary : theme.textMuted}
-            />
-            <ThemedText type="caption" themeColor={bgmEnabled ? 'primary' : 'textMuted'}>
-              배경음악 {bgmEnabled ? '켜짐' : '꺼짐'}
-            </ThemedText>
-          </Pressable>
-        ) : null}
-        <PrayerDial seconds={elapsedSeconds} display={display} />
+        <PrayerDial seconds={elapsedSeconds} display={display} paused={paused} />
         {todaySeconds > 0 ? (
           <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
             오늘 누적 {durationLabel(todaySeconds)}
@@ -675,14 +696,46 @@ function PrayerFocusModal({
           )}
         </ScrollView>
 
-        <Pressable
-          onPress={onStop}
-          style={({ pressed }) => [styles.bigStop, { backgroundColor: theme.accent, opacity: pressed ? 0.9 : 1 }]}>
-          <Ionicons name="stop" size={26} color="#fff" />
-          <ThemedText type="subtitle" style={{ color: '#fff' }}>
-            마치고 기록하기
-          </ThemedText>
-        </Pressable>
+        {bgmAvailable ? (
+          <Pressable
+            onPress={onToggleBgm}
+            hitSlop={8}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: bgmEnabled }}
+            accessibilityLabel="배경음악"
+            style={styles.bgmRow}>
+            <Ionicons
+              name={bgmEnabled ? 'musical-notes' : 'musical-notes-outline'}
+              size={16}
+              color={bgmEnabled ? theme.primary : theme.textMuted}
+            />
+            <ThemedText type="caption" themeColor={bgmEnabled ? 'primary' : 'textMuted'}>
+              배경음악
+            </ThemedText>
+            <View style={[styles.bgmTrack, { backgroundColor: bgmEnabled ? theme.primary : theme.border }]}>
+              <View style={[styles.bgmThumb, { alignSelf: bgmEnabled ? 'flex-end' : 'flex-start' }]} />
+            </View>
+          </Pressable>
+        ) : null}
+
+        <View style={styles.focusButtonRow}>
+          <Pressable
+            onPress={onPauseToggle}
+            style={({ pressed }) => [styles.pauseBtn, { borderColor: theme.primary, backgroundColor: paused ? theme.primary : 'transparent', opacity: pressed ? 0.85 : 1 }]}>
+            <Ionicons name={paused ? 'play' : 'pause'} size={22} color={paused ? theme.onPrimary : theme.primary} />
+            <ThemedText type="subtitle" style={{ color: paused ? theme.onPrimary : theme.primary }}>
+              {paused ? '이어서' : '일시정지'}
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={onStop}
+            style={({ pressed }) => [styles.stopBtn, { backgroundColor: theme.accent, opacity: pressed ? 0.9 : 1 }]}>
+            <Ionicons name="stop" size={24} color="#fff" />
+            <ThemedText type="subtitle" style={{ color: '#fff' }}>
+              마치고 기록
+            </ThemedText>
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
@@ -877,9 +930,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.two,
   },
-  bigStop: {
-    width: '100%',
-    minHeight: 68,
+  focusButtonRow: { flexDirection: 'row', gap: Spacing.two },
+  pauseBtn: {
+    flex: 1,
+    minHeight: 64,
+    borderRadius: Radius.large,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+  },
+  stopBtn: {
+    flex: 1.4,
+    minHeight: 64,
     borderRadius: Radius.large,
     flexDirection: 'row',
     alignItems: 'center',
@@ -890,17 +954,27 @@ const styles = StyleSheet.create({
 
   // 전체 화면 기도 모드
   focusRoot: { flex: 1, paddingHorizontal: Spacing.four, gap: Spacing.two },
-  bgmToggle: {
-    position: 'absolute',
-    right: Spacing.four,
-    zIndex: 2,
+  bgmRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: Spacing.two,
+    alignSelf: 'flex-end',
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.one,
+    marginBottom: Spacing.one,
+  },
+  bgmTrack: {
+    width: 46,
+    height: 28,
+    borderRadius: 14,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  bgmThumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#fff',
   },
   dialWrap: { alignSelf: 'center', marginTop: Spacing.two },
   dialCenter: { alignItems: 'center', justifyContent: 'center' },
@@ -916,7 +990,7 @@ const styles = StyleSheet.create({
   dialLabel: {
     color: 'rgba(255,255,255,0.75)',
     fontSize: 15,
-    letterSpacing: 4,
+    letterSpacing: 2,
     marginTop: 2,
   },
   focusTopicsHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginTop: Spacing.two },
