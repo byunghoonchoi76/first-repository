@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -20,6 +21,9 @@ import { GOAL_CONFIG, useWeeklyGoal } from '@/lib/prayer-goal';
 import { recentDays, useAllPrayerTime, usePrayerTime } from '@/lib/prayer-log';
 
 const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 기도 시작 버튼에 쓰는 다이얼 이미지 */
+const START_IMAGE = require('@/assets/images/prayer-start.png');
 
 type PrayerTime = ReturnType<typeof usePrayerTime>;
 
@@ -480,12 +484,14 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
           </ThemedText>
           <Pressable
             onPress={begin}
-            style={({ pressed }) => [styles.bigStart, { backgroundColor: theme.primary, opacity: pressed ? 0.9 : 1 }]}>
-            <Ionicons name="play" size={30} color={theme.onPrimary} />
-            <ThemedText type="subtitle" style={{ color: theme.onPrimary }}>
-              기도 시작
-            </ThemedText>
+            accessibilityRole="button"
+            accessibilityLabel="기도 시작"
+            style={({ pressed }) => [styles.startImageBtn, { opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
+            <Image source={START_IMAGE} style={styles.startImage} contentFit="cover" transition={200} />
           </Pressable>
+          <ThemedText type="smallBold" themeColor="primary" style={styles.center}>
+            눌러서 기도 시작
+          </ThemedText>
           {active.todayMinutes > 0 ? (
             <Pressable onPress={() => void active.clearToday()} hitSlop={6}>
               <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
@@ -860,6 +866,14 @@ const styles = StyleSheet.create({
 
   // 큰 기도 타이머
   timerCard: { alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.four },
+  startImageBtn: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    alignSelf: 'center',
+    overflow: 'hidden',
+  },
+  startImage: { width: '100%', height: '100%' },
   bigStart: {
     width: '100%',
     minHeight: 76,
