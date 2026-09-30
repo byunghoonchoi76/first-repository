@@ -61,9 +61,17 @@ export default function GroupsScreen() {
       <HeroBanner imageSource={require('@/assets/images/groups.jpg')} height={170}>
         <ThemedText style={styles.heroTitle}>소그룹</ThemedText>
         <ThemedText style={styles.heroSubtitle}>
-          {isAdmin ? '모든 소통방이에요.' : user?.name ? `${user.name}님이 소속된 소통방이에요.` : '내가 소속된 소통방이에요.'}
+          {isAdmin ? (
+            '모든 소통방이에요.'
+          ) : user?.name ? (
+            <>
+              <ThemedText style={styles.heroName}>{user.name}님</ThemedText>이 소속된 소통방이에요.
+            </>
+          ) : (
+            '내가 소속된 소통방이에요.'
+          )}
         </ThemedText>
-        <ThemedText style={styles.heroSubtitle}>선택하면 대화방으로 들어갑니다.</ThemedText>
+        <ThemedText style={styles.heroSubtitle2}>선택하면 대화방으로 들어갑니다.</ThemedText>
       </HeroBanner>
 
       {isAdmin ? (
@@ -134,7 +142,25 @@ const styles = StyleSheet.create({
   heroSubtitle: {
     color: 'rgba(255,255,255,0.92)',
     fontSize: 14,
-    marginTop: 3,
+    lineHeight: 20,
+    marginTop: 4,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroSubtitle2: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    lineHeight: 18,
+    marginTop: 0,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroName: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '800',
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
