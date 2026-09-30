@@ -492,13 +492,6 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
           <ThemedText type="smallBold" themeColor="primary" style={styles.center}>
             눌러서 기도 시작
           </ThemedText>
-          {active.todayMinutes > 0 ? (
-            <Pressable onPress={() => void active.clearToday()} hitSlop={6}>
-              <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
-                오늘 기록 지우기
-              </ThemedText>
-            </Pressable>
-          ) : null}
         </>
       ) : (
         // 전체 화면 기도 모드가 위에 뜨는 동안, 카드 자리에는 간단한 안내만 둡니다.
@@ -534,10 +527,11 @@ function TimerCard({ active, goal }: { active: PrayerTime; goal: number }) {
  * 초가 지날수록 눈금이 노란색으로 채워지며 초침이 함께 돕니다. 가운데에는
  * 기존 디지털 시간(MM:SS)을 그대로 크게 표시합니다.
  */
-const DIAL_GOLD = '#F7CE3C';
+// 시작 버튼 이미지(+1H prayer)에서 뽑은 색 — 다이얼과 통일합니다.
+const DIAL_BLUE = '#1B498E';
+const DIAL_GOLD = '#EADB4E';
 
 function PrayerDial({ seconds, display }: { seconds: number; display: string }) {
-  const theme = useTheme();
   const size = 268;
   const c = size / 2;
   const rDisc = c - 6; // 파란 원판 반지름
@@ -574,7 +568,7 @@ function PrayerDial({ seconds, display }: { seconds: number; display: string }) 
   return (
     <View style={styles.dialWrap}>
       <Svg width={size} height={size}>
-        <Circle cx={c} cy={c} r={rDisc} fill={theme.primary} />
+        <Circle cx={c} cy={c} r={rDisc} fill={DIAL_BLUE} />
         {ticks}
         <Line x1={c} y1={c} x2={c + handLen * Math.cos(ha)} y2={c + handLen * Math.sin(ha)} stroke={DIAL_GOLD} strokeWidth={3} strokeLinecap="round" />
         <Circle cx={c} cy={c} r={4.5} fill={DIAL_GOLD} />
@@ -629,7 +623,7 @@ function PrayerFocusModal({
           <Pressable
             onPress={onToggleBgm}
             hitSlop={8}
-            accessibilityLabel={bgmEnabled ? '배경음 끄기' : '배경음 켜기'}
+            accessibilityLabel={bgmEnabled ? '배경음악 끄기' : '배경음악 켜기'}
             style={[styles.bgmToggle, { top: insets.top + Spacing.three, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
             <Ionicons
               name={bgmEnabled ? 'musical-notes' : 'musical-notes-outline'}
@@ -637,7 +631,7 @@ function PrayerFocusModal({
               color={bgmEnabled ? theme.primary : theme.textMuted}
             />
             <ThemedText type="caption" themeColor={bgmEnabled ? 'primary' : 'textMuted'}>
-              배경음 {bgmEnabled ? '켜짐' : '꺼짐'}
+              배경음악 {bgmEnabled ? '켜짐' : '꺼짐'}
             </ThemedText>
           </Pressable>
         ) : null}
