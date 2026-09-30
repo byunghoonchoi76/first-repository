@@ -61,8 +61,9 @@ export default function GroupsScreen() {
       <HeroBanner imageSource={require('@/assets/images/groups.jpg')} height={170}>
         <ThemedText style={styles.heroTitle}>소그룹</ThemedText>
         <ThemedText style={styles.heroSubtitle}>
-          {isAdmin ? '모든 소통방이에요. 선택하면 대화방으로 들어갑니다.' : '내가 초대된 소통방이에요. 선택하면 대화방으로 들어갑니다.'}
+          {isAdmin ? '모든 소통방이에요.' : user?.name ? `${user.name}님이 소속된 소통방이에요.` : '내가 소속된 소통방이에요.'}
         </ThemedText>
+        <ThemedText style={styles.heroSubtitle}>선택하면 대화방으로 들어갑니다.</ThemedText>
       </HeroBanner>
 
       {isAdmin ? (
