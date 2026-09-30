@@ -1,12 +1,15 @@
 import { useRouter } from 'expo-router';
 import { Linking, StyleSheet, View } from 'react-native';
 
+import { HeroBanner } from '@/components/hero-banner';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Card, ListRow, SectionHeader } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { repository, useAsyncData } from '@/lib/data';
 import { useTheme } from '@/hooks/use-theme';
+
+const CHURCH_IMAGE = require('@/assets/images/church-exterior.png');
 
 /** 교회 안내 — 예배·섬김·오시는 길·함께하기를 한곳에 모은 안내 허브 */
 export default function GuideScreen() {
@@ -19,21 +22,21 @@ export default function GuideScreen() {
 
   return (
     <Screen onRefresh={profile.reload}>
-      {/* 교회 소개 */}
-      <Card elevated>
-        <ThemedText type="title">{church?.name ?? '교회 안내'}</ThemedText>
+      {/* 교회 소개 — 교회 전경 사진 위에 이름을 얹습니다 */}
+      <HeroBanner imageSource={CHURCH_IMAGE} height={200}>
+        <ThemedText style={styles.heroTitle}>{church?.name ?? '교회 안내'}</ThemedText>
         {church?.slogan ? (
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText style={styles.heroSlogan}>
             {church.slogan}
             {church.sloganVerse ? ` (${church.sloganVerse})` : ''}
           </ThemedText>
         ) : null}
-        {church?.pastor ? (
-          <ThemedText type="caption" themeColor="textMuted">
-            {church.pastor}
-          </ThemedText>
-        ) : null}
-      </Card>
+      </HeroBanner>
+      {church?.pastor ? (
+        <ThemedText type="caption" themeColor="textMuted">
+          {church.pastor}
+        </ThemedText>
+      ) : null}
 
       {/* 예배와 섬김 */}
       <View>
@@ -98,4 +101,21 @@ export default function GuideScreen() {
 
 const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
+  heroTitle: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroSlogan: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
 });
