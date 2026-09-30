@@ -657,11 +657,32 @@ function PrayerFocusModal({
           },
         ]}>
         <PrayerDial seconds={elapsedSeconds} display={display} paused={paused} />
-        {todaySeconds > 0 ? (
-          <ThemedText type="caption" themeColor="textMuted" style={styles.center}>
+        <View style={styles.dialMetaRow}>
+          <ThemedText type="caption" themeColor="textMuted">
             오늘 누적 {durationLabel(todaySeconds)}
           </ThemedText>
-        ) : null}
+          {bgmAvailable ? (
+            <Pressable
+              onPress={onToggleBgm}
+              hitSlop={8}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: bgmEnabled }}
+              accessibilityLabel="배경음악"
+              style={styles.bgmRow}>
+              <Ionicons
+                name={bgmEnabled ? 'musical-notes' : 'musical-notes-outline'}
+                size={16}
+                color={bgmEnabled ? theme.primary : theme.textMuted}
+              />
+              <ThemedText type="caption" themeColor={bgmEnabled ? 'primary' : 'textMuted'}>
+                배경음악
+              </ThemedText>
+              <View style={[styles.bgmTrack, { backgroundColor: bgmEnabled ? theme.primary : theme.border }]}>
+                <View style={[styles.bgmThumb, { alignSelf: bgmEnabled ? 'flex-end' : 'flex-start' }]} />
+              </View>
+            </Pressable>
+          ) : null}
+        </View>
 
         <View style={styles.focusTopicsHead}>
           <Ionicons name="flower-outline" size={16} color={theme.primary} />
@@ -695,28 +716,6 @@ function PrayerFocusModal({
             ))
           )}
         </ScrollView>
-
-        {bgmAvailable ? (
-          <Pressable
-            onPress={onToggleBgm}
-            hitSlop={8}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: bgmEnabled }}
-            accessibilityLabel="배경음악"
-            style={styles.bgmRow}>
-            <Ionicons
-              name={bgmEnabled ? 'musical-notes' : 'musical-notes-outline'}
-              size={16}
-              color={bgmEnabled ? theme.primary : theme.textMuted}
-            />
-            <ThemedText type="caption" themeColor={bgmEnabled ? 'primary' : 'textMuted'}>
-              배경음악
-            </ThemedText>
-            <View style={[styles.bgmTrack, { backgroundColor: bgmEnabled ? theme.primary : theme.border }]}>
-              <View style={[styles.bgmThumb, { alignSelf: bgmEnabled ? 'flex-end' : 'flex-start' }]} />
-            </View>
-          </Pressable>
-        ) : null}
 
         <View style={styles.focusButtonRow}>
           <Pressable
@@ -954,14 +953,17 @@ const styles = StyleSheet.create({
 
   // 전체 화면 기도 모드
   focusRoot: { flex: 1, paddingHorizontal: Spacing.four, gap: Spacing.two },
+  dialMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
   bgmRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    alignSelf: 'flex-end',
     paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.one,
-    marginBottom: Spacing.one,
   },
   bgmTrack: {
     width: 46,
