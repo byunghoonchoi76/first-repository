@@ -25,11 +25,8 @@ export default function CommunalPrayerScreen() {
 
       <HeroBanner imageSource={require('@/assets/images/prayer-communal.jpg')} height={170}>
         <ThemedText style={styles.heroTitle}>공동 기도제목</ThemedText>
+        <ThemedText style={styles.heroSubtitle}>온 성도가 함께 마음을 모아 기도하는 제목입니다.</ThemedText>
       </HeroBanner>
-
-      <ThemedText type="small" themeColor="textSecondary" style={styles.intro}>
-        온 성도가 함께 마음을 모아 기도하는 제목입니다.
-      </ThemedText>
 
       {isAdmin ? (
         <Button
@@ -92,7 +89,14 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  intro: { marginBottom: Spacing.one },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    marginTop: 3,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   stack: { gap: Spacing.two },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

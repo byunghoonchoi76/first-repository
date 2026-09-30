@@ -60,11 +60,10 @@ export default function GroupsScreen() {
     <Screen onRefresh={groups.reload}>
       <HeroBanner imageSource={require('@/assets/images/groups.jpg')} height={170}>
         <ThemedText style={styles.heroTitle}>소그룹</ThemedText>
+        <ThemedText style={styles.heroSubtitle}>
+          {isAdmin ? '모든 소통방이에요. 선택하면 대화방으로 들어갑니다.' : '내가 초대된 소통방이에요. 선택하면 대화방으로 들어갑니다.'}
+        </ThemedText>
       </HeroBanner>
-
-      <ThemedText type="small" themeColor="textSecondary">
-        {isAdmin ? '모든 소통방이에요. 선택하면 대화방으로 들어갑니다.' : '내가 초대된 소통방이에요. 선택하면 대화방으로 들어갑니다.'}
-      </ThemedText>
 
       {isAdmin ? (
         <Button
@@ -128,6 +127,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.4,
     textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    marginTop: 3,
+    textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },

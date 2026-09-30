@@ -32,11 +32,6 @@ export default function GuideScreen() {
           </ThemedText>
         ) : null}
       </HeroBanner>
-      {church?.pastor ? (
-        <ThemedText type="caption" themeColor="textMuted">
-          {church.pastor}
-        </ThemedText>
-      ) : null}
 
       {/* 예배와 섬김 */}
       <View>
