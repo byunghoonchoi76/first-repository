@@ -47,3 +47,6 @@ example
 .env.local
 dist-pages/
 dist-rem/
+
+# Strix scan output
+strix_runs/
