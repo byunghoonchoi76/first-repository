@@ -124,12 +124,15 @@ export default function GroupRoomScreen() {
     const asset = picked.assets[0];
     setAttaching(true);
     try {
-      const url = await uploadChatImage({
-        uri: asset.uri,
-        base64: asset.base64,
-        mimeType: asset.mimeType,
-        fileName: asset.fileName ?? undefined,
-      });
+      const url = await uploadChatImage(
+        {
+          uri: asset.uri,
+          base64: asset.base64,
+          mimeType: asset.mimeType,
+          fileName: asset.fileName ?? undefined,
+        },
+        groupId,
+      );
       setPendingImage(url);
     } catch (e) {
       setError(e instanceof Error ? e.message : '사진을 올리지 못했습니다.');

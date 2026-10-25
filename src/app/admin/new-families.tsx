@@ -1,27 +1,41 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Alert, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Card, EmptyState, ErrorState, LoadingState } from '@/components/ui';
+import { Button, Card, EmptyState, ErrorState, LoadingState } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth';
 import { repository, useAsyncData } from '@/lib/data';
 import { formatRelative } from '@/lib/format';
 
 /** 관리자용 새가족 등록 명단 (조회·삭제). */
 export default function NewFamiliesAdminScreen() {
   const theme = useTheme();
+  const router = useRouter();
+  const { isAdmin } = useAuth();
   const families = useAsyncData(() => repository.listNewFamilies());
   const { reload, setData } = families;
 
   useFocusEffect(
     useCallback(() => {
-      reload();
-    }, [reload]),
+      if (isAdmin) reload();
+    }, [isAdmin, reload]),
   );
+
+  if (!isAdmin) {
+    return (
+      <Screen>
+        <Card>
+          <EmptyState icon="lock-closed-outline" message="관리자만 볼 수 있는 화면입니다." />
+          <Button label="로그인 화면으로" variant="secondary" onPress={() => router.push('/sign-in')} />
+        </Card>
+      </Screen>
+    );
+  }
 
   const remove = (id: string) => {
     const doDelete = async () => {
