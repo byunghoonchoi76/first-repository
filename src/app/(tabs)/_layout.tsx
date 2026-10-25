@@ -8,9 +8,10 @@ import { useTheme } from '@/hooks/use-theme';
 
 /** 한글 받침까지 온전히 보이도록 탭 라벨을 직접 그립니다. */
 function tabLabel(label: string) {
-  return ({ color }: { color: ColorValue }) => (
+  const TabLabel = ({ color }: { color: ColorValue }) => (
     <Text style={[styles.tabLabel, { color }]}>{label}</Text>
   );
+  return TabLabel;
 }
 
 export default function TabsLayout() {
